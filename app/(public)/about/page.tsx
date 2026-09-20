@@ -43,6 +43,15 @@ export default async function AboutPage() {
               <div>
                 <div className="font-bold text-slate-900 text-sm">2019 & 2024 Scheme Focused</div>
                 <div className="text-xs text-slate-500 mt-0.5">Updated precisely according to current university schemes.</div>
+                <a
+                  href="https://ktu.edu.in/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 mt-2"
+                >
+                  <span>Explore the KTU Scheme</span>
+                  <ArrowRight className="w-3 h-3" />
+                </a>
               </div>
             </div>
 
@@ -57,13 +66,22 @@ export default async function AboutPage() {
         </div>
 
         {/* CTA */}
-        <div className="text-center pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <a
+            href="https://ktu.edu.in/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-md"
+          >
+            <span>Explore the KTU Scheme</span>
+            <ArrowRight className="w-4 h-4" />
+          </a>
           <Link
             href="/subjects"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-md"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-xs"
           >
             <span>Explore KTU Curriculum</span>
-            <ArrowRight className="w-4 h-4" />
+            <BookOpen className="w-4 h-4" />
           </Link>
         </div>
       </div>

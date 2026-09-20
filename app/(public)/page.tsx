@@ -185,6 +185,17 @@ export default async function HomePage() {
               <p className="text-xs text-slate-600 leading-relaxed">
                 Structured precisely following the Kerala Technological University syllabus schemes (2019 & 2024 schemes).
               </p>
+              <div className="mt-3 pt-2 border-t border-slate-200/60">
+                <a
+                  href="https://ktu.edu.in/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Explore the KTU Scheme</span>
+                  <ArrowRight className="w-3 h-3" />
+                </a>
+              </div>
             </div>
 
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80">
