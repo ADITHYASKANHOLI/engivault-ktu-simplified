@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Edit2,
@@ -24,7 +25,12 @@ import {
 import { Subject, Module, Lesson } from "@/types";
 import { slugify, formatDuration } from "@/lib/utils";
 
-export default function AdminLessonsPage() {
+function AdminLessonsContent() {
+  const searchParams = useSearchParams();
+  const urlSubjectId = searchParams.get("subjectId");
+  const urlModuleId = searchParams.get("moduleId");
+  const urlAutoCreate = searchParams.get("create");
+
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -32,8 +38,8 @@ export default function AdminLessonsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("all");
-  const [selectedModuleId, setSelectedModuleId] = useState<string>("all");
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(urlSubjectId || "all");
+  const [selectedModuleId, setSelectedModuleId] = useState<string>(urlModuleId || "all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Modals
@@ -41,6 +47,7 @@ export default function AdminLessonsPage() {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [deleteModalLesson, setDeleteModalLesson] = useState<Lesson | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingStatus, setSubmittingStatus] = useState<string>("Saving...");
 
   // Feedback notifications
   const [feedback, setFeedback] = useState<{
@@ -111,12 +118,24 @@ export default function AdminLessonsPage() {
   }, [fetchData]);
 
   // Handle open create modal
-  const openCreateModal = () => {
-    const defaultSubject = subjects[0]?.id || "";
+  const openCreateModal = useCallback(() => {
+    const defaultSubject =
+      selectedSubjectId !== "all"
+        ? selectedSubjectId
+        : urlSubjectId || subjects[0]?.id || "";
+
     const relevantModules = modules.filter(
       (m) => !defaultSubject || m.subject_id === defaultSubject
     );
-    const defaultModule = relevantModules[0]?.id || "";
+
+    let defaultModule = "";
+    if (selectedModuleId !== "all" && relevantModules.some((m) => m.id === selectedModuleId)) {
+      defaultModule = selectedModuleId;
+    } else if (urlModuleId && relevantModules.some((m) => m.id === urlModuleId)) {
+      defaultModule = urlModuleId;
+    } else {
+      defaultModule = relevantModules[0]?.id || "";
+    }
 
     setEditingLesson(null);
     setReplaceVideoFile(null);
@@ -132,7 +151,14 @@ export default function AdminLessonsPage() {
       published: true,
     });
     setModalMode("create");
-  };
+  }, [selectedSubjectId, urlSubjectId, subjects, modules, selectedModuleId, urlModuleId, lessons.length]);
+
+  // Handle URL auto-create trigger
+  useEffect(() => {
+    if (urlAutoCreate === "true" && subjects.length > 0 && modules.length > 0 && !loading && modalMode === null) {
+      openCreateModal();
+    }
+  }, [urlAutoCreate, subjects, modules, loading, modalMode, openCreateModal]);
 
   // Handle open edit modal
   const openEditModal = (lesson: Lesson) => {
@@ -167,7 +193,7 @@ export default function AdminLessonsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      setFeedback({ type: "error", message: "Lesson title is required." });
+      setFeedback({ type: "error", message: "Lecture title is required." });
       return;
     }
     if (!formData.module_id) {
@@ -175,10 +201,64 @@ export default function AdminLessonsPage() {
       return;
     }
 
+    if (replaceVideoFile) {
+      const mime = replaceVideoFile.type?.toLowerCase() || "";
+      const name = replaceVideoFile.name.toLowerCase();
+      const isValidVideo =
+        mime.startsWith("video/") ||
+        name.endsWith(".mp4") ||
+        name.endsWith(".webm") ||
+        name.endsWith(".mov") ||
+        name.endsWith(".mkv");
+
+      if (!isValidVideo) {
+        setFeedback({
+          type: "error",
+          message: "Please select a valid video file (MP4, WebM, QuickTime, or MKV).",
+        });
+        return;
+      }
+
+      if (replaceVideoFile.size > 5368709120) {
+        setFeedback({
+          type: "error",
+          message: "Selected video exceeds 5GB maximum size limit.",
+        });
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
       if (modalMode === "create") {
+        let uploadedStoragePath: string | null = null;
+
+        // STEP 1: Upload video file first if attached
+        if (replaceVideoFile) {
+          setSubmittingStatus("Uploading lecture video to storage...");
+          const uploadForm = new FormData();
+          uploadForm.append("file", replaceVideoFile);
+          uploadForm.append("bucket", "engivault-videos");
+          uploadForm.append("subject_id", formData.subject_id);
+          uploadForm.append("module_id", formData.module_id);
+
+          const upRes = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: uploadForm,
+          });
+
+          if (!upRes.ok) {
+            const errData = await upRes.json().catch(() => ({}));
+            throw new Error(errData.error || "Failed to upload lecture video to storage.");
+          }
+
+          const upData = await upRes.json();
+          uploadedStoragePath = upData.storagePath;
+        }
+
+        // STEP 2: Create lecture in Supabase database
+        setSubmittingStatus("Creating lecture record in Supabase...");
         const payload = {
           module_id: formData.module_id,
           title: formData.title.trim(),
@@ -197,21 +277,79 @@ export default function AdminLessonsPage() {
         });
 
         if (!res.ok) {
+          // Failure safety: clean up uploaded storage file if DB insert failed
+          if (uploadedStoragePath) {
+            await fetch(
+              `/api/admin/upload?bucket=engivault-videos&path=${encodeURIComponent(uploadedStoragePath)}`,
+              { method: "DELETE" }
+            ).catch(() => {});
+          }
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Unable to create lesson. No changes were saved.");
+          throw new Error(errData.error || "Unable to create lecture in database. No changes were saved.");
         }
 
         const createdLesson = await res.json();
 
-        // If a video file was selected during creation, upload it
-        if (replaceVideoFile) {
-          await uploadAndAttachVideo(createdLesson.id, replaceVideoFile);
+        // STEP 3: Link video metadata if video was uploaded
+        if (uploadedStoragePath && replaceVideoFile) {
+          setSubmittingStatus("Linking video metadata...");
+          const videoRes = await fetch("/api/admin/videos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lesson_id: createdLesson.id,
+              title: replaceVideoFile.name.replace(/\.[^/.]+$/, ""),
+              storage_path: uploadedStoragePath,
+              mime_type: replaceVideoFile.type || "video/mp4",
+              file_size: replaceVideoFile.size,
+              duration_seconds: Number(formData.duration_seconds) || 1200,
+              published: formData.published,
+            }),
+          });
+
+          if (!videoRes.ok) {
+            // Failure safety: rollback created lesson and storage file
+            await fetch(`/api/admin/lessons?id=${createdLesson.id}`, { method: "DELETE" }).catch(() => {});
+            await fetch(
+              `/api/admin/upload?bucket=engivault-videos&path=${encodeURIComponent(uploadedStoragePath)}`,
+              { method: "DELETE" }
+            ).catch(() => {});
+            const vidErr = await videoRes.json().catch(() => ({}));
+            throw new Error(vidErr.error || "Failed to link video metadata to lecture.");
+          }
         }
 
-        setFeedback({ type: "success", message: "Lesson created successfully." });
+        setFeedback({ type: "success", message: "Lecture created successfully in Supabase." });
         setModalMode(null);
         await fetchData(true);
       } else if (modalMode === "edit" && editingLesson) {
+        let uploadedStoragePath: string | null = null;
+
+        // If replacement video provided, upload it
+        if (replaceVideoFile) {
+          setSubmittingStatus("Uploading replacement video...");
+          const uploadForm = new FormData();
+          uploadForm.append("file", replaceVideoFile);
+          uploadForm.append("bucket", "engivault-videos");
+          uploadForm.append("subject_id", formData.subject_id);
+          uploadForm.append("module_id", formData.module_id);
+          uploadForm.append("lesson_id", editingLesson.id);
+
+          const upRes = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: uploadForm,
+          });
+
+          if (!upRes.ok) {
+            const errData = await upRes.json().catch(() => ({}));
+            throw new Error(errData.error || "Failed to upload replacement video.");
+          }
+
+          const upData = await upRes.json();
+          uploadedStoragePath = upData.storagePath;
+        }
+
+        setSubmittingStatus("Updating lecture details...");
         const payload = {
           id: editingLesson.id,
           module_id: formData.module_id,
@@ -231,16 +369,39 @@ export default function AdminLessonsPage() {
         });
 
         if (!res.ok) {
+          if (uploadedStoragePath) {
+            await fetch(
+              `/api/admin/upload?bucket=engivault-videos&path=${encodeURIComponent(uploadedStoragePath)}`,
+              { method: "DELETE" }
+            ).catch(() => {});
+          }
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Unable to update lesson. No changes were saved.");
+          throw new Error(errData.error || "Unable to update lecture. No changes were saved.");
         }
 
-        // If replacement video provided, upload and update reference
-        if (replaceVideoFile) {
-          await uploadAndAttachVideo(editingLesson.id, replaceVideoFile);
+        if (uploadedStoragePath && replaceVideoFile) {
+          setSubmittingStatus("Linking updated video metadata...");
+          const videoRes = await fetch("/api/admin/videos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lesson_id: editingLesson.id,
+              title: replaceVideoFile.name.replace(/\.[^/.]+$/, ""),
+              storage_path: uploadedStoragePath,
+              mime_type: replaceVideoFile.type || "video/mp4",
+              file_size: replaceVideoFile.size,
+              duration_seconds: Number(formData.duration_seconds) || 1200,
+              published: formData.published,
+            }),
+          });
+
+          if (!videoRes.ok) {
+            const vidErr = await videoRes.json().catch(() => ({}));
+            throw new Error(vidErr.error || "Failed to link updated video metadata.");
+          }
         }
 
-        setFeedback({ type: "success", message: "Lesson updated successfully." });
+        setFeedback({ type: "success", message: "Lecture updated successfully." });
         setModalMode(null);
         await fetchData(true);
       }
@@ -248,50 +409,11 @@ export default function AdminLessonsPage() {
       console.error("Save error:", err);
       setFeedback({
         type: "error",
-        message: err.message || "Unable to update lesson. No changes were saved.",
+        message: err.message || "Unable to save lecture. No changes were saved.",
       });
     } finally {
       setSubmitting(false);
       clearFeedbackAfterDelay();
-    }
-  };
-
-  // Helper to upload and attach video to lesson
-  const uploadAndAttachVideo = async (lessonId: string, file: File) => {
-    try {
-      const authRes = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bucket: "engivault-videos",
-          filename: file.name,
-          mime_type: file.type || "video/mp4",
-          file_size: file.size,
-          lesson_id: lessonId,
-        }),
-      });
-
-      if (!authRes.ok) throw new Error("Upload authorization failed");
-      const authData = await authRes.json();
-
-      // Record video metadata
-      const videoRes = await fetch("/api/admin/videos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lesson_id: lessonId,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          storage_path: authData.storagePath || `videos/${file.name}`,
-          mime_type: file.type || "video/mp4",
-          file_size: file.size,
-          duration_seconds: formData.duration_seconds,
-          published: formData.published,
-        }),
-      });
-
-      if (!videoRes.ok) throw new Error("Failed to save video metadata");
-    } catch (videoErr) {
-      console.warn("Video upload attachment notice:", videoErr);
     }
   };
 
@@ -438,7 +560,7 @@ export default function AdminLessonsPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>New Lecture</span>
+            <span>Create Lecture</span>
           </button>
         </div>
       </div>
@@ -907,7 +1029,7 @@ export default function AdminLessonsPage() {
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving to Supabase...</span>
+                      <span>{submittingStatus}</span>
                     </>
                   ) : (
                     <span>{modalMode === "create" ? "Create Lecture" : "Save Changes"}</span>
@@ -985,5 +1107,20 @@ export default function AdminLessonsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminLessonsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center text-slate-400 space-y-2">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+          <p className="text-xs">Loading lecture management...</p>
+        </div>
+      }
+    >
+      <AdminLessonsContent />
+    </Suspense>
   );
 }

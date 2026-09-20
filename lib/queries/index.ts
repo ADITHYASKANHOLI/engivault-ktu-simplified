@@ -673,14 +673,84 @@ export async function deleteSubject(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
+
+      // 1. Fetch subject title for logging
       const { data: existing } = await supabase.from("subjects").select("title").eq("id", id).single();
+
+      // 2. Find all modules belonging to this subject
+      const { data: subjectModules } = await supabase
+        .from("modules")
+        .select("id")
+        .eq("subject_id", id);
+      const moduleIds = (subjectModules || []).map((m: any) => m.id);
+
+      if (moduleIds.length > 0) {
+        // 3. Find all lessons belonging to those modules
+        const { data: subjectLessons } = await supabase
+          .from("lessons")
+          .select("id")
+          .in("module_id", moduleIds);
+        const lessonIds = (subjectLessons || []).map((l: any) => l.id);
+
+        if (lessonIds.length > 0) {
+          // 4. Collect video storage paths
+          const { data: videoRows } = await supabase
+            .from("videos")
+            .select("storage_path")
+            .in("lesson_id", lessonIds);
+          const videoPaths = (videoRows || []).map((v: any) => v.storage_path).filter(Boolean);
+
+          // 5. Collect material storage paths
+          const { data: materialRows } = await supabase
+            .from("materials")
+            .select("storage_path")
+            .in("lesson_id", lessonIds);
+          const materialPaths = (materialRows || []).map((m: any) => m.storage_path).filter(Boolean);
+
+          // 6. Remove files from Supabase Storage buckets (non-blocking)
+          if (videoPaths.length > 0) {
+            try {
+              await supabase.storage.from("engivault-videos").remove(videoPaths);
+            } catch (err) {
+              console.warn("Storage video cleanup notice during subject deletion:", err);
+            }
+          }
+          if (materialPaths.length > 0) {
+            try {
+              await supabase.storage.from("engivault-materials").remove(materialPaths);
+            } catch (err) {
+              console.warn("Storage material cleanup notice during subject deletion:", err);
+            }
+          }
+        }
+      }
+
+      // 7. Delete the subject — ON DELETE CASCADE handles modules → lessons → videos → materials rows
       const { error } = await supabase.from("subjects").delete().eq("id", id);
       if (error) {
         console.error("Supabase deleteSubject error:", error);
         throw new Error(`Failed to delete subject: ${error.message}`);
       }
-      const idx = fallbackSubjects.findIndex((s) => s.id === id);
-      if (idx !== -1) fallbackSubjects.splice(idx, 1);
+
+      // 8. Sync fallback local store — remove subject and all its children
+      const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
+      const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
+
+      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+        if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+      }
+      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+        if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+      }
+      for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+        if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
+      }
+      for (let i = fallbackModules.length - 1; i >= 0; i--) {
+        if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
+      }
+      const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
+      if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
+
       await logActivity("Subject Deleted", "subject", { id, title: existing?.title || "Subject" });
       return true;
     } catch (err: any) {
@@ -689,9 +759,27 @@ export async function deleteSubject(id: string): Promise<boolean> {
     }
   }
 
+  // Fallback-only mode: cascade through local store arrays
   const index = fallbackSubjects.findIndex((s) => s.id === id);
   if (index === -1) return false;
   const removed = fallbackSubjects.splice(index, 1)[0];
+
+  const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
+  const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
+
+  for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+    if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+  }
+  for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+    if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+  }
+  for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+    if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
+  }
+  for (let i = fallbackModules.length - 1; i >= 0; i--) {
+    if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
+  }
+
   await logActivity("Subject Deleted", "subject", { id, title: removed.title });
   return true;
 }
@@ -817,36 +905,40 @@ export async function getModuleById(id: string): Promise<Module | null> {
 }
 
 export async function createModule(data: Partial<Module>): Promise<Module> {
-  const newMod: Module = {
+  const insertPayload = {
     id: data.id || crypto.randomUUID(),
     subject_id: data.subject_id!,
     title: data.title || "Untitled Module",
     slug: data.slug || `module-${Date.now()}`,
     short_description: data.short_description || null,
-    display_order: data.display_order ?? fallbackModules.length + 1,
+    display_order: data.display_order ?? (fallbackModules.length + 1),
     published: Boolean(data.published),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    lessons_count: 0,
   };
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data: created, error } = await supabase.from("modules").insert(newMod).select().single();
+      const { data: created, error } = await supabase.from("modules").insert(insertPayload).select().single();
       if (error) {
         console.error("Supabase createModule error:", error);
         throw new Error(`Failed to create module: ${error.message}`);
       }
-      fallbackModules.push(created);
+      const enriched: Module = { ...created, lessons_count: 0 };
+      fallbackModules.push(enriched);
       await logActivity("Module Created", "module", { id: created.id, title: created.title, slug: created.slug });
-      return created;
+      return enriched;
     } catch (err: any) {
       console.error("Supabase createModule error:", err);
       throw err;
     }
   }
 
+  const newMod: Module = {
+    ...insertPayload,
+    lessons_count: 0,
+  };
   fallbackModules.push(newMod);
   await logActivity("Module Created", "module", { id: newMod.id, title: newMod.title });
   return newMod;
@@ -856,11 +948,12 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const payload = { ...updates, updated_at: new Date().toISOString() };
-      delete (payload as any).id;
-      delete (payload as any).created_at;
-      delete (payload as any).lessons_count;
-      delete (payload as any).subject;
+      const payload: Record<string, any> = { ...updates, updated_at: new Date().toISOString() };
+      delete payload.id;
+      delete payload.created_at;
+      delete payload.lessons_count;
+      delete payload.subject;
+      delete payload.lessons;
       const { data, error } = await supabase.from("modules").update(payload).eq("id", id).select().single();
       if (error) {
         console.error("Supabase updateModule error:", error);
@@ -892,13 +985,65 @@ export async function deleteModule(id: string): Promise<boolean> {
     try {
       const supabase = createAdminClient();
       const { data: existing } = await supabase.from("modules").select("title").eq("id", id).single();
+
+      // Find all lessons belonging to this module to clean up storage files
+      const { data: moduleLessons } = await supabase
+        .from("lessons")
+        .select("id")
+        .eq("module_id", id);
+      const lessonIds = (moduleLessons || []).map((l: any) => l.id);
+
+      if (lessonIds.length > 0) {
+        // Collect video storage paths
+        const { data: videoRows } = await supabase
+          .from("videos")
+          .select("storage_path")
+          .in("lesson_id", lessonIds);
+        const videoPaths = (videoRows || []).map((v: any) => v.storage_path).filter(Boolean);
+
+        // Collect material storage paths
+        const { data: materialRows } = await supabase
+          .from("materials")
+          .select("storage_path")
+          .in("lesson_id", lessonIds);
+        const materialPaths = (materialRows || []).map((m: any) => m.storage_path).filter(Boolean);
+
+        if (videoPaths.length > 0) {
+          try {
+            await supabase.storage.from("engivault-videos").remove(videoPaths);
+          } catch (err) {
+            console.warn("Storage video cleanup notice during module deletion:", err);
+          }
+        }
+        if (materialPaths.length > 0) {
+          try {
+            await supabase.storage.from("engivault-materials").remove(materialPaths);
+          } catch (err) {
+            console.warn("Storage material cleanup notice during module deletion:", err);
+          }
+        }
+      }
+
       const { error } = await supabase.from("modules").delete().eq("id", id);
       if (error) {
         console.error("Supabase deleteModule error:", error);
         throw new Error(`Failed to delete module: ${error.message}`);
       }
+
+      // Cascade in local fallback arrays
+      const localLessonIds = fallbackLessons.filter((l) => l.module_id === id).map((l) => l.id);
+      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+        if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+      }
+      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+        if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+      }
+      for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+        if (fallbackLessons[i].module_id === id) fallbackLessons.splice(i, 1);
+      }
       const idx = fallbackModules.findIndex((m) => m.id === id);
       if (idx !== -1) fallbackModules.splice(idx, 1);
+
       await logActivity("Module Deleted", "module", { id, title: existing?.title || "Module" });
       return true;
     } catch (err: any) {
@@ -907,6 +1052,16 @@ export async function deleteModule(id: string): Promise<boolean> {
     }
   }
 
+  const localLessonIds = fallbackLessons.filter((l) => l.module_id === id).map((l) => l.id);
+  for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+    if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+  }
+  for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+    if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+  }
+  for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+    if (fallbackLessons[i].module_id === id) fallbackLessons.splice(i, 1);
+  }
   const index = fallbackModules.findIndex((m) => m.id === id);
   if (index === -1) return false;
   const removed = fallbackModules.splice(index, 1)[0];
@@ -1126,7 +1281,7 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
 }
 
 export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
-  const newLesson: Lesson = {
+  const insertPayload = {
     id: data.id || crypto.randomUUID(),
     module_id: data.module_id!,
     title: data.title || "Untitled Lecture",
@@ -1136,7 +1291,7 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     thumbnail_path: data.thumbnail_path || null,
     duration_seconds: data.duration_seconds ?? 1200,
     published: Boolean(data.published),
-    display_order: data.display_order ?? fallbackLessons.length + 1,
+    display_order: data.display_order ?? (fallbackLessons.length + 1),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -1144,23 +1299,28 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data: created, error } = await supabase.from("lessons").insert(newLesson).select().single();
+      const { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
       if (error) {
         console.error("Supabase createLesson error:", error);
         throw new Error(`Failed to create lesson in database: ${error.message}`);
       }
-      fallbackLessons.push(created);
+      const enriched = enrichFallbackLesson(created);
+      fallbackLessons.push(enriched);
       await logActivity("Lesson Created", "lesson", { id: created.id, title: created.title, slug: created.slug });
-      return created;
+      return enriched;
     } catch (err: any) {
       console.error("Supabase createLesson error:", err);
       throw err;
     }
   }
 
-  fallbackLessons.push(newLesson);
+  const newLesson: Lesson = {
+    ...insertPayload,
+  };
+  const enriched = enrichFallbackLesson(newLesson);
+  fallbackLessons.push(enriched);
   await logActivity("Lesson Created", "lesson", { id: newLesson.id, title: newLesson.title });
-  return newLesson;
+  return enriched;
 }
 
 export async function updateLesson(id: string, updates: Partial<Lesson>): Promise<Lesson | null> {

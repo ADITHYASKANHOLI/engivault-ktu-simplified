@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Globe, EyeOff, Check, X, BookOpen, Layers } from "lucide-react";
+import Link from "next/link";
+import { Plus, Edit2, Trash2, Globe, EyeOff, X, BookOpen, CheckCircle2, AlertCircle, Loader2, Layers } from "lucide-react";
 import { Subject } from "@/types";
 import { slugify } from "@/lib/utils";
 
@@ -10,6 +11,20 @@ export default function AdminSubjectsPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+
+  // Delete confirmation modal
+  const [deleteModalSubject, setDeleteModalSubject] = useState<Subject | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Feedback toast
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const clearFeedbackAfterDelay = () => {
+    setTimeout(() => setFeedback(null), 4500);
+  };
 
   const [formData, setFormData] = useState({
     title: "",
@@ -72,6 +87,7 @@ export default function AdminSubjectsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       if (editingSubject) {
         const res = await fetch("/api/admin/subjects", {
@@ -79,23 +95,32 @@ export default function AdminSubjectsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: editingSubject.id, ...formData }),
         });
-        if (res.ok) {
-          await fetchSubjects();
-          setModalOpen(false);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to update subject.");
         }
+        setFeedback({ type: "success", message: "Subject updated successfully." });
+        await fetchSubjects();
+        setModalOpen(false);
       } else {
         const res = await fetch("/api/admin/subjects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
-        if (res.ok) {
-          await fetchSubjects();
-          setModalOpen(false);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to create subject.");
         }
+        setFeedback({ type: "success", message: "Subject created successfully." });
+        await fetchSubjects();
+        setModalOpen(false);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err.message || "An error occurred." });
+    } finally {
+      setSubmitting(false);
+      clearFeedbackAfterDelay();
     }
   };
 
@@ -112,18 +137,65 @@ export default function AdminSubjectsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this subject?")) return;
+  // Delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!deleteModalSubject) return;
+
+    setSubmitting(true);
     try {
-      await fetch(`/api/admin/subjects?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/subjects?id=${deleteModalSubject.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to delete subject.");
+      }
+
+      setSubjects((prev) => prev.filter((s) => s.id !== deleteModalSubject.id));
+      setFeedback({ type: "success", message: `"${deleteModalSubject.title}" deleted successfully.` });
+      setDeleteModalSubject(null);
+      // Also re-fetch to ensure consistency
       await fetchSubjects();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setFeedback({
+        type: "error",
+        message: err.message || "Unable to delete subject.",
+      });
+    } finally {
+      setSubmitting(false);
+      clearFeedbackAfterDelay();
     }
   };
 
   return (
     <div className="space-y-8">
+      {/* Toast Feedback Banner */}
+      {feedback && (
+        <div
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs border transition-all ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+              : "bg-rose-50 text-rose-900 border-rose-200"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+          <button
+            onClick={() => setFeedback(null)}
+            className="p-1 hover:opacity-75 rounded-md"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200/80">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Subject Management</h1>
@@ -172,10 +244,14 @@ export default function AdminSubjectsPage() {
                 subjects.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="p-4 font-bold text-slate-900">
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-blue-600 shrink-0" />
-                        <span>{s.title}</span>
-                      </div>
+                      <Link
+                        href={`/admin/dashboard/modules?subjectId=${s.id}`}
+                        className="flex items-center gap-2 hover:text-blue-700 transition-colors group"
+                        title="Manage syllabus modules for this subject"
+                      >
+                        <BookOpen className="w-4 h-4 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span className="underline-offset-2 group-hover:underline">{s.title}</span>
+                      </Link>
                     </td>
                     <td className="p-4 font-mono font-medium text-slate-600">
                       {s.code || "—"}
@@ -184,7 +260,16 @@ export default function AdminSubjectsPage() {
                       {s.slug}
                     </td>
                     <td className="p-4 text-slate-500">
-                      {s.modules_count || 0} modules • {s.lessons_count || 0} lectures
+                      <Link
+                        href={`/admin/dashboard/modules?subjectId=${s.id}`}
+                        className="inline-flex items-center gap-1.5 hover:text-blue-700 font-medium transition-colors"
+                        title="View modules for this subject"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-cyan-600" />
+                        <span>{s.modules_count || 0} modules</span>
+                        <span>•</span>
+                        <span>{s.lessons_count || 0} lectures</span>
+                      </Link>
                     </td>
                     <td className="p-4">
                       <button
@@ -199,7 +284,14 @@ export default function AdminSubjectsPage() {
                         <span>{s.published ? "PUBLISHED" : "DRAFT"}</span>
                       </button>
                     </td>
-                    <td className="p-4 text-right space-x-2">
+                    <td className="p-4 text-right space-x-1.5">
+                      <Link
+                        href={`/admin/dashboard/modules?subjectId=${s.id}`}
+                        className="inline-flex p-1.5 rounded-lg text-slate-600 hover:text-cyan-700 hover:bg-cyan-50 transition-colors"
+                        title="Manage Modules"
+                      >
+                        <Layers className="w-4 h-4 text-cyan-600" />
+                      </Link>
                       <button
                         onClick={() => openEditModal(s)}
                         className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-100 transition-colors"
@@ -208,7 +300,7 @@ export default function AdminSubjectsPage() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(s.id)}
+                        onClick={() => setDeleteModalSubject(s)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Delete Subject"
                       >
@@ -331,12 +423,94 @@ export default function AdminSubjectsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-xs"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-xs disabled:opacity-50"
                 >
-                  Save Subject
+                  {submitting ? "Saving..." : "Save Subject"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalSubject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-rose-700">
+                Confirm Deletion
+              </h3>
+              <button
+                disabled={submitting}
+                onClick={() => setDeleteModalSubject(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-700 font-medium">
+                This will <span className="text-rose-600 font-bold">permanently delete</span> the
+                following subject and <span className="text-rose-600 font-bold">all its modules, lessons, videos, and study materials</span>:
+              </p>
+
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-1.5">
+                <div>
+                  <span className="text-slate-500 font-semibold">Title:</span>{" "}
+                  <span className="text-slate-900 font-bold">{deleteModalSubject.title}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">Code:</span>{" "}
+                  <span className="text-slate-900 font-mono">{deleteModalSubject.code || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">Slug:</span>{" "}
+                  <span className="text-slate-900 font-mono">{deleteModalSubject.slug}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold">Contains:</span>{" "}
+                  <span className="text-slate-900">
+                    {deleteModalSubject.modules_count || 0} modules, {deleteModalSubject.lessons_count || 0} lectures
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-rose-600 font-bold text-[11px]">
+                ⚠ This action cannot be undone. All uploaded videos and PDFs will also be removed from storage.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => setDeleteModalSubject(null)}
+                className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleConfirmDelete}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs text-xs disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
