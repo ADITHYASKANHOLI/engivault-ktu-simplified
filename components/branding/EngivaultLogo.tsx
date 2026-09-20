@@ -45,15 +45,24 @@ export function EngivaultLogo({
   };
 
   const selectedSize =
-    variant === "compact" ? "h-7 sm:h-8" : sizeClasses[size] || sizeClasses.md;
+    variant === "compact"
+      ? "h-7 sm:h-8"
+      : sizeClasses[size] || sizeClasses.md;
+
+  const isCompact = variant === "compact";
+  const imageSrc = isCompact
+    ? "/branding/ev-emblem.png"
+    : "/branding/engivault-logo.png";
+  const imageWidth = isCompact ? 274 : 1024;
+  const imageHeight = isCompact ? 220 : 341;
 
   // Render the official logo artwork directly with NO enclosing boxes, NO borders, NO background tiles, NO clipping
   const logoImage = (
     <Image
-      src="/branding/engivault-logo.png"
+      src={imageSrc}
       alt={alt}
-      width={1024}
-      height={576}
+      width={imageWidth}
+      height={imageHeight}
       priority={priority}
       className={cn(
         "w-auto object-contain select-none transition-transform duration-150 hover:scale-[1.02]",
