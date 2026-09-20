@@ -17,8 +17,8 @@ export async function SiteFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Col 1: Brand & Tagline */}
           <div className="space-y-4 md:col-span-1">
-            <div className="brightness-110">
-              <EngivaultLogo size="md" subtext="KTU LEARNING REPOSITORY" className="[&_span]:text-white [&_div]:text-white" />
+            <div>
+              <EngivaultLogo variant="full" size="md" />
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
               {settings.tagline || "KTU Learning. Simplified."} Authentic video lectures, module breakdowns, and exam question notes built for Kerala Technological University engineers.

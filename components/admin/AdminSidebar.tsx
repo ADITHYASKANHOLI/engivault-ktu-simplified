@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
 import {
   LayoutDashboard,
   BookOpen,
@@ -66,25 +66,18 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
         <Link
           href="/admin/dashboard"
           onClick={onCloseMobile}
-          className="flex items-center gap-3 group focus:outline-none"
+          className="flex flex-col gap-2 group focus:outline-none"
         >
-          {/* [EV] Logo container with official branding */}
-          <div className="w-9 h-9 rounded-xl overflow-hidden border border-cyan-400/40 shadow-md shadow-blue-900/30 shrink-0">
-            <Image
-              src="/branding/engivault-logo.png"
-              alt="ENGIVAULT Logo"
-              width={72}
-              height={72}
-              className="w-full h-full object-cover"
-              priority
-            />
-          </div>
-          {/* Brand Lockup: ENGIVAULT / ADMIN CONTROL */}
-          <div className="flex flex-col">
-            <span className="text-base font-black tracking-tight text-white leading-tight">
-              ENGIVAULT
-            </span>
-            <span className="text-[10px] font-bold tracking-widest text-cyan-400 uppercase font-mono">
+          {/* Official Full ENGIVAULT Logo freely displayed without any confining container */}
+          <EngivaultLogo
+            variant="full"
+            size="sm"
+            href={null}
+            className="h-10 w-auto"
+            priority
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold tracking-widest text-cyan-400 uppercase font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">
               ADMIN CONTROL
             </span>
           </div>

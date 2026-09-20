@@ -53,8 +53,8 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md relative z-10 space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="flex justify-center mb-2 brightness-110">
-            <EngivaultLogo size="lg" subtext="ADMINISTRATOR CONSOLE" className="[&_span]:text-white [&_div]:text-white" />
+          <div className="flex justify-center mb-4">
+            <EngivaultLogo variant="full" size="lg" />
           </div>
           <h1 className="text-xl font-bold text-slate-100">Administrator Access</h1>
           <p className="text-xs text-slate-400">

@@ -36,8 +36,8 @@ export function SiteHeader() {
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Brand Logo */}
-        <EngivaultLogo size="md" subtext="KTU SIMPLIFIED" />
+        {/* Brand Logo - Full official logo sitting freely at top-left */}
+        <EngivaultLogo variant="full" size="md" priority />
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100/70 dark:bg-slate-900/60 p-1.5 rounded-full border border-slate-200/60 dark:border-slate-800">
