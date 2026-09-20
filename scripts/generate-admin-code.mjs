@@ -36,5 +36,7 @@ console.log("⚠️  SAVE THIS ACCESS CODE NOW. IT WILL NEVER BE SHOWN AGAIN:\n"
 console.log(`   Admin Access Code: \x1b[32m\x1b[1m${code}\x1b[0m\n`);
 console.log("-------------------------------------------------------");
 console.log("Add the following line to your .env.local file and Vercel Environment Variables:\n");
+console.log(`ADMIN_ACCESS_CODE="${code}"\n`);
+console.log("Optional fallback hash (if using scrypt hash verification):\n");
 console.log(`ADMIN_ACCESS_CODE_HASH="${hash}"\n`);
 console.log("=======================================================\n");

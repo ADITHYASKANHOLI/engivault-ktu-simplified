@@ -3,11 +3,10 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const adminSessionCookie = request.cookies.get("engivault_admin_session");
 
-  // Protect all /admin/dashboard routes
-  if (pathname.startsWith("/admin/dashboard")) {
-    const adminSessionCookie = request.cookies.get("engivault_admin_session");
-
+  // Protect all /admin routes except /admin/login
+  if (pathname === "/admin" || (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/login"))) {
     if (!adminSessionCookie?.value) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
@@ -19,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/dashboard/:path*"],
+  matcher: ["/admin", "/admin/:path*"],
 };

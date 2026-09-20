@@ -3,7 +3,7 @@ import { z } from "zod";
 export const verifyCodeSchema = z.object({
   code: z
     .string()
-    .min(8, "Access code must be at least 8 characters")
+    .min(1, "Access code is required")
     .max(100, "Access code is too long")
     .trim(),
 });

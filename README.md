@@ -140,12 +140,20 @@ The application requires the following environment variables (defined in `.env.l
 
 | Variable Name | Description |
 | :--- | :--- |
+| `ADMIN_ACCESS_CODE` | `ADMIN_ACCESS_CODE=<set this in Vercel Environment Variables>` (Server-only secret administrator access code) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Public HTTPS endpoint for your Supabase project |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anonymous API key for client queries |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only secret service role key (Never expose to client) |
-| `ADMIN_ACCESS_CODE_HASH` | `scrypt` hash of the administrator bootstrap access code |
+| `ADMIN_ACCESS_CODE_HASH` | Optional legacy `scrypt` hash fallback for access code |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL of the deployed application (e.g., `http://localhost:3000`) |
 | `NEXT_PUBLIC_SITE_NAME` | Display name of the platform (Default: `ENGIVAULT`) |
+
+> [!IMPORTANT]
+> In your Vercel Project Settings under Environment Variables, set:
+> ```bash
+> ADMIN_ACCESS_CODE=<set this in Vercel Environment Variables>
+> ```
+> This code is validated server-side only on `/api/admin/login` and is never exposed to the client bundle or browser.
 
 > [!CAUTION]
 > Never commit `.env` or `.env.local` files containing actual secret keys or credentials to version control.

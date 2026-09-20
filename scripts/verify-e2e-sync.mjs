@@ -4,9 +4,14 @@
  */
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:3000";
-const ADMIN_CODE = "ENGIVAULT-6981-6BA7-A850";
+const ADMIN_CODE = process.env.ADMIN_ACCESS_CODE || process.env.TEST_ADMIN_CODE;
 
 async function runTests() {
+  if (!ADMIN_CODE) {
+    console.error("❌ ERROR: ADMIN_ACCESS_CODE environment variable must be set to run verification.");
+    process.exit(1);
+  }
+
   console.log("============================================================");
   console.log("ENGIVAULT — E2E DATA SYNCHRONIZATION & CRUD VERIFICATION");
   console.log("Target Base URL:", BASE_URL);
@@ -16,7 +21,7 @@ async function runTests() {
 
   // 0. AUTHENTICATION TEST
   console.log("➡️ STEP 0: Authenticate as Administrator");
-  const authRes = await fetch(`${BASE_URL}/api/admin/verify-code`, {
+  const authRes = await fetch(`${BASE_URL}/api/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code: ADMIN_CODE }),

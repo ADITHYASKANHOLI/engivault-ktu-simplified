@@ -169,10 +169,10 @@ This guarantees instantaneous consistency between admin changes and public displ
 ## 4. Security & Authentication Architecture
 
 1. **Admin Access Code:**
-   - Single authoritative bootstrap code managed through `ADMIN_ACCESS_CODE_HASH` (scrypt-hashed with unique salt).
-   - Rate-limited login verification in `/api/admin/verify-code`.
-   - Successful verification issues an HTTP-only, secure, SameSite=Lax JWT cookie.
-   - Hardcoded fallback hashes are completely disallowed in code.
+   - Single authoritative bootstrap code managed through server-side `ADMIN_ACCESS_CODE` (timing-safe comparison).
+   - Rate-limited login verification in `/api/admin/login` (with `/api/admin/verify-code` compatibility).
+   - Successful verification issues an HTTP-only, secure, SameSite=Lax HMAC-signed session cookie (`engivault_admin_session`).
+   - Secret keys and admin credentials are strictly server-side and never exposed to the client bundle.
 2. **Service Role Isolation:**
    - `SUPABASE_SERVICE_ROLE_KEY` is strictly server-side and never prefixed with `NEXT_PUBLIC_`.
    - Browser client uses only `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

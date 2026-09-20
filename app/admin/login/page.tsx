@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, ArrowRight, ShieldCheck, AlertCircle, CheckCircle2, Lock } from "lucide-react";
+import { ArrowRight, ShieldCheck, AlertCircle, CheckCircle2, Lock } from "lucide-react";
 import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
 
 export default function AdminLoginPage() {
@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/verify-code", {
+      const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -58,7 +58,7 @@ export default function AdminLoginPage() {
           </div>
           <h1 className="text-xl font-bold text-slate-100">Administrator Access</h1>
           <p className="text-xs text-slate-400">
-            Enter your bootstrap Admin Access Code to manage curriculum and study media.
+            Enter your Admin Access Code to manage curriculum and study media.
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function AdminLoginPage() {
                   autoFocus
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="ENGIVAULT-XXXX-XXXX-XXXX"
+                  placeholder="Enter Admin Access Code"
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-950/80 text-sm text-white font-mono tracking-wider placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
                 />
               </div>
@@ -113,18 +113,15 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Setup / Bootstrap Helper Tip */}
+          {/* Security Information */}
           <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 space-y-2">
             <div className="flex items-center gap-1.5 text-slate-300 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Bootstrap Information</span>
+              <span>Security Information</span>
             </div>
             <p className="leading-relaxed">
-              Generate new access keys via <code className="text-cyan-300 font-mono px-1 py-0.5 bg-slate-800 rounded">node scripts/generate-admin-code.mjs</code>.
+              Administrator authentication requires the secure access code configured in your server environment variables (<code className="text-cyan-300 font-mono px-1 py-0.5 bg-slate-800 rounded">ADMIN_ACCESS_CODE</code>).
             </p>
-            <div className="p-2 rounded bg-slate-950/60 border border-slate-800/80 font-mono text-[10px] text-slate-400">
-              Default Development Code: <span className="text-cyan-300">ENGIVAULT-6981-6BA7-A850</span>
-            </div>
           </div>
         </div>
 

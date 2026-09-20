@@ -1,18 +1,42 @@
 import { cookies } from "next/headers";
-import { scryptSync, timingSafeEqual, createHmac, randomBytes } from "node:crypto";
+import { scryptSync, timingSafeEqual, createHmac } from "node:crypto";
 
 const COOKIE_NAME = "engivault_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 function getSecretKey(): string {
-  return process.env.ADMIN_ACCESS_CODE_HASH || "fallback-secret-key-engivault-2026";
+  return (
+    process.env.ADMIN_ACCESS_CODE ||
+    process.env.ADMIN_ACCESS_CODE_HASH ||
+    "fallback-secret-key-engivault-2026"
+  );
+}
+
+/**
+ * Constant-time comparison between two strings to prevent timing side-channel attacks
+ */
+export function timingSafeCompare(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, "utf8");
+    const bufB = Buffer.from(b, "utf8");
+
+    if (bufA.length !== bufB.length) {
+      const dummy = Buffer.alloc(bufA.length || 1);
+      timingSafeEqual(dummy, dummy);
+      return false;
+    }
+
+    return timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Verify provided plaintext code against scrypt hash
  * Format: scrypt:salt:derivedKey
  */
-export function verifyAdminAccessCode(code: string, storedHash: string): boolean {
+export function verifyScryptHash(code: string, storedHash: string): boolean {
   try {
     const parts = storedHash.split(":");
     if (parts.length !== 3 || parts[0] !== "scrypt") {
@@ -33,6 +57,29 @@ export function verifyAdminAccessCode(code: string, storedHash: string): boolean
   } catch {
     return false;
   }
+}
+
+/**
+ * Primary server-side admin access code verification.
+ * Compares submitted code against process.env.ADMIN_ACCESS_CODE (timing-safe).
+ * Falls back to ADMIN_ACCESS_CODE_HASH (scrypt) if hash is configured.
+ */
+export function verifyAdminAccessCode(code: string, storedHash?: string): boolean {
+  if (!code || typeof code !== "string") {
+    return false;
+  }
+
+  const expectedCode = process.env.ADMIN_ACCESS_CODE;
+  if (expectedCode) {
+    return timingSafeCompare(code.trim(), expectedCode.trim());
+  }
+
+  const hash = storedHash || process.env.ADMIN_ACCESS_CODE_HASH;
+  if (hash) {
+    return verifyScryptHash(code.trim(), hash);
+  }
+
+  return false;
 }
 
 /**
