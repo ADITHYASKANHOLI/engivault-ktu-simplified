@@ -4,6 +4,9 @@ import { moduleSchema, moduleUpdateSchema } from "@/lib/validation/schemas";
 import { getAllModules, getModuleById, createModule, updateModule, deleteModule, getSubjectById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   const session = await getAdminSession();
   if (!session) {
@@ -14,7 +17,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get("subjectId") || undefined;
     const modules = await getAllModules(subjectId);
-    return NextResponse.json(modules);
+    return NextResponse.json(modules, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error: any) {
     console.error("GET /api/admin/modules error:", error);
     return NextResponse.json({ error: "Failed to fetch modules" }, { status: 500 });
@@ -112,9 +119,18 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    let id = searchParams.get("id");
 
     if (!id) {
+      try {
+        const body = await request.json();
+        id = body?.id;
+      } catch {
+        // body may not be JSON
+      }
+    }
+
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "Module ID is required" }, { status: 400 });
     }
 
@@ -134,7 +150,14 @@ export async function DELETE(request: NextRequest) {
       moduleSlug: existing.slug,
     });
 
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json(
+      { success: true, id },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("DELETE /api/admin/modules error:", error);
     return NextResponse.json(

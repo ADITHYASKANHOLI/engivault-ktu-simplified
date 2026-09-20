@@ -4,6 +4,9 @@ import { subjectSchema, subjectUpdateSchema } from "@/lib/validation/schemas";
 import { getAllSubjects, getSubjectById, createSubject, updateSubject, deleteSubject } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session) {
@@ -12,7 +15,11 @@ export async function GET() {
 
   try {
     const subjects = await getAllSubjects();
-    return NextResponse.json(subjects);
+    return NextResponse.json(subjects, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error: any) {
     console.error("GET /api/admin/subjects error:", error);
     return NextResponse.json({ error: "Failed to fetch subjects" }, { status: 500 });

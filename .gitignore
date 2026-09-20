@@ -45,3 +45,6 @@ next-env.d.ts
 # local fallback storage
 .engivault-local-store.json
 .engivault-data.json
+
+# scratch testing scripts
+scratch/

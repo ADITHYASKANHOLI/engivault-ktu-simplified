@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -18,9 +18,8 @@ import {
   AlertCircle,
   Video,
   ArrowRight,
-  ExternalLink,
 } from "lucide-react";
-import { Subject, Module } from "@/types";
+import { Module, Subject } from "@/types";
 import { slugify } from "@/lib/utils";
 
 function AdminModulesContent() {
@@ -28,25 +27,25 @@ function AdminModulesContent() {
   const urlSubjectId = searchParams.get("subjectId");
   const urlAutoCreate = searchParams.get("create");
 
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(urlSubjectId || "");
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Modal states
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+
+  // Delete modal state
   const [deleteModalModule, setDeleteModalModule] = useState<Module | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Feedback notifications
+  // Toast feedback state
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
 
-  // Form state
+  // Form input state
   const [formData, setFormData] = useState({
     subject_id: "",
     title: "",
@@ -55,6 +54,8 @@ function AdminModulesContent() {
     display_order: 1,
     published: true,
   });
+
+  const autoCreateTriggeredRef = useRef(false);
 
   const clearFeedbackAfterDelay = () => {
     setTimeout(() => {
@@ -68,8 +69,8 @@ function AdminModulesContent() {
 
     try {
       const [subsRes, modsRes] = await Promise.all([
-        fetch("/api/admin/subjects"),
-        fetch("/api/admin/modules"),
+        fetch("/api/admin/subjects", { cache: "no-store" }),
+        fetch("/api/admin/modules", { cache: "no-store" }),
       ]);
 
       let loadedSubjects: Subject[] = [];
@@ -111,6 +112,25 @@ function AdminModulesContent() {
     loadData();
   }, [loadData]);
 
+  const closeModal = useCallback(() => {
+    setModalMode(null);
+    setEditingModule(null);
+    setSubmitting(false);
+    setFormData({
+      subject_id: selectedSubjectId || "",
+      title: "",
+      slug: "",
+      short_description: "",
+      display_order: 1,
+      published: true,
+    });
+    if (typeof window !== "undefined" && window.location.search.includes("create=true")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("create");
+      window.history.replaceState({}, "", url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""));
+    }
+  }, [selectedSubjectId]);
+
   const openCreateModal = useCallback(() => {
     const currentSubjectModules = modules.filter((m) => m.subject_id === selectedSubjectId);
     setEditingModule(null);
@@ -125,12 +145,29 @@ function AdminModulesContent() {
     setModalMode("create");
   }, [modules, selectedSubjectId]);
 
-  // Handle URL auto-create trigger
+  // Handle URL auto-create trigger safely without infinite loop
   useEffect(() => {
-    if (urlAutoCreate === "true" && selectedSubjectId && !loading && modalMode === null) {
+    if (
+      urlAutoCreate === "true" &&
+      selectedSubjectId &&
+      !loading &&
+      !autoCreateTriggeredRef.current
+    ) {
+      autoCreateTriggeredRef.current = true;
       openCreateModal();
     }
-  }, [urlAutoCreate, selectedSubjectId, loading, modalMode, openCreateModal]);
+  }, [urlAutoCreate, selectedSubjectId, loading, openCreateModal]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && modalMode && !submitting) {
+        closeModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalMode, submitting, closeModal]);
 
   const openEditModal = (mod: Module) => {
     setEditingModule(mod);
@@ -189,7 +226,7 @@ function AdminModulesContent() {
         }
 
         setFeedback({ type: "success", message: "Module created successfully in Supabase." });
-        setModalMode(null);
+        closeModal();
         await loadData(true);
       } else if (modalMode === "edit" && editingModule) {
         const payload = {
@@ -214,7 +251,7 @@ function AdminModulesContent() {
         }
 
         setFeedback({ type: "success", message: "Module updated successfully." });
-        setModalMode(null);
+        closeModal();
         await loadData(true);
       }
     } catch (err: any) {
@@ -265,6 +302,8 @@ function AdminModulesContent() {
     try {
       const res = await fetch(`/api/admin/modules?id=${deleteModalModule.id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteModalModule.id }),
       });
 
       if (!res.ok) {
@@ -272,6 +311,7 @@ function AdminModulesContent() {
         throw new Error(err.error || "Failed to delete module.");
       }
 
+      setModules((prev) => prev.filter((m) => m.id !== deleteModalModule.id));
       setFeedback({
         type: "success",
         message: `Module "${deleteModalModule.title}" and its contents were permanently removed.`,
@@ -527,7 +567,14 @@ function AdminModulesContent() {
 
       {/* Modal for Create / Edit Module */}
       {modalMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) {
+              closeModal();
+            }
+          }}
+        >
           <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
@@ -535,7 +582,7 @@ function AdminModulesContent() {
               </h3>
               <button
                 disabled={submitting}
-                onClick={() => setModalMode(null)}
+                onClick={closeModal}
                 className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
               >
                 <X className="w-5 h-5" />
@@ -582,15 +629,15 @@ function AdminModulesContent() {
                   type="text"
                   required
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: slugify(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-600 text-slate-700"
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono text-slate-900 bg-slate-50"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Display Order
+                    Order in Syllabus
                   </label>
                   <input
                     type="number"
@@ -599,16 +646,18 @@ function AdminModulesContent() {
                     onChange={(e) =>
                       setFormData({ ...formData, display_order: parseInt(e.target.value) || 1 })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900"
                   />
                 </div>
 
-                <div className="flex flex-col justify-end">
-                  <label className="relative inline-flex items-center cursor-pointer mb-2">
+                <div className="flex flex-col justify-end pb-1.5">
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={formData.published}
-                      onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, published: e.target.checked })
+                      }
                       className="sr-only peer"
                     />
                     <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-700"></div>
@@ -636,7 +685,7 @@ function AdminModulesContent() {
                 <button
                   type="button"
                   disabled={submitting}
-                  onClick={() => setModalMode(null)}
+                  onClick={closeModal}
                   className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
                 >
                   Cancel
@@ -663,7 +712,14 @@ function AdminModulesContent() {
 
       {/* Delete Confirmation Modal */}
       {deleteModalModule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) {
+              setDeleteModalModule(null);
+            }
+          }}
+        >
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3 text-red-600">
               <div className="p-2.5 rounded-xl bg-red-50">

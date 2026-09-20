@@ -39,8 +39,15 @@ export const subjectUpdateSchema = z.object({
   display_order: z.number().int().optional(),
 });
 
+export const uuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+    "Invalid UUID format"
+  );
+
 export const moduleSchema = z.object({
-  subject_id: z.string().uuid("Invalid subject ID"),
+  subject_id: uuidSchema,
   title: z.string().min(2, "Title must be at least 2 characters").max(150),
   slug: z
     .string()
@@ -53,7 +60,7 @@ export const moduleSchema = z.object({
 });
 
 export const moduleUpdateSchema = z.object({
-  subject_id: z.string().uuid("Invalid subject ID").optional(),
+  subject_id: uuidSchema.optional(),
   title: z.string().min(2, "Title must be at least 2 characters").max(150).optional(),
   slug: z
     .string()
@@ -67,7 +74,7 @@ export const moduleUpdateSchema = z.object({
 });
 
 export const lessonSchema = z.object({
-  module_id: z.string().uuid("Invalid module ID"),
+  module_id: uuidSchema,
   title: z.string().min(2, "Title must be at least 2 characters").max(200),
   slug: z
     .string()
@@ -83,7 +90,7 @@ export const lessonSchema = z.object({
 });
 
 export const lessonUpdateSchema = z.object({
-  module_id: z.string().uuid("Invalid module ID").optional(),
+  module_id: uuidSchema.optional(),
   title: z.string().min(2, "Title must be at least 2 characters").max(200).optional(),
   slug: z
     .string()
@@ -100,7 +107,7 @@ export const lessonUpdateSchema = z.object({
 });
 
 export const videoSchema = z.object({
-  lesson_id: z.string().uuid("Invalid lesson ID"),
+  lesson_id: uuidSchema,
   title: z.string().max(200).optional().nullable(),
   storage_path: z.string().min(1, "Storage path is required"),
   mime_type: z.string().min(1, "MIME type is required"),
@@ -111,7 +118,7 @@ export const videoSchema = z.object({
 });
 
 export const videoUpdateSchema = z.object({
-  lesson_id: z.string().uuid("Invalid lesson ID").optional(),
+  lesson_id: uuidSchema.optional(),
   title: z.string().max(200).optional().nullable(),
   storage_path: z.string().min(1, "Storage path is required").optional(),
   mime_type: z.string().min(1, "MIME type is required").optional(),
@@ -122,9 +129,9 @@ export const videoUpdateSchema = z.object({
 });
 
 export const materialSchema = z.object({
-  lesson_id: z.string().uuid("Invalid lesson ID"),
-  subject_id: z.string().uuid().optional().nullable(),
-  module_id: z.string().uuid().optional().nullable(),
+  lesson_id: uuidSchema,
+  subject_id: uuidSchema.optional().nullable(),
+  module_id: uuidSchema.optional().nullable(),
   title: z.string().min(2, "Title must be at least 2 characters").max(200),
   description: z.string().max(1000).optional().nullable(),
   material_type: z.string().min(1).max(50).default("pdf"),
@@ -137,9 +144,9 @@ export const materialSchema = z.object({
 });
 
 export const materialUpdateSchema = z.object({
-  lesson_id: z.string().uuid("Invalid lesson ID").optional(),
-  subject_id: z.string().uuid().optional().nullable(),
-  module_id: z.string().uuid().optional().nullable(),
+  lesson_id: uuidSchema.optional(),
+  subject_id: uuidSchema.optional().nullable(),
+  module_id: uuidSchema.optional().nullable(),
   title: z.string().min(2, "Title must be at least 2 characters").max(200).optional(),
   description: z.string().max(1000).optional().nullable(),
   material_type: z.string().min(1).max(50).optional(),
@@ -175,7 +182,7 @@ export const uploadAuthorizeSchema = z.object({
   filename: z.string().min(1),
   mime_type: z.string().min(1),
   file_size: z.number().int().positive(),
-  subject_id: z.string().uuid().optional(),
-  module_id: z.string().uuid().optional(),
-  lesson_id: z.string().uuid().optional(),
+  subject_id: uuidSchema.optional(),
+  module_id: uuidSchema.optional(),
+  lesson_id: uuidSchema.optional(),
 });

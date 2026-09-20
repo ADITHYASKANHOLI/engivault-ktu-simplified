@@ -372,7 +372,10 @@ function getStore(): FallbackStoreData {
   try {
     if (fs.existsSync(STORE_FILE_PATH)) {
       const content = fs.readFileSync(STORE_FILE_PATH, "utf-8");
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      if (parsed && Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+        return parsed;
+      }
     }
   } catch (err) {
     console.warn("Notice: Reading fallback store file:", err);
@@ -980,32 +983,62 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
   return fallbackModules[index];
 }
 
+function cleanupLocalStoreForModule(moduleId: string, lessonIds: string[] = []): void {
+  const store = getStore();
+  const validLessonIds = new Set(
+    lessonIds.length > 0
+      ? lessonIds
+      : store.lessons.filter((l) => l.module_id === moduleId).map((l) => l.id)
+  );
+
+  store.materials = store.materials.filter(
+    (m) => !validLessonIds.has(m.lesson_id) && m.module_id !== moduleId
+  );
+  store.videos = store.videos.filter((v) => !validLessonIds.has(v.lesson_id));
+  store.lessons = store.lessons.filter((l) => l.module_id !== moduleId);
+  store.modules = store.modules.filter((m) => m.id !== moduleId);
+
+  saveStore(store);
+}
+
 export async function deleteModule(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data: existing } = await supabase.from("modules").select("title").eq("id", id).single();
+      const { data: existing } = await supabase
+        .from("modules")
+        .select("id, title, slug, subject_id")
+        .eq("id", id)
+        .maybeSingle();
 
-      // Find all lessons belonging to this module to clean up storage files
+      if (!existing) {
+        const localIdx = fallbackModules.findIndex((m) => m.id === id);
+        if (localIdx !== -1) {
+          cleanupLocalStoreForModule(id);
+          return true;
+        }
+        return false;
+      }
+
+      // Step 1: Find all lessons belonging to this module
       const { data: moduleLessons } = await supabase
         .from("lessons")
         .select("id")
         .eq("module_id", id);
       const lessonIds = (moduleLessons || []).map((l: any) => l.id);
 
+      // Step 2: Clean up storage files for videos and materials
       if (lessonIds.length > 0) {
-        // Collect video storage paths
         const { data: videoRows } = await supabase
           .from("videos")
           .select("storage_path")
           .in("lesson_id", lessonIds);
         const videoPaths = (videoRows || []).map((v: any) => v.storage_path).filter(Boolean);
 
-        // Collect material storage paths
         const { data: materialRows } = await supabase
           .from("materials")
           .select("storage_path")
-          .in("lesson_id", lessonIds);
+          .or(`lesson_id.in.(${lessonIds.join(",")}),module_id.eq.${id}`);
         const materialPaths = (materialRows || []).map((m: any) => m.storage_path).filter(Boolean);
 
         if (videoPaths.length > 0) {
@@ -1022,29 +1055,47 @@ export async function deleteModule(id: string): Promise<boolean> {
             console.warn("Storage material cleanup notice during module deletion:", err);
           }
         }
+
+        // Step 3: Explicitly delete child database records in reverse dependency order
+        // 3a. Delete materials
+        const { error: matErr } = await supabase
+          .from("materials")
+          .delete()
+          .or(`lesson_id.in.(${lessonIds.join(",")}),module_id.eq.${id}`);
+        if (matErr) console.warn("Notice: material deletion during module cascade:", matErr);
+
+        // 3b. Delete videos
+        const { error: vidErr } = await supabase
+          .from("videos")
+          .delete()
+          .in("lesson_id", lessonIds);
+        if (vidErr) console.warn("Notice: video deletion during module cascade:", vidErr);
+
+        // 3c. Delete lessons
+        const { error: lesErr } = await supabase
+          .from("lessons")
+          .delete()
+          .eq("module_id", id);
+        if (lesErr) {
+          console.error("Supabase lessons deletion error:", lesErr);
+          throw new Error(`Failed to delete module lessons: ${lesErr.message}`);
+        }
+      } else {
+        // Also delete any materials attached directly to this module
+        await supabase.from("materials").delete().eq("module_id", id);
       }
 
-      const { error } = await supabase.from("modules").delete().eq("id", id);
-      if (error) {
-        console.error("Supabase deleteModule error:", error);
-        throw new Error(`Failed to delete module: ${error.message}`);
+      // Step 4: Delete the module itself
+      const { error: modErr } = await supabase.from("modules").delete().eq("id", id);
+      if (modErr) {
+        console.error("Supabase deleteModule error:", modErr);
+        throw new Error(`Failed to delete module: ${modErr.message}`);
       }
 
-      // Cascade in local fallback arrays
-      const localLessonIds = fallbackLessons.filter((l) => l.module_id === id).map((l) => l.id);
-      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
-      }
-      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-        if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
-      }
-      for (let i = fallbackLessons.length - 1; i >= 0; i--) {
-        if (fallbackLessons[i].module_id === id) fallbackLessons.splice(i, 1);
-      }
-      const idx = fallbackModules.findIndex((m) => m.id === id);
-      if (idx !== -1) fallbackModules.splice(idx, 1);
+      // Step 5: Clean up local fallback store atomically
+      cleanupLocalStoreForModule(id, lessonIds);
 
-      await logActivity("Module Deleted", "module", { id, title: existing?.title || "Module" });
+      await logActivity("Module Deleted", "module", { id, title: existing.title });
       return true;
     } catch (err: any) {
       console.error("Supabase deleteModule error:", err);
@@ -1052,20 +1103,11 @@ export async function deleteModule(id: string): Promise<boolean> {
     }
   }
 
-  const localLessonIds = fallbackLessons.filter((l) => l.module_id === id).map((l) => l.id);
-  for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-    if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
-  }
-  for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-    if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
-  }
-  for (let i = fallbackLessons.length - 1; i >= 0; i--) {
-    if (fallbackLessons[i].module_id === id) fallbackLessons.splice(i, 1);
-  }
-  const index = fallbackModules.findIndex((m) => m.id === id);
-  if (index === -1) return false;
-  const removed = fallbackModules.splice(index, 1)[0];
-  await logActivity("Module Deleted", "module", { id, title: removed.title });
+  const existing = fallbackModules.find((m) => m.id === id);
+  if (!existing) return false;
+
+  cleanupLocalStoreForModule(id);
+  await logActivity("Module Deleted", "module", { id, title: existing.title });
   return true;
 }
 

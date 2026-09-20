@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -77,6 +77,8 @@ function AdminLessonsContent() {
     }, 4500);
   };
 
+  const autoCreateTriggeredRef = useRef(false);
+
   // Fetch initial live data
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -84,9 +86,9 @@ function AdminLessonsContent() {
 
     try {
       const [lessonsRes, subjectsRes, modulesRes] = await Promise.all([
-        fetch("/api/admin/lessons"),
-        fetch("/api/admin/subjects"),
-        fetch("/api/admin/modules"),
+        fetch("/api/admin/lessons", { cache: "no-store" }),
+        fetch("/api/admin/subjects", { cache: "no-store" }),
+        fetch("/api/admin/modules", { cache: "no-store" }),
       ]);
 
       if (lessonsRes.ok) {
@@ -117,12 +119,42 @@ function AdminLessonsContent() {
     fetchData();
   }, [fetchData]);
 
+  // Clean, controlled close of modal
+  const closeModal = useCallback(() => {
+    setModalMode(null);
+    setEditingLesson(null);
+    setReplaceVideoFile(null);
+    setSubmitting(false);
+    setSubmittingStatus("");
+    setFormData({
+      subject_id: "",
+      module_id: "",
+      title: "",
+      slug: "",
+      duration_seconds: 1200,
+      lesson_number: 1,
+      display_order: 1,
+      description: "",
+      published: true,
+    });
+    if (typeof window !== "undefined" && window.location.search.includes("create=true")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("create");
+      window.history.replaceState({}, "", url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""));
+    }
+  }, []);
+
   // Handle open create modal
   const openCreateModal = useCallback(() => {
-    const defaultSubject =
-      selectedSubjectId !== "all"
-        ? selectedSubjectId
-        : urlSubjectId || subjects[0]?.id || "";
+    let defaultSubject = "";
+    if (selectedSubjectId !== "all" && selectedSubjectId) {
+      defaultSubject = selectedSubjectId;
+    } else if (urlSubjectId && subjects.some((s) => s.id === urlSubjectId)) {
+      defaultSubject = urlSubjectId;
+    } else {
+      const subjectWithModules = subjects.find((s) => modules.some((m) => m.subject_id === s.id));
+      defaultSubject = subjectWithModules?.id || subjects[0]?.id || "";
+    }
 
     const relevantModules = modules.filter(
       (m) => !defaultSubject || m.subject_id === defaultSubject
@@ -153,12 +185,30 @@ function AdminLessonsContent() {
     setModalMode("create");
   }, [selectedSubjectId, urlSubjectId, subjects, modules, selectedModuleId, urlModuleId, lessons.length]);
 
-  // Handle URL auto-create trigger
+  // Handle URL auto-create trigger safely without infinite loop
   useEffect(() => {
-    if (urlAutoCreate === "true" && subjects.length > 0 && modules.length > 0 && !loading && modalMode === null) {
+    if (
+      urlAutoCreate === "true" &&
+      subjects.length > 0 &&
+      modules.length > 0 &&
+      !loading &&
+      !autoCreateTriggeredRef.current
+    ) {
+      autoCreateTriggeredRef.current = true;
       openCreateModal();
     }
-  }, [urlAutoCreate, subjects, modules, loading, modalMode, openCreateModal]);
+  }, [urlAutoCreate, subjects, modules, loading, openCreateModal]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && modalMode && !submitting) {
+        closeModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalMode, submitting, closeModal]);
 
   // Handle open edit modal
   const openEditModal = (lesson: Lesson) => {
@@ -320,7 +370,7 @@ function AdminLessonsContent() {
         }
 
         setFeedback({ type: "success", message: "Lecture created successfully in Supabase." });
-        setModalMode(null);
+        closeModal();
         await fetchData(true);
       } else if (modalMode === "edit" && editingLesson) {
         let uploadedStoragePath: string | null = null;
@@ -402,7 +452,7 @@ function AdminLessonsContent() {
         }
 
         setFeedback({ type: "success", message: "Lecture updated successfully." });
-        setModalMode(null);
+        closeModal();
         await fetchData(true);
       }
     } catch (err: any) {
@@ -779,7 +829,12 @@ function AdminLessonsContent() {
 
       {/* Create / Edit Lesson Modal */}
       {modalMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) closeModal();
+          }}
+        >
           <div className="bg-white rounded-2xl border border-slate-200 max-w-xl w-full p-6 space-y-5 shadow-2xl my-8">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
@@ -787,7 +842,7 @@ function AdminLessonsContent() {
               </h3>
               <button
                 disabled={submitting}
-                onClick={() => setModalMode(null)}
+                onClick={closeModal}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -845,6 +900,23 @@ function AdminLessonsContent() {
                   </select>
                 </div>
               </div>
+
+              {/* Warning if no modules exist for subject */}
+              {availableModalModules.length === 0 && (
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>No modules exist for this subject. Create a module first to add lectures.</span>
+                  </div>
+                  <Link
+                    href={`/admin/dashboard/modules?subjectId=${formData.subject_id}&create=true`}
+                    onClick={closeModal}
+                    className="underline font-bold text-amber-800 hover:text-amber-950 shrink-0 ml-2"
+                  >
+                    Create Module →
+                  </Link>
+                </div>
+              )}
 
               {/* Title and Slug */}
               <div>
@@ -1015,7 +1087,7 @@ function AdminLessonsContent() {
                 <button
                   type="button"
                   disabled={submitting}
-                  onClick={() => setModalMode(null)}
+                  onClick={closeModal}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-colors disabled:opacity-50"
                 >
                   Cancel
@@ -1043,7 +1115,14 @@ function AdminLessonsContent() {
 
       {/* Delete Confirmation Modal */}
       {deleteModalLesson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !submitting) {
+              setDeleteModalLesson(null);
+            }
+          }}
+        >
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3 text-red-600">
               <div className="p-2.5 rounded-xl bg-red-50">
