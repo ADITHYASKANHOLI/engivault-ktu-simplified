@@ -13,7 +13,7 @@ const initialFallbackSiteSettings: SiteSettings = {
   site_name: "ENGIVAULT",
   headline: "Learn Engineering. Build Confidence.",
   tagline: "KTU Learning. Simplified.",
-  logo_path: "/branding/engivault-logo.png",
+  logo_path: "/branding/engivault-official-logo.png",
   contact_email: "contact@engivault.edu",
   about_text: "ENGIVAULT is a dedicated KTU engineering study companion providing video lectures, structured module breakdowns, and authentic study notes.",
   footer_text: "© 2026 ENGIVAULT. All rights reserved. KTU Engineering Learning Simplified.",

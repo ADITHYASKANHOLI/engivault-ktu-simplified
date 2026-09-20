@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/branding/engivault-logo.png" alt="ENGIVAULT Logo" width="560" />
+  <img src="public/branding/engivault-official-logo.png" alt="ENGIVAULT Logo" width="560" />
 </p>
 
 <h1 align="center">ENGIVAULT — KTU Learning. Simplified.</h1>

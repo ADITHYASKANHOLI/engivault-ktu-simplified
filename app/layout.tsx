@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: "ENGIVAULT — KTU Learning. Simplified.",
     description: "Master KTU Engineering subjects with recorded video classes and authentic downloadable study materials.",
     type: "website",
-    images: [{ url: "/branding/engivault-logo.png", width: 1024, height: 341, alt: "ENGIVAULT" }],
+    images: [{ url: "/branding/engivault-official-logo.png", width: 1024, height: 341, alt: "ENGIVAULT" }],
   },
   icons: {
     icon: "/icon.png",

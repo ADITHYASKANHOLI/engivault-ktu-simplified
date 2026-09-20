@@ -60,7 +60,7 @@ The official ENGIVAULT brand lockup combines the vault shield monogram and bold 
 │ ⬡  │  KTU LEARNING REPOSITORY
 └────┘
 ```
-- **Logo Asset:** Located at `public/branding/engivault-logo.png` (PNG) — official supplied artwork with transparent background.
+- **Logo Asset:** Located at `public/branding/engivault-official-logo.png` (and `public/branding/engivault-logo.png`) (PNG) — official supplied artwork with transparent background.
 - **Component:** `<EngivaultLogo />` in `components/branding/EngivaultLogo.tsx`.
 - **Favicon:** `public/favicon.ico` and `app/icon.png`.
 

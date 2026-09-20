@@ -52,7 +52,7 @@ export function EngivaultLogo({
   const isCompact = variant === "compact";
   const imageSrc = isCompact
     ? "/branding/ev-emblem.png"
-    : "/branding/engivault-logo.png";
+    : "/branding/engivault-official-logo.png";
   const imageWidth = isCompact ? 274 : 1024;
   const imageHeight = isCompact ? 220 : 341;
 
