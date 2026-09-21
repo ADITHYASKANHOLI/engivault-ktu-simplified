@@ -145,6 +145,8 @@ export default function AdminSubjectsPage() {
     try {
       const res = await fetch(`/api/admin/subjects?id=${deleteModalSubject.id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteModalSubject.id }),
       });
 
       if (!res.ok) {
@@ -152,11 +154,18 @@ export default function AdminSubjectsPage() {
         throw new Error(errData.error || "Failed to delete subject.");
       }
 
-      setSubjects((prev) => prev.filter((s) => s.id !== deleteModalSubject.id));
+      // Re-fetch fresh data from server to confirm database state
+      const freshRes = await fetch("/api/admin/subjects", { cache: "no-store" });
+      if (freshRes.ok) {
+        const freshList: Subject[] = await freshRes.json();
+        setSubjects(freshList);
+        if (freshList.some((s) => s.id === deleteModalSubject.id)) {
+          throw new Error("Subject is still present in database after delete operation.");
+        }
+      }
+
       setFeedback({ type: "success", message: `"${deleteModalSubject.title}" deleted successfully.` });
       setDeleteModalSubject(null);
-      // Also re-fetch to ensure consistency
-      await fetchSubjects();
     } catch (err: any) {
       setFeedback({
         type: "error",

@@ -517,7 +517,9 @@ function AdminLessonsContent() {
         throw new Error(errData.error || "Failed to delete lesson.");
       }
 
-      setLessons((prev) => prev.filter((l) => l.id !== deleteModalLesson.id));
+      // Re-fetch fresh data from server to confirm database state
+      await fetchData(true);
+
       setFeedback({ type: "success", message: "Lesson deleted successfully." });
       setDeleteModalLesson(null);
     } catch (err: any) {

@@ -311,13 +311,14 @@ function AdminModulesContent() {
         throw new Error(err.error || "Failed to delete module.");
       }
 
-      setModules((prev) => prev.filter((m) => m.id !== deleteModalModule.id));
+      // Re-fetch fresh data from server to confirm database state
+      await loadData(true);
+
       setFeedback({
         type: "success",
         message: `Module "${deleteModalModule.title}" and its contents were permanently removed.`,
       });
       setDeleteModalModule(null);
-      await loadData(true);
     } catch (err: any) {
       console.error("Delete module error:", err);
       setFeedback({

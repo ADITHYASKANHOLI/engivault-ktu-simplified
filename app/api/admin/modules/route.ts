@@ -144,6 +144,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Failed to delete module" }, { status: 500 });
     }
 
+    const postCheck = await getModuleById(id);
+    if (postCheck) {
+      return NextResponse.json(
+        { error: "Module was not deleted from database." },
+        { status: 500 }
+      );
+    }
+
     const parentSubject = await getSubjectById(existing.subject_id);
     revalidateContentHierarchy({
       subjectSlug: parentSubject?.slug,
@@ -151,7 +159,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { success: true, id },
+      { success: true, deletedId: id, id },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",

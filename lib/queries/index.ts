@@ -677,8 +677,26 @@ export async function deleteSubject(id: string): Promise<boolean> {
     try {
       const supabase = createAdminClient();
 
-      // 1. Fetch subject title for logging
-      const { data: existing } = await supabase.from("subjects").select("title").eq("id", id).single();
+      // 1. Fetch subject to verify existence
+      const { data: existing, error: existErr } = await supabase
+        .from("subjects")
+        .select("id, title, slug")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (existErr) {
+        console.error("Supabase fetch subject error:", existErr);
+        throw new Error(`Failed to fetch subject: ${existErr.message}`);
+      }
+
+      if (!existing) {
+        const localIdx = fallbackSubjects.findIndex((s) => s.id === id);
+        if (localIdx !== -1) {
+          fallbackSubjects.splice(localIdx, 1);
+          return true;
+        }
+        return false;
+      }
 
       // 2. Find all modules belonging to this subject
       const { data: subjectModules } = await supabase
@@ -687,30 +705,29 @@ export async function deleteSubject(id: string): Promise<boolean> {
         .eq("subject_id", id);
       const moduleIds = (subjectModules || []).map((m: any) => m.id);
 
+      let lessonIds: string[] = [];
       if (moduleIds.length > 0) {
         // 3. Find all lessons belonging to those modules
         const { data: subjectLessons } = await supabase
           .from("lessons")
           .select("id")
           .in("module_id", moduleIds);
-        const lessonIds = (subjectLessons || []).map((l: any) => l.id);
+        lessonIds = (subjectLessons || []).map((l: any) => l.id);
 
         if (lessonIds.length > 0) {
-          // 4. Collect video storage paths
+          // 4. Collect video and material storage paths
           const { data: videoRows } = await supabase
             .from("videos")
             .select("storage_path")
             .in("lesson_id", lessonIds);
           const videoPaths = (videoRows || []).map((v: any) => v.storage_path).filter(Boolean);
 
-          // 5. Collect material storage paths
           const { data: materialRows } = await supabase
             .from("materials")
             .select("storage_path")
             .in("lesson_id", lessonIds);
           const materialPaths = (materialRows || []).map((m: any) => m.storage_path).filter(Boolean);
 
-          // 6. Remove files from Supabase Storage buckets (non-blocking)
           if (videoPaths.length > 0) {
             try {
               await supabase.storage.from("engivault-videos").remove(videoPaths);
@@ -725,22 +742,74 @@ export async function deleteSubject(id: string): Promise<boolean> {
               console.warn("Storage material cleanup notice during subject deletion:", err);
             }
           }
+
+          // 5. Explicitly delete child materials and videos
+          await supabase.from("materials").delete().in("lesson_id", lessonIds);
+          await supabase.from("videos").delete().in("lesson_id", lessonIds);
+
+          // 6. Explicitly delete child lessons
+          const { error: lesErr } = await supabase.from("lessons").delete().in("module_id", moduleIds);
+          if (lesErr) {
+            console.error("Supabase lessons deletion error during subject cascade:", lesErr);
+            throw new Error(`Failed to delete subject lessons: ${lesErr.message}`);
+          }
+        }
+
+        // Also delete any direct module materials
+        await supabase.from("materials").delete().in("module_id", moduleIds);
+
+        // Explicitly delete child modules
+        const { error: modErr } = await supabase.from("modules").delete().eq("subject_id", id);
+        if (modErr) {
+          console.error("Supabase modules deletion error during subject cascade:", modErr);
+          throw new Error(`Failed to delete subject modules: ${modErr.message}`);
         }
       }
 
-      // 7. Delete the subject — ON DELETE CASCADE handles modules → lessons → videos → materials rows
-      const { error } = await supabase.from("subjects").delete().eq("id", id);
-      if (error) {
-        console.error("Supabase deleteSubject error:", error);
-        throw new Error(`Failed to delete subject: ${error.message}`);
+      // Also delete any direct subject materials
+      await supabase.from("materials").delete().eq("subject_id", id);
+
+      // 7. Delete the subject itself with .select("id") and verify row count
+      const { data: deletedRows, error: deleteErr } = await supabase
+        .from("subjects")
+        .delete()
+        .eq("id", id)
+        .select("id");
+
+      if (deleteErr) {
+        console.error("Supabase deleteSubject error:", deleteErr);
+        throw new Error(`Failed to delete subject: ${deleteErr.message}`);
       }
 
-      // 8. Sync fallback local store — remove subject and all its children
+      if (!deletedRows || deletedRows.length === 0) {
+        console.error("Supabase deleteSubject: 0 rows affected for id", id);
+        throw new Error("Subject delete matched zero rows in database. Row may have already been removed or blocked by RLS.");
+      }
+
+      // 8. Verify the record is actually gone from the database
+      const { data: verifyRow } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (verifyRow) {
+        console.error("Supabase deleteSubject verification failed: record still exists in database", id);
+        throw new Error("Subject deletion verification failed: record still exists in Supabase.");
+      }
+
+      // 9. Sync fallback local store — remove subject and all its children
       const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
       const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
 
       for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+        if (
+          localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
+          fallbackMaterials[i].subject_id === id ||
+          (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
+        ) {
+          fallbackMaterials.splice(i, 1);
+        }
       }
       for (let i = fallbackVideos.length - 1; i >= 0; i--) {
         if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
@@ -754,7 +823,7 @@ export async function deleteSubject(id: string): Promise<boolean> {
       const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
       if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
 
-      await logActivity("Subject Deleted", "subject", { id, title: existing?.title || "Subject" });
+      await logActivity("Subject Deleted", "subject", { id, title: existing.title });
       return true;
     } catch (err: any) {
       console.error("Supabase deleteSubject error:", err);
@@ -771,7 +840,13 @@ export async function deleteSubject(id: string): Promise<boolean> {
   const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
 
   for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-    if (localLessonIds.includes(fallbackMaterials[i].lesson_id)) fallbackMaterials.splice(i, 1);
+    if (
+      localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
+      fallbackMaterials[i].subject_id === id ||
+      (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
+    ) {
+      fallbackMaterials.splice(i, 1);
+    }
   }
   for (let i = fallbackVideos.length - 1; i >= 0; i--) {
     if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
@@ -1085,14 +1160,36 @@ export async function deleteModule(id: string): Promise<boolean> {
         await supabase.from("materials").delete().eq("module_id", id);
       }
 
-      // Step 4: Delete the module itself
-      const { error: modErr } = await supabase.from("modules").delete().eq("id", id);
+      // Step 4: Delete the module itself with .select("id") and verify row count
+      const { data: deletedRows, error: modErr } = await supabase
+        .from("modules")
+        .delete()
+        .eq("id", id)
+        .select("id");
+
       if (modErr) {
         console.error("Supabase deleteModule error:", modErr);
         throw new Error(`Failed to delete module: ${modErr.message}`);
       }
 
-      // Step 5: Clean up local fallback store atomically
+      if (!deletedRows || deletedRows.length === 0) {
+        console.error("Supabase deleteModule: 0 rows affected for id", id);
+        throw new Error("Module delete matched zero rows in database. Row may have already been removed or blocked by RLS.");
+      }
+
+      // Step 5: Verify the record is actually gone from the database
+      const { data: verifyRow } = await supabase
+        .from("modules")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (verifyRow) {
+        console.error("Supabase deleteModule verification failed: record still exists in database", id);
+        throw new Error("Module deletion verification failed: record still exists in Supabase.");
+      }
+
+      // Step 6: Clean up local fallback store atomically
       cleanupLocalStoreForModule(id, lessonIds);
 
       await logActivity("Module Deleted", "module", { id, title: existing.title });
@@ -1439,11 +1536,37 @@ export async function deleteLesson(id: string): Promise<boolean> {
         }
       }
 
-      // 2. Delete the lesson record (database ON DELETE CASCADE handles child video and material rows)
-      const { error } = await supabase.from("lessons").delete().eq("id", id);
+      // Explicitly delete child materials and videos first to avoid FK constraint issues
+      await supabase.from("materials").delete().eq("lesson_id", id);
+      await supabase.from("videos").delete().eq("lesson_id", id);
+
+      // 2. Delete the lesson record with .select("id") and verify row count
+      const { data: deletedRows, error } = await supabase
+        .from("lessons")
+        .delete()
+        .eq("id", id)
+        .select("id");
+
       if (error) {
         console.error("Supabase deleteLesson error:", error);
         throw new Error(`Failed to delete lesson from database: ${error.message}`);
+      }
+
+      if (!deletedRows || deletedRows.length === 0) {
+        console.error("Supabase deleteLesson: 0 rows affected for id", id);
+        throw new Error("Lesson delete matched zero rows in database. Row may have already been removed or blocked by RLS.");
+      }
+
+      // Step 3: Verify the record is actually gone from the database
+      const { data: verifyRow } = await supabase
+        .from("lessons")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (verifyRow) {
+        console.error("Supabase deleteLesson verification failed: record still exists in database", id);
+        throw new Error("Lesson deletion verification failed: record still exists in Supabase.");
       }
 
       const idx = fallbackLessons.findIndex((l) => l.id === id);

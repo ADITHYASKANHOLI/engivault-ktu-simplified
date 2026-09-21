@@ -149,6 +149,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Failed to delete lesson" }, { status: 500 });
     }
 
+    const postCheck = await getLessonById(id);
+    if (postCheck) {
+      return NextResponse.json(
+        { error: "Lesson was not deleted from database." },
+        { status: 500 }
+      );
+    }
+
     const parentModule = existing.module_id ? await getModuleById(existing.module_id) : null;
     revalidateContentHierarchy({
       subjectSlug: parentModule?.subject?.slug,
@@ -157,7 +165,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { success: true, id },
+      { success: true, deletedId: id, id },
       {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",

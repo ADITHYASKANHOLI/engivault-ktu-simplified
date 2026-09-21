@@ -112,9 +112,18 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    let id = searchParams.get("id");
 
     if (!id) {
+      try {
+        const body = await request.json();
+        id = body?.id;
+      } catch {
+        // body might not be json
+      }
+    }
+
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "Subject ID required" }, { status: 400 });
     }
 
@@ -128,11 +137,26 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Failed to delete subject" }, { status: 500 });
     }
 
+    const postCheck = await getSubjectById(id);
+    if (postCheck) {
+      return NextResponse.json(
+        { error: "Subject was not deleted from database." },
+        { status: 500 }
+      );
+    }
+
     revalidateContentHierarchy({
       subjectSlug: existing.slug,
     });
 
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json(
+      { success: true, deletedId: id, id },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("DELETE /api/admin/subjects error:", error);
     return NextResponse.json(
