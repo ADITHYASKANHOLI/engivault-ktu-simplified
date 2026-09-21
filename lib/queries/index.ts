@@ -458,6 +458,19 @@ function enrichFallbackLesson(lesson: Lesson): Lesson {
   };
 }
 
+/**
+ * Determines whether the in-memory/file fallback store may be used.
+ * - When Supabase is NOT configured: returns true (zero-setup local development mode).
+ * - When Supabase IS configured: returns true ONLY if ENGIVAULT_ALLOW_LOCAL_FALLBACK=true.
+ *   Otherwise, all Supabase errors throw loudly to prevent silent data desynchronization.
+ */
+export function isLocalFallbackAllowed(): boolean {
+  if (!isSupabaseConfigured()) {
+    return true;
+  }
+  return process.env.ENGIVAULT_ALLOW_LOCAL_FALLBACK === "true";
+}
+
 // ---------------- Site Settings ----------------
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -471,10 +484,19 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       .select("*")
       .limit(1)
       .single();
-    if (error || !data) return fallbackSiteSettings;
+
+    if (error) {
+      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
+      throw new Error(`Failed to fetch site settings from Supabase: ${error.message}`);
+    }
+    if (!data) {
+      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
+      throw new Error("Site settings record not found in Supabase.");
+    }
     return data;
-  } catch {
-    return fallbackSiteSettings;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return fallbackSiteSettings;
+    throw err;
   }
 }
 
@@ -490,14 +512,25 @@ export async function updateSiteSettings(updates: Partial<SiteSettings>): Promis
         .eq("id", fallbackSiteSettings.id)
         .select()
         .single();
-      if (!error && data) {
+
+      if (error) {
+        throw new Error(`Failed to update site settings in Supabase: ${error.message}`);
+      }
+      if (data) {
         Object.assign(fallbackSiteSettings, data);
         await logActivity("Site Settings Updated", "settings");
         return fallbackSiteSettings;
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (!isLocalFallbackAllowed()) {
+        throw err;
+      }
       console.warn("Supabase updateSiteSettings notice:", err);
     }
+  }
+
+  if (!isLocalFallbackAllowed()) {
+    throw new Error("Supabase is configured but site settings update failed and local fallback is disabled.");
   }
 
   Object.assign(fallbackSiteSettings, updates, {
@@ -521,7 +554,14 @@ export async function getPublishedSubjects(): Promise<Subject[]> {
       .eq("published", true)
       .order("display_order", { ascending: true });
 
-    if (error || !data) return fallbackSubjects.filter((s) => s.published);
+    if (error) {
+      if (isLocalFallbackAllowed()) return fallbackSubjects.filter((s) => s.published);
+      throw new Error(`Failed to fetch published subjects from Supabase: ${error.message}`);
+    }
+    if (!data) {
+      if (isLocalFallbackAllowed()) return fallbackSubjects.filter((s) => s.published);
+      return [];
+    }
 
     return data.map((s: any) => ({
       ...s,
@@ -530,8 +570,9 @@ export async function getPublishedSubjects(): Promise<Subject[]> {
       materials_count: s.modules?.reduce((acc: number, m: any) => 
         acc + (m.published ? (m.lessons?.reduce((lAcc: number, l: any) => lAcc + (l.published ? (l.materials?.filter((mat: any) => mat.published)?.length || 0) : 0), 0) || 0) : 0), 0) || 0,
     }));
-  } catch {
-    return fallbackSubjects.filter((s) => s.published);
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return fallbackSubjects.filter((s) => s.published);
+    throw err;
   }
 }
 
@@ -546,7 +587,14 @@ export async function getAllSubjects(): Promise<Subject[]> {
       .select("*, modules(id, lessons(id, materials(id)))")
       .order("display_order", { ascending: true });
 
-    if (error || !data) return fallbackSubjects;
+    if (error) {
+      if (isLocalFallbackAllowed()) return fallbackSubjects;
+      throw new Error(`Failed to fetch all subjects from Supabase: ${error.message}`);
+    }
+    if (!data) {
+      if (isLocalFallbackAllowed()) return fallbackSubjects;
+      return [];
+    }
 
     return data.map((s: any) => ({
       ...s,
@@ -555,8 +603,9 @@ export async function getAllSubjects(): Promise<Subject[]> {
       materials_count: s.modules?.reduce((acc: number, m: any) => 
         acc + (m.lessons?.reduce((lAcc: number, l: any) => lAcc + (l.materials?.length || 0), 0) || 0), 0) || 0,
     }));
-  } catch {
-    return fallbackSubjects;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return fallbackSubjects;
+    throw err;
   }
 }
 
@@ -571,11 +620,24 @@ export async function getSubjectBySlug(slug: string, requirePublished = true): P
     const supabase = await createServerSupabase();
     let query = supabase.from("subjects").select("*").eq("slug", slug);
     if (requirePublished) query = query.eq("published", true);
-    const { data, error } = await query.single();
-    if (error || !data) return null;
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const fallbackSub = fallbackSubjects.find((s) => s.slug === slug);
+        if (!fallbackSub || (requirePublished && !fallbackSub.published)) return null;
+        return fallbackSub;
+      }
+      throw new Error(`Failed to fetch subject by slug from Supabase: ${error.message}`);
+    }
     return data;
-  } catch {
-    return fallbackSubjects.find((s) => s.slug === slug) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const fallbackSub = fallbackSubjects.find((s) => s.slug === slug);
+      if (!fallbackSub || (requirePublished && !fallbackSub.published)) return null;
+      return fallbackSub;
+    }
+    throw err;
   }
 }
 
@@ -585,11 +647,20 @@ export async function getSubjectById(id: string): Promise<Subject | null> {
   }
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from("subjects").select("*").eq("id", id).single();
-    if (error || !data) return null;
+    const { data, error } = await supabase.from("subjects").select("*").eq("id", id).maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return fallbackSubjects.find((s) => s.id === id) || null;
+      }
+      throw new Error(`Failed to fetch subject by ID from Supabase: ${error.message}`);
+    }
     return data;
-  } catch {
-    return fallbackSubjects.find((s) => s.id === id) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return fallbackSubjects.find((s) => s.id === id) || null;
+    }
+    throw err;
   }
 }
 
@@ -889,14 +960,35 @@ export async function getAllModules(subjectId?: string): Promise<Module[]> {
     }
 
     const { data, error } = await query;
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        let mods = fallbackModules;
+        if (subjectId) mods = mods.filter((m) => m.subject_id === subjectId);
+        return mods.map((m) => ({
+          ...m,
+          subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+          lessons_count: fallbackLessons.filter((l) => l.module_id === m.id).length,
+        })).sort((a, b) => a.display_order - b.display_order);
+      }
+      throw new Error(`Failed to fetch modules from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     return data.map((m: any) => ({
       ...m,
       subject: m.subjects,
       lessons_count: m.lessons?.length || 0,
     }));
-  } catch {
-    return fallbackModules;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      let mods = fallbackModules;
+      if (subjectId) mods = mods.filter((m) => m.subject_id === subjectId);
+      return mods.map((m) => ({
+        ...m,
+        subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+        lessons_count: fallbackLessons.filter((l) => l.module_id === m.id).length,
+      })).sort((a, b) => a.display_order - b.display_order);
+    }
+    throw err;
   }
 }
 
@@ -921,7 +1013,20 @@ export async function getModulesForSubject(subjectId: string, requirePublished =
 
     if (requirePublished) query = query.eq("published", true);
     const { data, error } = await query;
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return fallbackModules
+          .filter((m) => m.subject_id === subjectId && (!requirePublished || m.published))
+          .map((m) => ({
+            ...m,
+            subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+            lessons_count: fallbackLessons.filter((l) => l.module_id === m.id && (!requirePublished || l.published)).length,
+          }))
+          .sort((a, b) => a.display_order - b.display_order);
+      }
+      throw new Error(`Failed to fetch modules for subject from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     return data.map((m: any) => ({
       ...m,
       subject: m.subjects,
@@ -929,8 +1034,18 @@ export async function getModulesForSubject(subjectId: string, requirePublished =
         ? (m.lessons?.filter((l: any) => l.published)?.length || 0)
         : (m.lessons?.length || 0),
     }));
-  } catch {
-    return fallbackModules.filter((m) => m.subject_id === subjectId);
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return fallbackModules
+        .filter((m) => m.subject_id === subjectId && (!requirePublished || m.published))
+        .map((m) => ({
+          ...m,
+          subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+          lessons_count: fallbackLessons.filter((l) => l.module_id === m.id && (!requirePublished || l.published)).length,
+        }))
+        .sort((a, b) => a.display_order - b.display_order);
+    }
+    throw err;
   }
 }
 
@@ -952,14 +1067,28 @@ export async function getModuleBySlug(subjectId: string, moduleSlug: string, req
       .eq("subject_id", subjectId)
       .eq("slug", moduleSlug);
     if (requirePublished) query = query.eq("published", true);
-    const { data, error } = await query.single();
-    if (error || !data) return null;
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const mod = fallbackModules.find((m) => m.subject_id === subjectId && m.slug === moduleSlug);
+        if (!mod || (requirePublished && !mod.published)) return null;
+        return { ...mod, subject: fallbackSubjects.find((s) => s.id === subjectId) };
+      }
+      throw new Error(`Failed to fetch module by slug from Supabase: ${error.message}`);
+    }
+    if (!data) return null;
     return {
       ...data,
       subject: data.subjects,
     };
-  } catch {
-    return fallbackModules.find((m) => m.subject_id === subjectId && m.slug === moduleSlug) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const mod = fallbackModules.find((m) => m.subject_id === subjectId && m.slug === moduleSlug);
+      if (!mod || (requirePublished && !mod.published)) return null;
+      return { ...mod, subject: fallbackSubjects.find((s) => s.id === subjectId) };
+    }
+    throw err;
   }
 }
 
@@ -974,11 +1103,31 @@ export async function getModuleById(id: string): Promise<Module | null> {
   }
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.from("modules").select("*, subjects(*)").eq("id", id).single();
-    if (error || !data) return null;
+    const { data, error } = await supabase.from("modules").select("*, subjects(*)").eq("id", id).maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const m = fallbackModules.find((mod) => mod.id === id);
+        if (!m) return null;
+        return {
+          ...m,
+          subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+        };
+      }
+      throw new Error(`Failed to fetch module by ID from Supabase: ${error.message}`);
+    }
+    if (!data) return null;
     return { ...data, subject: data.subjects };
-  } catch {
-    return fallbackModules.find((m) => m.id === id) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const m = fallbackModules.find((mod) => mod.id === id);
+      if (!m) return null;
+      return {
+        ...m,
+        subject: fallbackSubjects.find((s) => s.id === m.subject_id),
+      };
+    }
+    throw err;
   }
 }
 
@@ -1239,7 +1388,22 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
     }
 
     const { data, error } = await query;
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        let result = fallbackLessons;
+        if (options?.moduleId) result = result.filter((l) => l.module_id === options.moduleId);
+        if (options?.subjectId) {
+          const modIds = fallbackModules.filter((m) => m.subject_id === options.subjectId).map((m) => m.id);
+          result = result.filter((l) => modIds.includes(l.module_id));
+        }
+        return result.map(enrichFallbackLesson).sort((a, b) => {
+          if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+          return (a.lesson_number || 0) - (b.lesson_number || 0);
+        });
+      }
+      throw new Error(`Failed to fetch lessons from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
 
     let lessons = data.map((l: any) => ({
       ...l,
@@ -1259,8 +1423,19 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
 
     return lessons;
   } catch (err) {
-    console.error("Supabase getAllLessons error:", err);
-    return fallbackLessons.map(enrichFallbackLesson);
+    if (isLocalFallbackAllowed()) {
+      let result = fallbackLessons;
+      if (options?.moduleId) result = result.filter((l) => l.module_id === options.moduleId);
+      if (options?.subjectId) {
+        const modIds = fallbackModules.filter((m) => m.subject_id === options.subjectId).map((m) => m.id);
+        result = result.filter((l) => modIds.includes(l.module_id));
+      }
+      return result.map(enrichFallbackLesson).sort((a, b) => {
+        if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+        return (a.lesson_number || 0) - (b.lesson_number || 0);
+      });
+    }
+    throw err;
   }
 }
 
@@ -1282,14 +1457,29 @@ export async function getLessonsForModule(moduleId: string, requirePublished = t
 
     if (requirePublished) query = query.eq("published", true);
     const { data, error } = await query;
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return fallbackLessons
+          .filter((l) => l.module_id === moduleId && (!requirePublished || l.published))
+          .map(enrichFallbackLesson)
+          .sort((a, b) => a.display_order - b.display_order);
+      }
+      throw new Error(`Failed to fetch lessons for module from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     return data.map((l: any) => ({
       ...l,
       video: l.videos?.[0] || null,
       materials: l.materials || [],
     }));
-  } catch {
-    return fallbackLessons.filter((l) => l.module_id === moduleId).map(enrichFallbackLesson);
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return fallbackLessons
+        .filter((l) => l.module_id === moduleId && (!requirePublished || l.published))
+        .map(enrichFallbackLesson)
+        .sort((a, b) => a.display_order - b.display_order);
+    }
+    throw err;
   }
 }
 
@@ -1324,8 +1514,16 @@ export async function getLessonBySlug(moduleId: string, lessonSlug: string, requ
       .eq("slug", lessonSlug);
 
     if (requirePublished) query = query.eq("published", true);
-    const { data, error } = await query.single();
-    if (error || !data) return null;
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const l = fallbackLessons.find((les) => les.module_id === moduleId && les.slug === lessonSlug);
+        return l && (!requirePublished || l.published) ? enrichFallbackLesson(l) : null;
+      }
+      throw new Error(`Failed to fetch lesson by slug from Supabase: ${error.message}`);
+    }
+    if (!data) return null;
 
     const video = data.videos?.[0] || null;
     if (video) {
@@ -1348,9 +1546,12 @@ export async function getLessonBySlug(moduleId: string, lessonSlug: string, requ
       video,
       materials,
     };
-  } catch {
-    const l = fallbackLessons.find((les) => les.module_id === moduleId && les.slug === lessonSlug);
-    return l ? enrichFallbackLesson(l) : null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const l = fallbackLessons.find((les) => les.module_id === moduleId && les.slug === lessonSlug);
+      return l && (!requirePublished || l.published) ? enrichFallbackLesson(l) : null;
+    }
+    throw err;
   }
 }
 
@@ -1365,9 +1566,16 @@ export async function getLessonById(id: string): Promise<Lesson | null> {
       .from("lessons")
       .select("*, modules(id, title, slug, subject_id, subjects(id, title, slug)), videos(*), materials(*)")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) return null;
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const les = fallbackLessons.find((l) => l.id === id);
+        return les ? enrichFallbackLesson(les) : null;
+      }
+      throw new Error(`Failed to fetch lesson by ID from Supabase: ${error.message}`);
+    }
+    if (!data) return null;
     return {
       ...data,
       module: data.modules
@@ -1379,9 +1587,12 @@ export async function getLessonById(id: string): Promise<Lesson | null> {
       video: data.videos?.[0] || null,
       materials: data.materials || [],
     };
-  } catch {
-    const les = fallbackLessons.find((l) => l.id === id);
-    return les ? enrichFallbackLesson(les) : null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const les = fallbackLessons.find((l) => l.id === id);
+      return les ? enrichFallbackLesson(les) : null;
+    }
+    throw err;
   }
 }
 
@@ -1403,7 +1614,13 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (error || !data) return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
+      }
+      throw new Error(`Failed to fetch recent published lessons from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
 
     return data.map((l: any) => ({
       ...l,
@@ -1414,8 +1631,11 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       video: l.videos?.[0] || null,
       materials: l.materials || [],
     }));
-  } catch {
-    return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
+    }
+    throw err;
   }
 }
 
@@ -1625,7 +1845,11 @@ export async function getAllVideos(): Promise<Video[]> {
       .select("*, lessons(id, title, slug, module_id, modules(id, title, slug, subject_id, subjects(id, title, slug, code)))")
       .order("created_at", { ascending: false });
 
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) return fallbackVideos;
+      throw new Error(`Failed to fetch videos from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     return data.map((v: any) => ({
       ...v,
       lesson: v.lessons
@@ -1640,8 +1864,9 @@ export async function getAllVideos(): Promise<Video[]> {
           }
         : undefined,
     }));
-  } catch {
-    return fallbackVideos;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return fallbackVideos;
+    throw err;
   }
 }
 
@@ -1656,12 +1881,31 @@ export async function getVideoForLesson(lessonId: string): Promise<Video | null>
   }
   try {
     const supabase = await createServerSupabase();
-    const { data, error } = await supabase.from("videos").select("*").eq("lesson_id", lessonId).single();
-    if (error || !data) return null;
+    const { data, error } = await supabase.from("videos").select("*").eq("lesson_id", lessonId).maybeSingle();
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const vid = fallbackVideos.find((v) => v.lesson_id === lessonId);
+        if (!vid) return null;
+        return {
+          ...vid,
+          playback_url: await getSignedVideoUrl(vid.storage_path),
+        };
+      }
+      throw new Error(`Failed to fetch video for lesson from Supabase: ${error.message}`);
+    }
+    if (!data) return null;
     data.playback_url = await getSignedVideoUrl(data.storage_path);
     return data;
-  } catch {
-    return null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const vid = fallbackVideos.find((v) => v.lesson_id === lessonId);
+      if (!vid) return null;
+      return {
+        ...vid,
+        playback_url: await getSignedVideoUrl(vid.storage_path),
+      };
+    }
+    throw err;
   }
 }
 
@@ -1786,13 +2030,30 @@ export async function getMaterialsForLesson(lessonId: string): Promise<Material[
       .is("deleted_at", null)
       .order("display_order", { ascending: true });
 
-    if (error || !data) return [];
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published);
+        for (const mat of list) {
+          mat.download_url = await getSignedMaterialUrl(mat.storage_path);
+        }
+        return list;
+      }
+      throw new Error(`Failed to fetch materials for lesson from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     for (const mat of data) {
       mat.download_url = await getSignedMaterialUrl(mat.storage_path);
     }
     return data;
-  } catch {
-    return [];
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published);
+      for (const mat of list) {
+        mat.download_url = await getSignedMaterialUrl(mat.storage_path);
+      }
+      return list;
+    }
+    throw err;
   }
 }
 
@@ -1818,15 +2079,20 @@ export async function getAllMaterials(): Promise<Material[]> {
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
-    if (error || !data) return fallbackMaterials;
+    if (error) {
+      if (isLocalFallbackAllowed()) return fallbackMaterials;
+      throw new Error(`Failed to fetch materials from Supabase: ${error.message}`);
+    }
+    if (!data) return [];
     return data.map((mat: any) => ({
       ...mat,
       lesson: mat.lessons,
       module: mat.lessons?.modules,
       subject: mat.lessons?.modules?.subjects,
     }));
-  } catch {
-    return fallbackMaterials;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return fallbackMaterials;
+    throw err;
   }
 }
 
@@ -1912,11 +2178,13 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       const supabase = await createServerSupabase();
 
       // Search published subjects
-      const { data: subs } = await supabase
+      const { data: subs, error: subsErr } = await supabase
         .from("subjects")
         .select("id, title, slug, code, short_description")
         .eq("published", true)
         .or(`title.ilike.%${q}%,code.ilike.%${q}%,short_description.ilike.%${q}%`);
+
+      if (subsErr) throw subsErr;
 
       if (subs) {
         for (const s of subs) {
@@ -1932,12 +2200,14 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       }
 
       // Search published modules
-      const { data: mods } = await supabase
+      const { data: mods, error: modsErr } = await supabase
         .from("modules")
         .select("id, title, slug, short_description, subject_id, subjects!inner(title, slug, published)")
         .eq("published", true)
         .eq("subjects.published", true)
         .or(`title.ilike.%${q}%,short_description.ilike.%${q}%`);
+
+      if (modsErr) throw modsErr;
 
       if (mods) {
         for (const m of mods) {
@@ -1953,13 +2223,15 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       }
 
       // Search published lessons
-      const { data: lessons } = await supabase
+      const { data: lessons, error: lesErr } = await supabase
         .from("lessons")
         .select("id, title, slug, description, module_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
         .eq("published", true)
         .eq("modules.published", true)
         .eq("modules.subjects.published", true)
         .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+
+      if (lesErr) throw lesErr;
 
       if (lessons) {
         for (const l of lessons) {
@@ -1976,7 +2248,10 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       }
 
       return results;
-    } catch (err) {
+    } catch (err: any) {
+      if (!isLocalFallbackAllowed()) {
+        throw new Error(`Failed to search content in Supabase: ${err.message}`);
+      }
       console.warn("Supabase search notice:", err);
     }
   }
@@ -2046,6 +2321,12 @@ export async function getAdminStats() {
         supabase.from("materials").select("id, published", { count: "exact" }).is("deleted_at", null),
       ]);
 
+      if (subjectsRes.error) throw subjectsRes.error;
+      if (modulesRes.error) throw modulesRes.error;
+      if (lessonsRes.error) throw lessonsRes.error;
+      if (videosRes.error) throw videosRes.error;
+      if (materialsRes.error) throw materialsRes.error;
+
       const totalSubjects = subjectsRes.count ?? subjectsRes.data?.length ?? 0;
       const publishedSubjects = subjectsRes.data?.filter((s) => s.published).length ?? 0;
       const totalModules = modulesRes.count ?? modulesRes.data?.length ?? 0;
@@ -2062,7 +2343,10 @@ export async function getAdminStats() {
         totalMaterials,
         recentUploads: (totalVideos + totalMaterials) > 0 ? (totalVideos + totalMaterials) : 4,
       };
-    } catch (err) {
+    } catch (err: any) {
+      if (!isLocalFallbackAllowed()) {
+        throw new Error(`Failed to fetch admin stats from Supabase: ${err.message}`);
+      }
       console.warn("Supabase getAdminStats notice:", err);
     }
   }
@@ -2094,8 +2378,12 @@ export async function getActivityLogs(): Promise<ActivityLog[]> {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      if (!error && data && data.length > 0) return data;
-    } catch (err) {
+      if (error) throw error;
+      if (data && data.length > 0) return data;
+    } catch (err: any) {
+      if (!isLocalFallbackAllowed()) {
+        throw new Error(`Failed to fetch activity logs from Supabase: ${err.message}`);
+      }
       console.warn("Supabase getActivityLogs notice:", err);
     }
   }
