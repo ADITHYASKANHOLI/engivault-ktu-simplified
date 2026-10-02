@@ -70,7 +70,14 @@ function getInitialStore(): FallbackStoreData {
   };
 }
 
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
 function getStore(): FallbackStoreData {
+  if (isProduction()) {
+    return getInitialStore();
+  }
   try {
     if (fs.existsSync(STORE_FILE_PATH)) {
       const content = fs.readFileSync(STORE_FILE_PATH, "utf-8");
@@ -102,6 +109,9 @@ function getStore(): FallbackStoreData {
 }
 
 function saveStore(data: FallbackStoreData): void {
+  if (isProduction()) {
+    return; // Strictly no filesystem writes on Vercel/production
+  }
   try {
     fs.writeFileSync(STORE_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
@@ -242,6 +252,11 @@ export function normalizeLessonFields<T extends Record<string, any>>(lesson: T):
  *   Otherwise, all Supabase errors throw loudly to prevent silent data desynchronization.
  */
 export function isLocalFallbackAllowed(): boolean {
+  // In production (Vercel deployment or NODE_ENV=production), local fallback is strictly disabled.
+  // The authoritative production data source MUST be Supabase PostgreSQL.
+  if (isProduction()) {
+    return false;
+  }
   if (!isSupabaseConfigured()) {
     return true;
   }
@@ -468,13 +483,19 @@ export async function createSubject(subject: Partial<Subject>): Promise<Subject>
         console.error("Supabase createSubject error:", error);
         throw new Error(`Failed to create subject: ${error.message}`);
       }
-      fallbackSubjects.push(data);
+      if (!isProduction()) {
+        fallbackSubjects.push(data);
+      }
       await logActivity("Subject Created", "subject", { id: data.id, title: data.title, slug: data.slug });
       return data;
     } catch (err: any) {
       console.error("Supabase createSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create subjects in production. Local JSON store is strictly disabled.");
   }
 
   fallbackSubjects.push(row);
@@ -497,9 +518,11 @@ export async function updateSubject(id: string, updates: Partial<Subject>): Prom
         console.error("Supabase updateSubject error:", error);
         throw new Error(`Failed to update subject: ${error.message}`);
       }
-      const idx = fallbackSubjects.findIndex((s) => s.id === id);
-      if (idx !== -1) {
-        fallbackSubjects[idx] = { ...fallbackSubjects[idx], ...data };
+      if (!isProduction()) {
+        const idx = fallbackSubjects.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+          fallbackSubjects[idx] = { ...fallbackSubjects[idx], ...data };
+        }
       }
       await logActivity("Subject Updated", "subject", { id, title: data.title });
       return data;
@@ -507,6 +530,10 @@ export async function updateSubject(id: string, updates: Partial<Subject>): Prom
       console.error("Supabase updateSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update subjects in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackSubjects.findIndex((s) => s.id === id);
@@ -646,30 +673,31 @@ export async function deleteSubject(id: string): Promise<boolean> {
         throw new Error("Subject deletion verification failed: record still exists in Supabase.");
       }
 
-      // 9. Sync fallback local store — remove subject and all its children
-      const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
-      const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
+      if (!isProduction()) {
+        const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
+        const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
 
-      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (
-          localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
-          fallbackMaterials[i].subject_id === id ||
-          (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
-        ) {
-          fallbackMaterials.splice(i, 1);
+        for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+          if (
+            localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
+            fallbackMaterials[i].subject_id === id ||
+            (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
+          ) {
+            fallbackMaterials.splice(i, 1);
+          }
         }
+        for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+          if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+        }
+        for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+          if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
+        }
+        for (let i = fallbackModules.length - 1; i >= 0; i--) {
+          if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
+        }
+        const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
+        if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
       }
-      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-        if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
-      }
-      for (let i = fallbackLessons.length - 1; i >= 0; i--) {
-        if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
-      }
-      for (let i = fallbackModules.length - 1; i >= 0; i--) {
-        if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
-      }
-      const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
-      if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
 
       await logActivity("Subject Deleted", "subject", { id, title: existing.title });
       return true;
@@ -677,6 +705,10 @@ export async function deleteSubject(id: string): Promise<boolean> {
       console.error("Supabase deleteSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete subjects in production. Local JSON store is strictly disabled.");
   }
 
   // Fallback-only mode: cascade through local store arrays
@@ -930,13 +962,19 @@ export async function createModule(data: Partial<Module>): Promise<Module> {
         throw new Error(`Failed to create module: ${error.message}`);
       }
       const enriched: Module = { ...created, lessons_count: 0 };
-      fallbackModules.push(enriched);
+      if (!isProduction()) {
+        fallbackModules.push(enriched);
+      }
       await logActivity("Module Created", "module", { id: created.id, title: created.title, slug: created.slug });
       return enriched;
     } catch (err: any) {
       console.error("Supabase createModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create modules in production. Local JSON store is strictly disabled.");
   }
 
   const newMod: Module = {
@@ -963,14 +1001,20 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
         console.error("Supabase updateModule error:", error);
         throw new Error(`Failed to update module: ${error.message}`);
       }
-      const idx = fallbackModules.findIndex((m) => m.id === id);
-      if (idx !== -1) fallbackModules[idx] = { ...fallbackModules[idx], ...data };
+      if (!isProduction()) {
+        const idx = fallbackModules.findIndex((m) => m.id === id);
+        if (idx !== -1) fallbackModules[idx] = { ...fallbackModules[idx], ...data };
+      }
       await logActivity("Module Updated", "module", { id, title: data.title });
       return data;
     } catch (err: any) {
       console.error("Supabase updateModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update modules in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackModules.findIndex((m) => m.id === id);
@@ -1116,7 +1160,9 @@ export async function deleteModule(id: string): Promise<boolean> {
       }
 
       // Step 6: Clean up local fallback store atomically
-      cleanupLocalStoreForModule(id, lessonIds);
+      if (!isProduction()) {
+        cleanupLocalStoreForModule(id, lessonIds);
+      }
 
       await logActivity("Module Deleted", "module", { id, title: existing.title });
       return true;
@@ -1124,6 +1170,10 @@ export async function deleteModule(id: string): Promise<boolean> {
       console.error("Supabase deleteModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete modules in production. Local JSON store is strictly disabled.");
   }
 
   const existing = fallbackModules.find((m) => m.id === id);
@@ -1465,13 +1515,19 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
         throw new Error(`Failed to create lesson in database: ${error.message}`);
       }
       const enriched = enrichFallbackLesson(created);
-      fallbackLessons.push(enriched);
+      if (!isProduction()) {
+        fallbackLessons.push(enriched);
+      }
       await logActivity("Lesson Created", "lesson", { id: created.id, title: created.title, slug: created.slug });
       return enriched;
     } catch (err: any) {
       console.error("Supabase createLesson error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create lectures in production. Local JSON store is strictly disabled.");
   }
 
   const newLesson: Lesson = {
@@ -1528,14 +1584,20 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
         throw new Error(`Failed to update lesson in database: ${error.message}`);
       }
       const normalizedData = normalizeLessonFields(data);
-      const idx = fallbackLessons.findIndex((l) => l.id === id);
-      if (idx !== -1) fallbackLessons[idx] = enrichFallbackLesson({ ...fallbackLessons[idx], ...normalizedData });
+      if (!isProduction()) {
+        const idx = fallbackLessons.findIndex((l) => l.id === id);
+        if (idx !== -1) fallbackLessons[idx] = enrichFallbackLesson({ ...fallbackLessons[idx], ...normalizedData });
+      }
       await logActivity("Lesson Updated", "lesson", { id, title: normalizedData.title });
       return normalizedData;
     } catch (err: any) {
       console.error("Supabase updateLesson error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update lectures in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackLessons.findIndex((l) => l.id === id);
@@ -1617,13 +1679,15 @@ export async function deleteLesson(id: string): Promise<boolean> {
         throw new Error("Lesson deletion verification failed: record still exists in Supabase.");
       }
 
-      const idx = fallbackLessons.findIndex((l) => l.id === id);
-      if (idx !== -1) fallbackLessons.splice(idx, 1);
-      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-        if (fallbackVideos[i].lesson_id === id) fallbackVideos.splice(i, 1);
-      }
-      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (fallbackMaterials[i].lesson_id === id) fallbackMaterials.splice(i, 1);
+      if (!isProduction()) {
+        const idx = fallbackLessons.findIndex((l) => l.id === id);
+        if (idx !== -1) fallbackLessons.splice(idx, 1);
+        for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+          if (fallbackVideos[i].lesson_id === id) fallbackVideos.splice(i, 1);
+        }
+        for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+          if (fallbackMaterials[i].lesson_id === id) fallbackMaterials.splice(i, 1);
+        }
       }
 
       await logActivity("Lesson Deleted", "lesson", { id, title: existing?.title || "Lesson" });
@@ -1632,6 +1696,10 @@ export async function deleteLesson(id: string): Promise<boolean> {
       console.error("Supabase deleteLesson error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete lectures in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackLessons.findIndex((l) => l.id === id);
@@ -1785,13 +1853,19 @@ export async function createVideo(data: Partial<Video>): Promise<Video> {
 
       const { data: created, error } = await supabase.from("videos").insert(newVid).select().single();
       if (error) throw error;
-      fallbackVideos.push(created);
+      if (!isProduction()) {
+        fallbackVideos.push(created);
+      }
       await logActivity("Video Uploaded", "video", { id: created.id, title: created.title, lesson_id: created.lesson_id });
       return created;
     } catch (err: any) {
       console.error("Supabase createVideo error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create videos in production. Local JSON store is strictly disabled.");
   }
 
   // Fallback mode: upsert
@@ -1821,14 +1895,20 @@ export async function deleteVideo(id: string): Promise<boolean> {
       }
       const { error } = await supabase.from("videos").delete().eq("id", id);
       if (error) throw error;
-      const fIdx = fallbackVideos.findIndex((v) => v.id === id);
-      if (fIdx !== -1) fallbackVideos.splice(fIdx, 1);
+      if (!isProduction()) {
+        const fIdx = fallbackVideos.findIndex((v) => v.id === id);
+        if (fIdx !== -1) fallbackVideos.splice(fIdx, 1);
+      }
       await logActivity("Video Deleted", "video", { id });
       return true;
     } catch (err) {
       console.error("Supabase deleteVideo error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete videos in production. Local JSON store is strictly disabled.");
   }
 
   const idx = fallbackVideos.findIndex((v) => v.id === id);
@@ -1948,13 +2028,19 @@ export async function createMaterial(data: Partial<Material>): Promise<Material>
       const supabase = createAdminClient();
       const { data: created, error } = await supabase.from("materials").insert(newMat).select().single();
       if (error) throw error;
-      fallbackMaterials.push(created);
+      if (!isProduction()) {
+        fallbackMaterials.push(created);
+      }
       await logActivity("Material Uploaded", "material", { id: created.id, title: created.title });
       return created;
     } catch (err: any) {
       console.error("Supabase createMaterial error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to upload materials in production. Local JSON store is strictly disabled.");
   }
 
   fallbackMaterials.push(newMat);
@@ -1976,14 +2062,20 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       }
       const { error } = await supabase.from("materials").delete().eq("id", id);
       if (error) throw error;
-      const idx = fallbackMaterials.findIndex((m) => m.id === id);
-      if (idx !== -1) fallbackMaterials.splice(idx, 1);
+      if (!isProduction()) {
+        const idx = fallbackMaterials.findIndex((m) => m.id === id);
+        if (idx !== -1) fallbackMaterials.splice(idx, 1);
+      }
       await logActivity("Material Deleted", "material", { id });
       return true;
     } catch (err) {
       console.error("Supabase deleteMaterial error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete materials in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackMaterials.findIndex((m) => m.id === id);
@@ -2461,11 +2553,17 @@ export async function createTopic(data: Partial<Topic>): Promise<Topic> {
       if (error) {
         throw new Error(`Failed to create topic in database: ${error.message}`);
       }
-      fallbackTopics.push(created);
+      if (!isProduction()) {
+        fallbackTopics.push(created);
+      }
       return created;
     } catch (err) {
       if (!isLocalFallbackAllowed()) throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create topics in production. Local JSON store is strictly disabled.");
   }
 
   fallbackTopics.push(newTopic);

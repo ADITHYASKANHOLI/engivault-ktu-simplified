@@ -176,17 +176,60 @@ node scripts/verify-browser-routes.mjs
 
 ---
 
-## 🚢 Production Deployment
+## 🚢 Deploy to Vercel
 
-ENGIVAULT is fully production-ready and optimized for Vercel, Supabase, or containerized Node.js environments:
+ENGIVAULT is architected, tested, and maintained as a **Vercel-compatible serverless production application**. It has zero dependency on local filesystems, long-lived server processes, or local JSON files in production.
 
-```bash
-# Production build
-npm run build
+### Step-by-Step Vercel Deployment Guide
 
-# Start production server
-npm start
-```
+1. **Connect GitHub Repository:** Link your GitHub account to [Vercel](https://vercel.com).
+2. **Import `ENGIVAULT02`:** In the Vercel dashboard, click **Add New... → Project** and select the `ENGIVAULT02` repository.
+3. **Select Framework:** Choose **Next.js** (Vercel automatically detects the Next.js App Router).
+4. **Configure Environment Variables:** Under Project Settings → Environment Variables, configure the required variables (see environment table below). Never commit secret values to GitHub.
+5. **Connect Supabase Database:** Ensure your production Supabase database has executed the migrations in `supabase/migrations/` so all tables (`departments`, `semesters`, `faculty`, `subjects`, `modules`, `topics`, `lessons`, `videos`, `materials`, `site_settings`, `activity_logs`) and RLS policies exist.
+6. **Deploy Preview:** Create a feature branch or pull request in GitHub to trigger an automatic Vercel Preview deployment.
+7. **Verify Preview:** Test the preview URL (`https://<project>-git-<branch>.vercel.app`) ensuring lecture browsing, search, and YouTube embedding load without error.
+8. **Configure Production Variables:** Set production-specific secrets (`SUPABASE_SECRET_KEY`, `ADMIN_ACCESS_CODE`, `NEXT_PUBLIC_SITE_URL`) for the **Production** environment in Vercel.
+9. **Deploy `main` to Production:** Merge your verified branch into `main` to trigger the automatic Vercel Production deployment.
+10. **Verify Production:** 
+    - Check the deployment health check endpoint at `/api/health` (returns `{ "ok": true, "status": "healthy" }`).
+    - Verify the public lecture catalog and YouTube playback.
+    - Log in to `/admin/login` and verify that creating, editing, and deleting lectures persists directly in Supabase PostgreSQL.
+11. **Configure Domain & Auth Redirect URLs:** Add your custom domain in Vercel Project Settings → Domains. In Supabase Dashboard → Authentication → URL Configuration, add your production domain and preview domain wildcards (`https://*-your-team.vercel.app/**`) to the Allowed Redirect URLs.
+
+---
+
+### 🌐 Vercel Environment Separation Checklist
+
+| Setting | Development | Preview | Production |
+| :--- | :--- | :--- | :--- |
+| **URL** | `http://localhost:3000` | `https://<deployment>.vercel.app` | `https://<production-domain>` |
+| **Database Source** | Local dev Supabase or dev DB | Staging/Preview Supabase project | Authoritative Supabase PostgreSQL |
+| **Video Delivery** | YouTube embeds | YouTube embeds | YouTube embeds |
+| **Document Storage**| Supabase Storage (or dev bucket) | Supabase Storage (staging bucket) | Supabase Storage (production buckets) |
+| **Local JSON Fallback**| Allowed (offline dev only) | **Strictly Disabled** | **Strictly Disabled** |
+| **`NEXT_PUBLIC_SITE_URL`** | `http://localhost:3000` | Dynamic `VERCEL_URL` fallback | Canonical production domain |
+| **Health Check** | `http://localhost:3000/api/health` | `https://.../api/health` | `https://.../api/health` |
+
+---
+
+### 🩺 Deployment Health Check Endpoint
+
+ENGIVAULT provides a lightweight, serverless health probe at `/api/health`:
+- **Route:** `GET /api/health`
+- **Runtime:** Node.js serverless function (`runtime = "nodejs"`)
+- **Safe Response:**
+  ```json
+  {
+    "ok": true,
+    "status": "healthy",
+    "app": "ENGIVAULT",
+    "environment": "production",
+    "database": "configured",
+    "timestamp": "2026-10-02T16:30:00.000Z"
+  }
+  ```
+  *(Does not expose database credentials, secrets, or internal connection strings).*
 
 ---
 

@@ -8,6 +8,9 @@ const attemptTracker = new Map<string, { count: number; firstAttempt: number }>(
 const MAX_ATTEMPTS = 6;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown-ip";
   const now = Date.now();

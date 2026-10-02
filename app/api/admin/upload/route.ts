@@ -11,6 +11,8 @@ const ALLOWED_BUCKETS = [
   "engivault-branding",
 ] as const;
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   const session = await getAdminSession();
   if (!session) {
@@ -103,6 +105,13 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+        return NextResponse.json(
+          { error: "Supabase Storage credentials are required in production." },
+          { status: 503 }
+        );
+      }
+
       // Local fallback mode: simulate upload
       await logActivity("File Upload Simulated (Fallback)", "upload", {
         bucket,
@@ -147,6 +156,13 @@ export async function POST(request: NextRequest) {
     const storagePath = `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}/${uniquePrefix}-${safeFilename}`;
 
     if (!isSupabaseConfigured()) {
+      if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+        return NextResponse.json(
+          { error: "Supabase Storage credentials are required in production." },
+          { status: 503 }
+        );
+      }
+
       await logActivity("File Upload Authorized (Fallback)", "upload", {
         bucket,
         filename,

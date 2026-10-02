@@ -15,7 +15,9 @@ export interface AdminConfigValidation {
  */
 export function validateAdminConfig(): AdminConfigValidation {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || url.includes("your-project") || url.includes("placeholder")) {
     throw new Error(
@@ -30,7 +32,7 @@ export function validateAdminConfig(): AdminConfigValidation {
     serviceKey.trim() === ""
   ) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is missing or set to placeholder. Admin client requires a valid Supabase service_role key to execute administrative operations."
+      "SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) is missing or set to placeholder. Admin operations require a valid Supabase secret/service_role key."
     );
   }
 

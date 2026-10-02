@@ -10,3 +10,4 @@ This project is ENGIVAULT (repository `ENGIVAULT02`), a production engineering a
 5. **Data Layer:** Dual-mode persistence supporting live Supabase and local zero-config JSON store.
 6. **No Breaking Changes:** Retain backward compatibility for legacy uploaded videos and existing subjects/modules.
 7. **Git Discipline:** Maintain repository `ENGIVAULT02` on branch `main`.
+8. **Vercel Production Compatibility:** ENGIVAULT is a Vercel-native serverless application. Local filesystem persistence (`.engivault-local-store.json`) is strictly disabled in production. Supabase PostgreSQL is the sole authoritative database; YouTube powers all lectures; Supabase Storage hosts documents. All mutations and crypto routes declare `runtime = "nodejs"`. Never commit secrets or expose private keys to client bundles.

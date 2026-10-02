@@ -33,6 +33,17 @@
 - Use descriptive conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`.
 - Maintain continuous Git history across all sessions.
 
+## 5. Vercel Production Compatibility (Permanent Rule)
+- **Zero Local Filesystem Persistence:** Never write to `.engivault-local-store.json`, `/tmp`, or the application directory in production (`NODE_ENV === "production"` or `VERCEL === "1"`). The Vercel runtime filesystem is ephemeral and read-only.
+- **Authoritative Production Source of Truth:**
+  - Database: **Supabase PostgreSQL**
+  - Video Hosting: **YouTube** (validated canonical embed URLs only)
+  - Document Storage: **Supabase Storage** (buckets `engivault-materials`, `engivault-videos`, etc.)
+- **Fail Safely:** If Supabase is unavailable in production, return controlled HTTP 500/503 errors. Never silently switch into local JSON mode or simulate mutations in production.
+- **Serverless-Safe Execution:** Every Route Handler must be independently executable without shared process memory or long-lived background workers. Use `export const runtime = "nodejs"` on all routes performing cryptographic operations, admin session verification, or server-side Supabase mutations.
+- **Environment Distinction:** All secrets (`SUPABASE_SECRET_KEY`, `ADMIN_ACCESS_CODE`) must remain strictly server-only. Never expose private keys behind `NEXT_PUBLIC_*`.
+- **Permanent Future-Edit Check:** Before modifying or adding any feature, verify: *"Will this still work on Vercel serverless?"* If an implementation is not Vercel-safe, choose a Vercel-compatible serverless architecture instead.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

@@ -5,6 +5,7 @@ import { getAllLessons, getLessonById, createLesson, updateLesson, deleteLesson,
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 import { parseYouTubeUrl, isValidYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils/youtube";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
