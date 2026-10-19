@@ -130,6 +130,8 @@ export interface Lesson {
   instructor?: string | null;
   faculty?: Faculty;
   // Joined / legacy fields
+  video_id?: string | null;
+  videoId?: string | null;
   topic?: Topic;
   module?: Module;
   subject?: Subject;
@@ -235,4 +237,6 @@ export interface SearchResultItem {
   description?: string | null;
   url: string;
   badge?: string;
+  youtube_url?: string | null;
+  youtube_video_id?: string | null;
 }

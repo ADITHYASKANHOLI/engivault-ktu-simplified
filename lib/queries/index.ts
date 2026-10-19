@@ -4,7 +4,6 @@ import {
   Subject,
   Module,
   Lesson,
-  Lecture,
   Video,
   Material,
   SiteSettings,
@@ -18,7 +17,7 @@ import {
 import { createClient as createServerSupabase, isSupabaseConfigured } from "../supabase/server";
 import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
 import { getSignedVideoUrl, getSignedMaterialUrl } from "../storage/signed-urls";
-import { extractYouTubeVideoId, getYouTubeThumbnailUrl } from "../utils/youtube";
+import { extractYouTubeVideoId, getYouTubeThumbnailUrl, getYouTubeWatchUrl } from "../utils/youtube";
 export {
   initialFallbackSiteSettings,
   initialFallbackDepartments,
@@ -195,16 +194,26 @@ function enrichFallbackLesson(lesson: Lesson): Lesson {
   const video = fallbackVideos.find((v) => v.lesson_id === lesson.id) || null;
   const materials = fallbackMaterials.filter((m) => m.lesson_id === lesson.id);
 
-  const rawYoutubeUrl = lesson.youtube_url || lesson.youtubeUrl || null;
-  const youtube_url = rawYoutubeUrl ? rawYoutubeUrl.trim() : null;
-  const youtube_video_id =
+  const rawVideoId =
     lesson.youtube_video_id ||
     lesson.youtubeVideoId ||
-    (youtube_url ? extractYouTubeVideoId(youtube_url) : null);
+    lesson.video_id ||
+    lesson.videoId ||
+    null;
+  const rawYoutubeUrl = lesson.youtube_url || lesson.youtubeUrl || null;
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
+  const youtube_video_id =
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawYoutubeUrl ? extractYouTubeVideoId(String(rawYoutubeUrl).trim()) : null);
+
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : (rawYoutubeUrl ? getYouTubeWatchUrl(String(rawYoutubeUrl).trim()) : null);
 
   const thumbnail_path =
     lesson.thumbnail_path ||
-    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id) : null);
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
 
   const enrichedSubject: Subject | undefined = rawSubject
     ? {
@@ -237,14 +246,26 @@ function enrichFallbackLesson(lesson: Lesson): Lesson {
 export function normalizeLessonFields<T extends Record<string, any>>(lesson: T): T {
   if (!lesson) return lesson;
   const rawUrl = lesson.youtube_url || lesson.youtubeUrl || null;
-  const youtube_url = rawUrl ? String(rawUrl).trim() : null;
-  const youtube_video_id =
+  const rawVideoId =
     lesson.youtube_video_id ||
     lesson.youtubeVideoId ||
-    (youtube_url ? extractYouTubeVideoId(youtube_url) : null);
+    lesson.video_id ||
+    lesson.videoId ||
+    null;
+
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
+  const youtube_video_id =
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : (rawUrl ? getYouTubeWatchUrl(String(rawUrl).trim()) : null);
+
   const thumbnail_path =
     lesson.thumbnail_path ||
-    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id) : null);
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
 
   const display_order =
     lesson.display_order ??
@@ -1519,14 +1540,18 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
 
 export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
   const rawUrl = data.youtube_url || data.youtubeUrl || null;
-  const youtube_url = rawUrl ? String(rawUrl).trim() : null;
+  const rawVideoId = data.youtube_video_id || data.youtubeVideoId || null;
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
   const youtube_video_id =
-    data.youtube_video_id ||
-    data.youtubeVideoId ||
-    (youtube_url ? extractYouTubeVideoId(youtube_url) : null);
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : null;
   const thumbnail_path =
     data.thumbnail_path ||
-    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id) : null);
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
 
   const display_order =
     data.display_order ??
@@ -1613,15 +1638,25 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
   if ("youtubeVideoId" in cleanUpdates && !("youtube_video_id" in cleanUpdates)) {
     cleanUpdates.youtube_video_id = cleanUpdates.youtubeVideoId;
   }
-  if ("youtube_url" in cleanUpdates) {
-    const rawUrl = cleanUpdates.youtube_url;
-    if (typeof rawUrl === "string" && rawUrl.trim()) {
-      const trimmed = rawUrl.trim();
-      cleanUpdates.youtube_url = trimmed;
-      const vidId = extractYouTubeVideoId(trimmed);
+  if (
+    "youtube_url" in cleanUpdates ||
+    "youtubeUrl" in cleanUpdates ||
+    "youtube_video_id" in cleanUpdates ||
+    "youtubeVideoId" in cleanUpdates
+  ) {
+    const rawUrl = cleanUpdates.youtube_url ?? cleanUpdates.youtubeUrl ?? null;
+    const rawId = cleanUpdates.youtube_video_id ?? cleanUpdates.youtubeVideoId ?? null;
+    const trimmedId = rawId ? String(rawId).trim() : null;
+    const vidId =
+      (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+        ? trimmedId
+        : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+
+    if (vidId) {
       cleanUpdates.youtube_video_id = vidId;
-      if (vidId && !cleanUpdates.thumbnail_path) {
-        cleanUpdates.thumbnail_path = getYouTubeThumbnailUrl(vidId);
+      cleanUpdates.youtube_url = `https://www.youtube.com/watch?v=${vidId}`;
+      if (!cleanUpdates.thumbnail_path) {
+        cleanUpdates.thumbnail_path = getYouTubeThumbnailUrl(vidId, "hqdefault");
       }
     } else {
       cleanUpdates.youtube_url = null;
@@ -2238,7 +2273,7 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       // Search published lessons
       const { data: lessons, error: lesErr } = await supabase
         .from("lessons")
-        .select("id, title, slug, description, module_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
+        .select("id, title, slug, description, module_id, youtube_url, youtube_video_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
         .eq("published", true)
         .eq("modules.published", true)
         .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
@@ -2248,6 +2283,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       if (lessons) {
         for (const l of lessons) {
           const mod = l.modules as any;
+          const watchUrl = getYouTubeWatchUrl((l as any).youtube_url || (l as any).youtube_video_id);
+          const videoId = (l as any).youtube_video_id || extractYouTubeVideoId(watchUrl);
           results.push({
             id: l.id,
             type: "lesson",
@@ -2255,6 +2292,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
             description: l.description || undefined,
             url: `/subjects/${mod.subjects.slug}/${mod.slug}/${l.slug}`,
             badge: "Lecture",
+            youtube_url: watchUrl,
+            youtube_video_id: videoId,
           });
         }
       }
@@ -2304,6 +2343,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       const parentModule = fallbackModules.find((m) => m.id === les.module_id && m.published);
       const parentSubject = parentModule ? subjects.find((s) => s.id === parentModule.subject_id) : null;
       if (parentSubject && parentModule) {
+        const watchUrl = getYouTubeWatchUrl(les.youtube_url || les.youtube_video_id);
+        const videoId = les.youtube_video_id || extractYouTubeVideoId(watchUrl);
         results.push({
           id: les.id,
           type: "lesson",
@@ -2311,6 +2352,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
           description: les.description || undefined,
           url: `/subjects/${parentSubject.slug}/${parentModule.slug}/${les.slug}`,
           badge: "Lecture",
+          youtube_url: watchUrl,
+          youtube_video_id: videoId,
         });
       }
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, VideoOff } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, VideoOff, ExternalLink } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import { extractYouTubeVideoId, getYouTubeEmbedUrl } from "@/lib/utils/youtube";
 
@@ -39,16 +39,34 @@ export function VideoPlayer({
   // 1. PRIMARY: YouTube Embedded Player
   if (resolvedVideoId) {
     const embedUrl = getYouTubeEmbedUrl(resolvedVideoId);
+    const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(resolvedVideoId)}`;
     return (
-      <div className="relative aspect-video w-full rounded-2xl bg-black border border-slate-800 shadow-2xl overflow-hidden select-none">
-        <iframe
-          src={`${embedUrl}?rel=0&modestbranding=1&enablejsapi=1`}
-          title={title}
-          className="w-full h-full border-0 rounded-2xl"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          loading="lazy"
-        />
+      <div className="space-y-2.5">
+        <div className="relative aspect-video w-full rounded-2xl bg-black border border-slate-800 shadow-2xl overflow-hidden select-none">
+          <iframe
+            src={`${embedUrl}?rel=0&modestbranding=1&enablejsapi=1`}
+            title={title}
+            className="w-full h-full border-0 rounded-2xl"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
+
+        <div className="flex items-center justify-between px-1 text-xs">
+          <span className="font-mono text-[11px] text-slate-500">
+            Verified YouTube Lecture Embed
+          </span>
+          <a
+            href={watchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 font-bold text-red-600 hover:text-red-700 hover:underline transition-colors"
+          >
+            <span>Watch directly on YouTube</span>
+            <ExternalLink className="w-3.5 h-3.5 text-red-600" />
+          </a>
+        </div>
       </div>
     );
   }

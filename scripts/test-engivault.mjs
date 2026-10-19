@@ -108,11 +108,41 @@ async function runTests() {
     return `https://img.youtube.com/vi/${encodeURIComponent(id)}/${quality}.jpg`;
   }
 
+  function getYouTubeWatchUrl(videoIdOrUrl) {
+    if (!videoIdOrUrl) return null;
+    const trimmed = String(videoIdOrUrl).trim();
+    if (!trimmed) return null;
+
+    if (YOUTUBE_VIDEO_ID_REGEX.test(trimmed)) {
+      return `https://www.youtube.com/watch?v=${trimmed}`;
+    }
+
+    const parsed = parseYouTubeUrl(trimmed);
+    if (parsed.isValid && parsed.videoId) {
+      return `https://www.youtube.com/watch?v=${parsed.videoId}`;
+    }
+
+    return null;
+  }
+
   test("Valid watch URL extracts 11-char video ID", () => {
     const res = parseYouTubeUrl("https://www.youtube.com/watch?v=1b_rJ2_aG4c");
     assert.equal(res.isValid, true);
     assert.equal(res.videoId, "1b_rJ2_aG4c");
     assert.equal(res.canonicalUrl, "https://www.youtube.com/watch?v=1b_rJ2_aG4c");
+  });
+
+  test("getYouTubeWatchUrl resolves various YouTube formats to canonical watch URL", () => {
+    const expected = "https://www.youtube.com/watch?v=1b_rJ2_aG4c";
+    assert.equal(getYouTubeWatchUrl("https://www.youtube.com/watch?v=1b_rJ2_aG4c"), expected);
+    assert.equal(getYouTubeWatchUrl("https://youtu.be/1b_rJ2_aG4c"), expected);
+    assert.equal(getYouTubeWatchUrl("https://www.youtube.com/shorts/1b_rJ2_aG4c"), expected);
+    assert.equal(getYouTubeWatchUrl("https://www.youtube.com/embed/1b_rJ2_aG4c"), expected);
+    assert.equal(getYouTubeWatchUrl("1b_rJ2_aG4c"), expected);
+    assert.equal(getYouTubeWatchUrl(""), null);
+    assert.equal(getYouTubeWatchUrl(null), null);
+    assert.equal(getYouTubeWatchUrl("https://vimeo.com/12345"), null);
+    assert.equal(getYouTubeWatchUrl("https://attacker.com/watch?v=1b_rJ2_aG4c"), null);
   });
 
   test("Valid short URL (youtu.be) extracts video ID", () => {
@@ -706,6 +736,140 @@ async function runTests() {
     }
     assert.equal(caught, true);
     assert.equal(fileCleanedUp, true, "Orphaned storage file must be cleaned up if metadata write fails");
+  });
+
+  // 9. Lecture Card YouTube Navigation & Regression Suite
+  console.log("\n--- 9. LECTURE CARD YOUTUBE NAVIGATION & REGRESSION SUITE ---");
+
+  test("normalizeLessonFields derives canonical watch URL when only youtube_video_id is present", () => {
+    function normalizeLessonFieldsTest(raw) {
+      const canonicalWatchUrl = getYouTubeWatchUrl(raw.youtube_url || raw.youtube_video_id);
+      const canonicalVideoId = raw.youtube_video_id || (canonicalWatchUrl ? extractYouTubeVideoId(canonicalWatchUrl) : null);
+      return {
+        ...raw,
+        youtube_url: canonicalWatchUrl,
+        youtube_video_id: canonicalVideoId,
+      };
+    }
+
+    const legacyLesson = {
+      id: "les-legacy-1",
+      title: "Transforms Lecture",
+      youtube_video_id: "1b_rJ2_aG4c",
+      youtube_url: null,
+    };
+    const normalized = normalizeLessonFieldsTest(legacyLesson);
+    assert.equal(normalized.youtube_url, "https://www.youtube.com/watch?v=1b_rJ2_aG4c");
+    assert.equal(normalized.youtube_video_id, "1b_rJ2_aG4c");
+  });
+
+  test("normalizeLessonFields normalizes shortened/shorts/embed URLs to canonical watch URL", () => {
+    function normalizeLessonFieldsTest(raw) {
+      const canonicalWatchUrl = getYouTubeWatchUrl(raw.youtube_url || raw.youtube_video_id);
+      const canonicalVideoId = raw.youtube_video_id || (canonicalWatchUrl ? extractYouTubeVideoId(canonicalWatchUrl) : null);
+      return {
+        ...raw,
+        youtube_url: canonicalWatchUrl,
+        youtube_video_id: canonicalVideoId,
+      };
+    }
+
+    const shortUrlLesson = {
+      id: "les-short-1",
+      title: "Short Link Lecture",
+      youtube_url: "https://youtu.be/1b_rJ2_aG4c?feature=shared",
+      youtube_video_id: null,
+    };
+    const normalized = normalizeLessonFieldsTest(shortUrlLesson);
+    assert.equal(normalized.youtube_url, "https://www.youtube.com/watch?v=1b_rJ2_aG4c");
+    assert.equal(normalized.youtube_video_id, "1b_rJ2_aG4c");
+  });
+
+  test("normalizeLessonFields cleanly handles missing/invalid YouTube links without dummy IDs", () => {
+    function normalizeLessonFieldsTest(raw) {
+      const canonicalWatchUrl = getYouTubeWatchUrl(raw.youtube_url || raw.youtube_video_id);
+      const canonicalVideoId = raw.youtube_video_id || (canonicalWatchUrl ? extractYouTubeVideoId(canonicalWatchUrl) : null);
+      return {
+        ...raw,
+        youtube_url: canonicalWatchUrl,
+        youtube_video_id: canonicalVideoId,
+      };
+    }
+
+    const invalidLesson = {
+      id: "les-invalid-1",
+      title: "No Video Lecture",
+      youtube_url: "https://invalid-domain.com/video.mp4",
+      youtube_video_id: null,
+    };
+    const normalized = normalizeLessonFieldsTest(invalidLesson);
+    assert.equal(normalized.youtube_url, null);
+    assert.equal(normalized.youtube_video_id, null);
+  });
+
+  test("Updating a lecture's YouTube URL synchronizes its stored video ID", () => {
+    function updateLessonVideoFields(oldRecord, newUrl) {
+      const parseResult = parseYouTubeUrl(newUrl);
+      if (parseResult.isValid) {
+        return {
+          ...oldRecord,
+          youtube_url: parseResult.canonicalUrl,
+          youtube_video_id: parseResult.videoId,
+        };
+      }
+      return {
+        ...oldRecord,
+        youtube_url: null,
+        youtube_video_id: null,
+      };
+    }
+
+    const initial = {
+      id: "les-up-1",
+      youtube_url: "https://www.youtube.com/watch?v=1b_rJ2_aG4c",
+      youtube_video_id: "1b_rJ2_aG4c",
+    };
+    const updated = updateLessonVideoFields(initial, "https://youtu.be/9bZkp7q19f0");
+    assert.equal(updated.youtube_url, "https://www.youtube.com/watch?v=9bZkp7q19f0");
+    assert.equal(updated.youtube_video_id, "9bZkp7q19f0");
+  });
+
+  test("LectureCard component uses anchor with target='_blank' and rel='noopener noreferrer'", () => {
+    const lectureCardCode = nodeFs.readFileSync("components/lectures/LectureCard.tsx", "utf-8");
+    assert.ok(lectureCardCode.includes('target="_blank"'), "LectureCard must use target='_blank'");
+    assert.ok(lectureCardCode.includes('rel="noopener noreferrer"'), "LectureCard must use rel='noopener noreferrer'");
+    assert.ok(lectureCardCode.includes("getYouTubeWatchUrl"), "LectureCard must normalize with getYouTubeWatchUrl");
+    assert.ok(lectureCardCode.includes("Video Unavailable"), "LectureCard must provide unavailable state");
+    
+    // Ensure no nested <a or <Link elements within the anchor branch children
+    const anchorBranch = lectureCardCode.split("if (watchUrl) {")[1].split("return (")[1].split("</a>")[0];
+    const anchorInner = anchorBranch.substring(anchorBranch.indexOf(">") + 1);
+    const nestedLinks = anchorInner.match(/<a\b|<Link\b/g) || [];
+    assert.equal(nestedLinks.length, 0, "Anchor branch must not contain nested link elements");
+  });
+
+  test("LessonRow component provides direct YouTube navigation in a new tab", () => {
+    const lessonRowCode = nodeFs.readFileSync("components/lessons/LessonRow.tsx", "utf-8");
+    assert.ok(lessonRowCode.includes('target="_blank"'), "LessonRow must open in a new tab");
+    assert.ok(lessonRowCode.includes('rel="noopener noreferrer"'), "LessonRow must have security rel attributes");
+    assert.ok(lessonRowCode.includes("getYouTubeWatchUrl"), "LessonRow must normalize watch URL");
+  });
+
+  test("Lesson detail page header features prominent 'Watch on YouTube' button", () => {
+    const detailPageCode = nodeFs.readFileSync(
+      "app/(public)/subjects/[subjectSlug]/[moduleSlug]/[lessonSlug]/page.tsx",
+      "utf-8"
+    );
+    assert.ok(detailPageCode.includes("Watch on YouTube"), "Detail page must feature 'Watch on YouTube'");
+    assert.ok(detailPageCode.includes('target="_blank"'), "Detail page link must target '_blank'");
+    assert.ok(detailPageCode.includes('rel="noopener noreferrer"'), "Detail page link must include security rel attributes");
+  });
+
+  test("Admin lesson dashboard maintains edit and delete actions alongside preview", () => {
+    const adminLessonsCode = nodeFs.readFileSync("app/admin/dashboard/lessons/page.tsx", "utf-8");
+    assert.ok(adminLessonsCode.includes("openEditModal"), "Admin dashboard must retain edit modal handler");
+    assert.ok(adminLessonsCode.includes("setDeleteModalLesson"), "Admin dashboard must retain delete modal handler");
+    assert.ok(adminLessonsCode.includes("getYouTubeWatchUrl"), "Admin dashboard must validate watch URL on submit/preview");
   });
 
   console.log("\n=================================================");

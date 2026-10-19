@@ -31,8 +31,7 @@ import {
   extractYouTubeVideoId,
   getYouTubeEmbedUrl,
   getYouTubeThumbnailUrl,
-  isValidYouTubeUrl,
-  parseYouTubeUrl,
+  getYouTubeWatchUrl,
 } from "@/lib/utils/youtube";
 
 function AdminLessonsContent() {
@@ -387,7 +386,7 @@ function AdminLessonsContent() {
         duration_seconds: Number(formData.duration_seconds) || 1200,
         description: formData.description.trim() || null,
         published: formData.published,
-        youtube_url: formData.youtube_url.trim(),
+        youtube_url: `https://www.youtube.com/watch?v=${detectedYtId}`,
         youtube_video_id: detectedYtId,
         thumbnail_path: getYouTubeThumbnailUrl(detectedYtId, "hqdefault"),
       };
@@ -848,6 +847,20 @@ function AdminLessonsContent() {
 
                       {/* Actions */}
                       <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                        {(() => {
+                          const tableWatchUrl = getYouTubeWatchUrl(ytVideoId || rawUrl);
+                          return tableWatchUrl ? (
+                            <a
+                              href={tableWatchUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Watch lecture on YouTube (opens in new tab)"
+                              className="inline-flex p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <YoutubeIcon className="w-4 h-4" />
+                            </a>
+                          ) : null;
+                        })()}
                         {l.module?.subject?.slug && l.module?.slug && (
                           <Link
                             href={`/subjects/${l.module.subject.slug}/${l.module.slug}/${l.slug}`}

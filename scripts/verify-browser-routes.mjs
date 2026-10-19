@@ -38,7 +38,7 @@ async function verifyRoutes() {
   assert.ok(lecHtml.includes("Search lectures by topic"), "Search bar present");
   assert.ok(lecHtml.includes("All Disciplines"), "Discipline filter present");
   assert.ok(lecHtml.includes("All Semesters"), "Semester filter present");
-  assert.ok(lecHtml.includes("Watch Lecture"), "Lecture cards rendered");
+  assert.ok(lecHtml.includes("Watch on YouTube") || lecHtml.includes("Watch Lecture"), "Lecture cards rendered");
   console.log("  ✅ PASS: Academic Lectures browser renders with cascading filters");
 
   // 3. Search Query on /lectures?q=Laplace

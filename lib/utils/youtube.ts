@@ -97,6 +97,23 @@ export function isValidYouTubeUrl(input: string | null | undefined): boolean {
 }
 
 /**
+ * Constructs a safe canonical YouTube watch URL (https://www.youtube.com/watch?v=VIDEO_ID)
+ * using a validated video ID or URL. Returns null for invalid or missing inputs.
+ */
+export function getYouTubeWatchUrl(videoIdOrUrl: string | null | undefined): string | null {
+  if (!videoIdOrUrl) return null;
+  const trimmed = String(videoIdOrUrl).trim();
+  if (!trimmed) return null;
+
+  const videoId = YOUTUBE_VIDEO_ID_REGEX.test(trimmed)
+    ? trimmed
+    : extractYouTubeVideoId(trimmed);
+
+  if (!videoId) return null;
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+}
+
+/**
  * Constructs a safe YouTube embed URL using the validated video ID.
  * Never directly embeds raw arbitrary user URLs into iframes.
  */

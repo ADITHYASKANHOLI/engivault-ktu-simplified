@@ -3,7 +3,7 @@ import { getAdminSession } from "@/lib/auth/session";
 import { lessonSchema, lessonUpdateSchema } from "@/lib/validation/schemas";
 import { getAllLessons, getLessonById, createLesson, updateLesson, deleteLesson, getModuleById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
-import { parseYouTubeUrl, isValidYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils/youtube";
+import { parseYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils/youtube";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
     }
 
     body.youtube_video_id = parseResult.videoId;
-    body.thumbnail_path = body.thumbnail_path || getYouTubeThumbnailUrl(parseResult.videoId);
+    body.youtube_url = parseResult.canonicalUrl;
+    body.thumbnail_path = body.thumbnail_path || getYouTubeThumbnailUrl(parseResult.videoId, "hqdefault");
 
     const result = lessonSchema.safeParse(body);
 
@@ -123,6 +124,17 @@ export async function PATCH(request: NextRequest) {
           ? rawUpdates.youtube_url
           : rawUpdates.youtubeUrl,
     };
+
+    if (updates.youtube_url && typeof updates.youtube_url === "string" && updates.youtube_url.trim()) {
+      const parseResult = parseYouTubeUrl(updates.youtube_url.trim());
+      if (parseResult.isValid && parseResult.videoId) {
+        updates.youtube_video_id = parseResult.videoId;
+        updates.youtube_url = parseResult.canonicalUrl;
+        if (!updates.thumbnail_path) {
+          updates.thumbnail_path = getYouTubeThumbnailUrl(parseResult.videoId, "hqdefault");
+        }
+      }
+    }
 
     const result = lessonUpdateSchema.safeParse(updates);
     if (!result.success) {

@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { PlayCircle, Layers } from "lucide-react";
+import { YoutubeIcon } from "@/components/icons/YoutubeIcon";
 import { Module, Lesson } from "@/types";
 import { formatDuration } from "@/lib/utils";
+import { getYouTubeWatchUrl } from "@/lib/utils/youtube";
 
 interface LessonSidebarProps {
   subjectSlug: string;
@@ -36,32 +38,58 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
               <div className="space-y-1 pl-1">
                 {(mod.lessons || []).map((les) => {
                   const isActive = les.id === currentLessonId;
+                  const lesWatchUrl =
+                    getYouTubeWatchUrl(les.youtube_video_id || les.youtubeVideoId) ||
+                    getYouTubeWatchUrl(les.youtube_url || les.youtubeUrl);
+
                   return (
-                    <Link
+                    <div
                       key={les.id}
-                      href={`/subjects/${subjectSlug}/${mod.slug}/${les.slug}`}
-                      className={`group flex items-start gap-2.5 p-2 rounded-lg text-xs transition-all ${
+                      className={`group flex items-center justify-between p-1.5 rounded-lg text-xs transition-all ${
                         isActive
                           ? "bg-blue-600 text-white font-medium shadow-xs"
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
-                      <PlayCircle
-                        className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
-                          isActive ? "text-cyan-300" : "text-slate-400 group-hover:text-blue-600"
-                        }`}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate leading-tight">{les.title}</div>
-                        <div
-                          className={`text-[10px] font-mono mt-0.5 ${
-                            isActive ? "text-blue-100" : "text-slate-400"
+                      <Link
+                        href={`/subjects/${subjectSlug}/${mod.slug}/${les.slug}`}
+                        className="flex items-start gap-2.5 min-w-0 flex-1"
+                        aria-label={`View lecture notes for ${les.title}`}
+                      >
+                        <PlayCircle
+                          className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                            isActive ? "text-cyan-300" : "text-slate-400 group-hover:text-blue-600"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate leading-tight">{les.title}</div>
+                          <div
+                            className={`text-[10px] font-mono mt-0.5 ${
+                              isActive ? "text-blue-100" : "text-slate-400"
+                            }`}
+                          >
+                            {formatDuration(les.duration_seconds)}
+                          </div>
+                        </div>
+                      </Link>
+
+                      {lesWatchUrl && (
+                        <a
+                          href={lesWatchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Watch lecture on YouTube (opens in new tab)"
+                          aria-label={`Watch ${les.title} on YouTube (opens in new tab)`}
+                          className={`p-1 rounded transition-colors shrink-0 ${
+                            isActive
+                              ? "text-blue-100 hover:text-white hover:bg-blue-700"
+                              : "text-slate-400 hover:text-red-600 hover:bg-red-50"
                           }`}
                         >
-                          {formatDuration(les.duration_seconds)}
-                        </div>
-                      </div>
-                    </Link>
+                          <YoutubeIcon className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
                   );
                 })}
               </div>

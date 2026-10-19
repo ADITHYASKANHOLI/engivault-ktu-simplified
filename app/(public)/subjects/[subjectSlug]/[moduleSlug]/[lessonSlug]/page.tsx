@@ -10,7 +10,10 @@ import {
   User,
   Layers,
   BookOpen,
+  ExternalLink,
 } from "lucide-react";
+import { YoutubeIcon } from "@/components/icons/YoutubeIcon";
+import { getYouTubeWatchUrl } from "@/lib/utils/youtube";
 import {
   getSubjectBySlug,
   getModuleBySlug,
@@ -58,6 +61,10 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   const lesson = await getLessonBySlug(currentModule.id, lessonSlug);
   if (!lesson) notFound();
+
+  const watchUrl =
+    getYouTubeWatchUrl(lesson.youtube_video_id || lesson.youtubeVideoId) ||
+    getYouTubeWatchUrl(lesson.youtube_url || lesson.youtubeUrl);
 
   // Fetch all modules with lessons for sidebar navigation
   const allModules = await getModulesForSubject(subject.id);
@@ -167,9 +174,24 @@ export default async function LessonPage({ params }: LessonPageProps) {
                   </h1>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-mono bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{formatDuration(lesson.duration_seconds || 1200)}</span>
+                <div className="flex items-center gap-3">
+                  {watchUrl && (
+                    <a
+                      href={watchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm hover:shadow transition-all"
+                    >
+                      <YoutubeIcon className="w-4 h-4 text-white" />
+                      <span>Watch on YouTube</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                    </a>
+                  )}
+
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-mono bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{formatDuration(lesson.duration_seconds || 1200)}</span>
+                  </div>
                 </div>
               </div>
 
