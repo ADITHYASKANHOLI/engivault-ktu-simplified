@@ -89,6 +89,7 @@ export const lessonSchema = z.object({
   duration_seconds: z.number().int().min(0).optional().nullable(),
   published: z.boolean().default(false),
   display_order: z.number().int().default(0),
+  order_index: z.number().int().optional(),
   instructor: z.string().max(200).optional().nullable(),
   status: z.enum(["published", "draft", "archived"]).optional(),
   youtube_url: z
@@ -142,6 +143,7 @@ export const lessonUpdateSchema = z.object({
   duration_seconds: z.number().int().min(0).optional().nullable(),
   published: z.boolean().optional(),
   display_order: z.number().int().optional(),
+  order_index: z.number().int().optional(),
   instructor: z.string().max(200).optional().nullable(),
   status: z.enum(["published", "draft", "archived"]).optional(),
   youtube_url: z
@@ -157,7 +159,6 @@ export const lessonUpdateSchema = z.object({
     ),
   youtube_video_id: z.string().optional().nullable(),
 });
-
 
 export const videoSchema = z.object({
   lesson_id: uuidSchema,
@@ -235,7 +236,7 @@ export const uploadAuthorizeSchema = z.object({
   filename: z.string().min(1),
   mime_type: z.string().min(1),
   file_size: z.number().int().positive(),
-  subject_id: uuidSchema.optional(),
-  module_id: uuidSchema.optional(),
-  lesson_id: uuidSchema.optional(),
+  subject_id: uuidSchema.optional().nullable().or(z.literal("")),
+  module_id: uuidSchema.optional().nullable().or(z.literal("")),
+  lesson_id: uuidSchema.optional().nullable().or(z.literal("")),
 });

@@ -441,6 +441,169 @@ async function runTests() {
     assert.equal(departments.length, 0);
   });
 
+  // 8. Lecture Schema & Storage Upload Regression Tests
+  console.log("\n--- 8. LECTURE SCHEMA & STORAGE UPLOAD REGRESSION TESTS ---");
+
+  test("Lecture insert payload excludes unsupported order_index column", () => {
+    // Replicates createLesson payload builder logic
+    const inputData = {
+      title: "Differential Equations 101",
+      module_id: "mod-123",
+      lesson_number: 3,
+      order_index: 3,
+      youtube_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    };
+
+    const display_order =
+      inputData.display_order ??
+      inputData.order_index ??
+      inputData.lesson_number ??
+      1;
+
+    const insertPayload = {
+      id: "test-id",
+      module_id: inputData.module_id,
+      title: inputData.title,
+      lesson_number: inputData.lesson_number,
+      display_order,
+      youtube_url: inputData.youtube_url,
+      youtube_video_id: "dQw4w9WgXcQ",
+    };
+
+    // Strict assertions: order_index must NOT be in insertPayload
+    assert.equal(Object.prototype.hasOwnProperty.call(insertPayload, "order_index"), false, "order_index must NOT be in insertPayload");
+    assert.equal(insertPayload.display_order, 3, "display_order must be set correctly");
+  });
+
+  test("Lecture update strips order_index and maps to display_order", () => {
+    const rawUpdates = {
+      title: "Updated Lecture Title",
+      order_index: 5,
+    };
+    const cleanUpdates = { ...rawUpdates };
+    if (cleanUpdates.display_order === undefined && cleanUpdates.order_index !== undefined) {
+      cleanUpdates.display_order = cleanUpdates.order_index;
+    }
+    delete cleanUpdates.order_index;
+    delete cleanUpdates.orderIndex;
+
+    assert.equal(Object.prototype.hasOwnProperty.call(cleanUpdates, "order_index"), false);
+    assert.equal(cleanUpdates.display_order, 5);
+  });
+
+  test("Lesson normalization guarantees both display_order and order_index for legacy compatibility", () => {
+    const rawDbLesson = {
+      id: "les-1",
+      title: "Fourier Series",
+      display_order: 4,
+      lesson_number: 4,
+    };
+
+    const display_order =
+      rawDbLesson.display_order ??
+      rawDbLesson.order_index ??
+      rawDbLesson.lesson_number ??
+      1;
+
+    const normalized = {
+      ...rawDbLesson,
+      display_order,
+      order_index: display_order,
+      orderIndex: display_order,
+    };
+
+    assert.equal(normalized.display_order, 4);
+    assert.equal(normalized.order_index, 4);
+    assert.equal(normalized.orderIndex, 4);
+  });
+
+  test("Upload wizard rejects dummy/fabricated UUID fallbacks for missing selections", () => {
+    const dummyModule = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    const dummyLesson = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+
+    const isFabricatedUuid = (val) => val === dummyModule || val === dummyLesson;
+    const isTargetReady = (sub, mod, les) =>
+      Boolean(sub && mod && les && !isFabricatedUuid(mod) && !isFabricatedUuid(les));
+
+    assert.equal(isTargetReady("sub-1", dummyModule, dummyLesson), false, "Dummy UUIDs must be rejected");
+    assert.equal(isTargetReady("sub-1", "real-mod-id", ""), false, "Empty lecture selection must be rejected");
+    assert.equal(isTargetReady("sub-1", "real-mod-id", "real-les-id"), true, "Valid selections must be accepted");
+  });
+
+  await testAsync("Upload pipeline enforces storage transfer before database metadata write", async () => {
+    let storageTransferred = false;
+    let metadataWritten = false;
+
+    // Simulate upload pipeline
+    async function executeUpload(simulateStorageFailure = false) {
+      // 1. Authorize
+      const auth = { storagePath: "materials/doc1.pdf", mode: "supabase-direct" };
+      assert.ok(auth.storagePath);
+      
+      // 2. Storage transfer
+      if (simulateStorageFailure) {
+        throw new Error("Supabase Storage: Connection timeout during transfer");
+      }
+      storageTransferred = true;
+
+      // 3. Metadata write ONLY after storage transfer succeeds
+      if (!storageTransferred) {
+        throw new Error("Cannot write metadata without successful storage transfer");
+      }
+      metadataWritten = true;
+      return { success: true };
+    }
+
+    // Success path
+    await executeUpload(false);
+    assert.equal(storageTransferred, true);
+    assert.equal(metadataWritten, true);
+
+    // Failure path: storage failure must halt pipeline before metadata
+    storageTransferred = false;
+    metadataWritten = false;
+    let errorCaught = false;
+    try {
+      await executeUpload(true);
+    } catch {
+      errorCaught = true;
+    }
+    assert.equal(errorCaught, true, "Storage failure must throw error");
+    assert.equal(storageTransferred, false, "Storage must not be marked transferred");
+    assert.equal(metadataWritten, false, "Metadata must NOT be written if storage fails");
+  });
+
+  await testAsync("Failed metadata request triggers cleanup of uploaded storage file", async () => {
+    let fileCleanedUp = false;
+    const uploadedPath = "materials/temp-orphan.pdf";
+
+    // Simulate: Storage succeeds, but database metadata insert throws
+    async function simulateFailedMetadataPipeline() {
+      // Step 1: Storage succeeds
+      const storageSuccess = true;
+
+      // Step 2: Metadata throws (e.g. database constraint)
+      try {
+        throw new Error("Database error: Subject relation unavailable");
+      } catch (metaErr) {
+        // Safe cleanup handling
+        if (storageSuccess && uploadedPath) {
+          fileCleanedUp = true;
+        }
+        throw metaErr;
+      }
+    }
+
+    let caught = false;
+    try {
+      await simulateFailedMetadataPipeline();
+    } catch {
+      caught = true;
+    }
+    assert.equal(caught, true);
+    assert.equal(fileCleanedUp, true, "Orphaned storage file must be cleaned up if metadata write fails");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

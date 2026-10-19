@@ -246,8 +246,18 @@ export function normalizeLessonFields<T extends Record<string, any>>(lesson: T):
     lesson.thumbnail_path ||
     (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id) : null);
 
+  const display_order =
+    lesson.display_order ??
+    lesson.order_index ??
+    lesson.orderIndex ??
+    lesson.lesson_number ??
+    1;
+
   return {
     ...lesson,
+    display_order,
+    order_index: display_order,
+    orderIndex: display_order,
     youtube_url,
     youtube_video_id,
     youtubeUrl: youtube_url,
@@ -1518,7 +1528,14 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     data.thumbnail_path ||
     (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id) : null);
 
-  const insertPayload = {
+  const display_order =
+    data.display_order ??
+    data.order_index ??
+    (data as any).orderIndex ??
+    data.lesson_number ??
+    (fallbackLessons.length + 1);
+
+  const insertPayload: Record<string, any> = {
     id: data.id || crypto.randomUUID(),
     module_id: data.module_id!,
     topic_id: data.topic_id || null,
@@ -1531,8 +1548,7 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     thumbnail_path: thumbnail_path || null,
     duration_seconds: data.duration_seconds ?? 1200,
     published: Boolean(data.published),
-    display_order: data.display_order ?? (fallbackLessons.length + 1),
-    order_index: data.order_index ?? (data.lesson_number ?? 1),
+    display_order,
     status: data.status || (Boolean(data.published) ? "published" : "draft"),
     youtube_url,
     youtube_video_id,
@@ -1543,12 +1559,33 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
+      let { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
+
+      // Resilience against databases missing migration 006 (academic hierarchy columns on lessons)
+      if (error && error.message.includes("in the schema cache")) {
+        const optionalHierarchyCols = ["topic_id", "faculty_id", "instructor", "status"];
+        const retryPayload = { ...insertPayload };
+        let stripped = false;
+        for (const col of optionalHierarchyCols) {
+          if (error.message.includes(`'${col}'`)) {
+            delete retryPayload[col];
+            stripped = true;
+          }
+        }
+        if (stripped) {
+          console.warn("Retrying lecture insert without unmigrated academic hierarchy columns:", error.message);
+          const retry = await supabase.from("lessons").insert(retryPayload).select().single();
+          created = retry.data;
+          error = retry.error;
+        }
+      }
+
       if (error) {
         console.error("Supabase createLesson error:", error);
         throw new Error(`Failed to create lesson in database: ${error.message}`);
       }
-      const enriched = enrichFallbackLesson(created);
+      const normalizedData = normalizeLessonFields(created);
+      const enriched = enrichFallbackLesson(normalizedData);
       if (!isProduction()) {
         fallbackLessons.push(enriched);
       }
@@ -1564,9 +1601,9 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     throw new Error("Supabase database configuration is required to create lectures in production. Local JSON store is strictly disabled.");
   }
 
-  const newLesson: Lesson = {
+  const newLesson: Lesson = normalizeLessonFields({
     ...insertPayload,
-  };
+  }) as Lesson;
   const enriched = enrichFallbackLesson(newLesson);
   fallbackLessons.push(enriched);
   await logActivity("Lesson Created", "lesson", { id: newLesson.id, title: newLesson.title });
@@ -1597,6 +1634,13 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
     }
   }
 
+  if (cleanUpdates.display_order === undefined && cleanUpdates.order_index !== undefined) {
+    cleanUpdates.display_order = cleanUpdates.order_index;
+  }
+  delete cleanUpdates.order_index;
+  delete cleanUpdates.orderIndex;
+  delete cleanUpdates.sequence_order;
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
@@ -1611,8 +1655,30 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
       delete payload.materials;
       delete payload.youtubeUrl;
       delete payload.youtubeVideoId;
+      delete payload.order_index;
+      delete payload.orderIndex;
+      delete payload.sequence_order;
 
-      const { data, error } = await supabase.from("lessons").update(payload).eq("id", id).select().single();
+      let { data, error } = await supabase.from("lessons").update(payload).eq("id", id).select().single();
+
+      if (error && error.message.includes("in the schema cache")) {
+        const optionalHierarchyCols = ["topic_id", "faculty_id", "instructor", "status"];
+        const retryPayload = { ...payload };
+        let stripped = false;
+        for (const col of optionalHierarchyCols) {
+          if (error.message.includes(`'${col}'`)) {
+            delete retryPayload[col];
+            stripped = true;
+          }
+        }
+        if (stripped) {
+          console.warn("Retrying lecture update without unmigrated academic hierarchy columns:", error.message);
+          const retry = await supabase.from("lessons").update(retryPayload).eq("id", id).select().single();
+          data = retry.data;
+          error = retry.error;
+        }
+      }
+
       if (error) {
         console.error("Supabase updateLesson error:", error);
         throw new Error(`Failed to update lesson in database: ${error.message}`);

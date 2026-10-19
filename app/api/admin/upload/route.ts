@@ -56,11 +56,42 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+
+        if (file.size > 5368709120) {
+          return NextResponse.json({ error: "File exceeds 5GB maximum upload limit." }, { status: 400 });
+        }
       }
 
-      // Max size check (5GB)
-      if (file.size > 5368709120) {
-        return NextResponse.json({ error: "File exceeds 5GB maximum upload limit." }, { status: 400 });
+      // Validate material MIME types if target is engivault-materials
+      if (bucket === "engivault-materials") {
+        const mime = file.type?.toLowerCase() || "";
+        const name = file.name.toLowerCase();
+        const isValidDoc =
+          mime.includes("pdf") ||
+          mime.includes("document") ||
+          mime.includes("presentation") ||
+          mime.includes("text") ||
+          mime.includes("msword") ||
+          mime.includes("zip") ||
+          mime.includes("octet-stream") ||
+          name.endsWith(".pdf") ||
+          name.endsWith(".doc") ||
+          name.endsWith(".docx") ||
+          name.endsWith(".ppt") ||
+          name.endsWith(".pptx") ||
+          name.endsWith(".txt") ||
+          name.endsWith(".zip");
+
+        if (!isValidDoc) {
+          return NextResponse.json(
+            { error: "Invalid document format. Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, ZIP." },
+            { status: 400 }
+          );
+        }
+
+        if (file.size > 104857600) {
+          return NextResponse.json({ error: "File exceeds 100MB maximum upload limit for study materials." }, { status: 400 });
+        }
       }
 
       // Sanitize filename and generate collision-resistant storage path
@@ -149,7 +180,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { bucket, filename, file_size, subject_id, module_id, lesson_id } = result.data;
+    const { bucket, filename, file_size, subject_id, module_id, lesson_id, mime_type } = result.data;
+
+    // Validate video MIME types if target is engivault-videos
+    if (bucket === "engivault-videos") {
+      const mime = (mime_type || "").toLowerCase();
+      const name = filename.toLowerCase();
+      const isValidVideo =
+        mime.startsWith("video/") ||
+        name.endsWith(".mp4") ||
+        name.endsWith(".webm") ||
+        name.endsWith(".mov") ||
+        name.endsWith(".mkv");
+
+      if (!isValidVideo) {
+        return NextResponse.json(
+          { error: "Invalid video format. Supported formats: MP4, WebM, QuickTime (.mov), MKV." },
+          { status: 400 }
+        );
+      }
+
+      if (file_size > 5368709120) {
+        return NextResponse.json({ error: "File exceeds 5GB maximum upload limit." }, { status: 400 });
+      }
+    }
+
+    // Validate material MIME types if target is engivault-materials
+    if (bucket === "engivault-materials") {
+      const mime = (mime_type || "").toLowerCase();
+      const name = filename.toLowerCase();
+      const isValidDoc =
+        mime.includes("pdf") ||
+        mime.includes("document") ||
+        mime.includes("presentation") ||
+        mime.includes("text") ||
+        mime.includes("msword") ||
+        mime.includes("zip") ||
+        mime.includes("octet-stream") ||
+        name.endsWith(".pdf") ||
+        name.endsWith(".doc") ||
+        name.endsWith(".docx") ||
+        name.endsWith(".ppt") ||
+        name.endsWith(".pptx") ||
+        name.endsWith(".txt") ||
+        name.endsWith(".zip");
+
+      if (!isValidDoc) {
+        return NextResponse.json(
+          { error: "Invalid document format. Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, ZIP." },
+          { status: 400 }
+        );
+      }
+
+      if (file_size > 104857600) {
+        return NextResponse.json({ error: "File exceeds 100MB maximum upload limit for study materials." }, { status: 400 });
+      }
+    }
 
     const safeFilename = filename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
     const uniquePrefix = crypto.randomUUID();
