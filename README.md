@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/branding/engivault-official-logo.png" alt="ENGIVAULT Logo" width="560" />
+  <img src="public/branding/fole-logo.png" alt="FOLE Logo" width="560" />
 </p>
 
 # ENGIVAULT — Academic Learning Platform
