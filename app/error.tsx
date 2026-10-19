@@ -30,6 +30,11 @@ export default function Error({
           <p className="text-xs text-slate-500">
             An unexpected error occurred while loading this page. Our technical logs have recorded this incident.
           </p>
+          {error.digest && (
+            <p className="text-[11px] font-mono text-slate-400 bg-slate-100 py-1 px-2 rounded inline-block">
+              Incident ID: {error.digest}
+            </p>
+          )}
         </div>
         <div className="flex items-center justify-center gap-3 pt-2">
           <button

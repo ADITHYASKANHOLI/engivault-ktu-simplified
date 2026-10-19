@@ -1,12 +1,22 @@
 import React from "react";
 import Link from "next/link";
-import { Compass, BookOpen, ShieldCheck, Globe, Share2, Send, Mail } from "lucide-react";
-import { getPublishedSubjects, getSiteSettings } from "@/lib/queries";
+import { ShieldCheck, Globe, Share2, Send, Mail } from "lucide-react";
+import { getPublishedSubjects, getSiteSettings, initialFallbackSiteSettings } from "@/lib/queries";
 import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
+import type { Subject, SiteSettings } from "@/types";
 
 export async function SiteFooter() {
-  const subjects = await getPublishedSubjects();
-  const settings = await getSiteSettings();
+  const [subjectsResult, settingsResult] = await Promise.allSettled([
+    getPublishedSubjects(),
+    getSiteSettings(),
+  ]);
+
+  const subjects: Subject[] =
+    subjectsResult.status === "fulfilled" ? subjectsResult.value : [];
+  const settings: SiteSettings =
+    settingsResult.status === "fulfilled"
+      ? settingsResult.value
+      : initialFallbackSiteSettings;
 
   return (
     <footer className="bg-[#07111F] text-slate-300 relative overflow-hidden border-t border-cyan-900/30">

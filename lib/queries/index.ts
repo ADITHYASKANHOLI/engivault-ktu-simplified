@@ -16,9 +16,22 @@ import {
   Faculty,
 } from "@/types";
 import { createClient as createServerSupabase, isSupabaseConfigured } from "../supabase/server";
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
 import { getSignedVideoUrl, getSignedMaterialUrl } from "../storage/signed-urls";
 import { extractYouTubeVideoId, getYouTubeThumbnailUrl } from "../utils/youtube";
+export {
+  initialFallbackSiteSettings,
+  initialFallbackDepartments,
+  initialFallbackSemesters,
+  initialFallbackFaculty,
+  initialFallbackSubjects,
+  initialFallbackModules,
+  initialFallbackTopics,
+  initialFallbackLessons,
+  initialFallbackVideos,
+  initialFallbackMaterials,
+  initialFallbackActivity,
+} from "./seed-data";
 import {
   initialFallbackSiteSettings,
   initialFallbackDepartments,
@@ -275,20 +288,19 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       .from("site_settings")
       .select("*")
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-      throw new Error(`Failed to fetch site settings from Supabase: ${error.message}`);
+      console.warn("Notice: Fetching site settings from Supabase:", error.message);
+      return fallbackSiteSettings;
     }
     if (!data) {
-      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-      throw new Error("Site settings record not found in Supabase.");
+      return fallbackSiteSettings;
     }
     return data;
-  } catch (err) {
-    if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-    throw err;
+  } catch (err: any) {
+    console.warn("Notice: Fetching site settings from Supabase:", err?.message || err);
+    return fallbackSiteSettings;
   }
 }
 
@@ -1218,7 +1230,9 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
   }
 
   try {
-    const supabase = createAdminClient();
+    const supabase = isSupabaseAdminConfigured()
+      ? createAdminClient()
+      : await createServerSupabase();
     let query = supabase
       .from("lessons")
       .select("*, modules(id, title, slug, subject_id, subjects(id, title, slug, code)), videos(*), materials(*)")
@@ -1457,7 +1471,6 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       .select("*, modules!inner(id, title, slug, subject_id, published, subjects!inner(id, title, slug, code, published)), videos(*), materials(*)")
       .eq("published", true)
       .eq("modules.published", true)
-      .eq("modules.subjects.published", true)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -1465,26 +1478,32 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       if (isLocalFallbackAllowed()) {
         return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
       }
-      throw new Error(`Failed to fetch recent published lessons from Supabase: ${error.message}`);
+      console.warn("Notice: Fetching recent published lessons from Supabase:", error.message);
+      return [];
     }
     if (!data) return [];
 
-    return data.map((l: any) =>
+    const validLessons = data.filter((l: any) => l.modules?.subjects?.published !== false);
+
+    return validLessons.map((l: any) =>
       normalizeLessonFields({
         ...l,
-        module: {
-          ...l.modules,
-          subject: l.modules.subjects,
-        },
+        module: l.modules
+          ? {
+              ...l.modules,
+              subject: l.modules.subjects,
+            }
+          : undefined,
         video: l.videos?.[0] || null,
         materials: l.materials || [],
       })
     );
-  } catch (err) {
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
     }
-    throw err;
+    console.warn("Notice: Fetching recent published lessons from Supabase:", err?.message || err);
+    return [];
   }
 }
 
@@ -2163,7 +2182,6 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
         .select("id, title, slug, description, module_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
         .eq("published", true)
         .eq("modules.published", true)
-        .eq("modules.subjects.published", true)
         .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
 
       if (lesErr) throw lesErr;
@@ -2436,13 +2454,13 @@ export async function getAllDepartments(): Promise<Department[]> {
       .order("display_order", { ascending: true });
 
     if (error || !data) {
-      if (isLocalFallbackAllowed()) return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
-      throw new Error(`Failed to fetch departments from Supabase: ${error?.message}`);
+      console.warn("Notice: Fetching departments from Supabase:", error?.message);
+      return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
     }
     return data;
-  } catch (err) {
-    if (isLocalFallbackAllowed()) return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
-    throw err;
+  } catch (err: any) {
+    console.warn("Notice: Fetching departments from Supabase:", err?.message || err);
+    return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
   }
 }
 
@@ -2463,13 +2481,13 @@ export async function getAllSemesters(): Promise<Semester[]> {
       .order("number", { ascending: true });
 
     if (error || !data) {
-      if (isLocalFallbackAllowed()) return [...fallbackSemesters].sort((a, b) => a.number - b.number);
-      throw new Error(`Failed to fetch semesters from Supabase: ${error?.message}`);
+      console.warn("Notice: Fetching semesters from Supabase:", error?.message);
+      return [...fallbackSemesters].sort((a, b) => a.number - b.number);
     }
     return data;
-  } catch (err) {
-    if (isLocalFallbackAllowed()) return [...fallbackSemesters].sort((a, b) => a.number - b.number);
-    throw err;
+  } catch (err: any) {
+    console.warn("Notice: Fetching semesters from Supabase:", err?.message || err);
+    return [...fallbackSemesters].sort((a, b) => a.number - b.number);
   }
 }
 

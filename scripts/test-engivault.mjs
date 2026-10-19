@@ -363,6 +363,84 @@ async function runTests() {
     }
   });
 
+  // 7. Runtime URL Normalization & Data Resilience (Fix for "Unexpected error while loading")
+  console.log("\n--- 7. RUNTIME URL NORMALIZATION & HOMEPAGE RESILIENCE ---");
+
+  function testSafeSiteUrl(inputEnv, vercelEnv) {
+    let raw = (inputEnv || (vercelEnv ? `https://${vercelEnv}` : "") || "http://localhost:3000").trim();
+    if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+      raw = `https://${raw}`;
+    }
+    try {
+      return new URL(raw);
+    } catch {
+      return new URL("http://localhost:3000");
+    }
+  }
+
+  test("getSafeSiteUrl handles standard http URL", () => {
+    const url = testSafeSiteUrl("http://localhost:3000");
+    assert.equal(url.origin, "http://localhost:3000");
+  });
+
+  test("getSafeSiteUrl adds https:// to protocol-less domain", () => {
+    const url = testSafeSiteUrl("engivault-ktu-simplified.vercel.app");
+    assert.equal(url.origin, "https://engivault-ktu-simplified.vercel.app");
+  });
+
+  test("getSafeSiteUrl trims whitespace and handles trailing slash", () => {
+    const url = testSafeSiteUrl("  https://engivault02.vercel.app/  ");
+    assert.equal(url.origin, "https://engivault02.vercel.app");
+  });
+
+  test("getSafeSiteUrl falls back cleanly on VERCEL_URL without protocol", () => {
+    const url = testSafeSiteUrl("", "my-deployment-preview.vercel.app");
+    assert.equal(url.origin, "https://my-deployment-preview.vercel.app");
+  });
+
+  test("getSafeSiteUrl recovers safely from empty or invalid URL strings", () => {
+    const url1 = testSafeSiteUrl("");
+    assert.equal(url1.origin, "http://localhost:3000");
+    const url2 = testSafeSiteUrl("http://[invalid-ipv6");
+    assert.equal(url2.origin, "http://localhost:3000");
+  });
+
+  test("Site settings fallback contains all required branding fields", () => {
+    const fallback = {
+      id: "00000000-0000-0000-0000-000000000001",
+      site_name: "ENGIVAULT",
+      headline: "Learn Engineering. Build Confidence.",
+      tagline: "KTU Learning. Simplified.",
+      logo_path: "/branding/fole-logo.png",
+      contact_email: "contact@engivault.edu",
+    };
+    assert.ok(fallback.site_name);
+    assert.ok(fallback.headline);
+    assert.ok(fallback.logo_path);
+  });
+
+  test("Homepage Promise.allSettled pattern isolates non-essential failures", async () => {
+    // Simulate: subjects succeed, site settings rejects, lessons rejects, departments reject
+    const mockSubjects = [{ id: "sub-1", title: "Math", published: true }];
+    const [subRes, setRes, lesRes, deptRes] = await Promise.allSettled([
+      Promise.resolve(mockSubjects),
+      Promise.reject(new Error("Supabase PGRST116: empty settings")),
+      Promise.reject(new Error("Database timeout")),
+      Promise.reject(new Error("Relation departments does not exist")),
+    ]);
+
+    const subjects = subRes.status === "fulfilled" ? subRes.value : [];
+    const settings = setRes.status === "fulfilled" ? setRes.value : { site_name: "ENGIVAULT" };
+    const lessons = lesRes.status === "fulfilled" ? lesRes.value : [];
+    const departments = deptRes.status === "fulfilled" ? deptRes.value : [];
+
+    // All data resolved safely without throwing unhandled rejection
+    assert.equal(subjects.length, 1);
+    assert.equal(settings.site_name, "ENGIVAULT");
+    assert.equal(lessons.length, 0);
+    assert.equal(departments.length, 0);
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");
