@@ -458,7 +458,11 @@ export async function getSubjectById(id: string): Promise<Subject | null> {
 
 export async function createSubject(subject: Partial<Subject>): Promise<Subject> {
   const newId = subject.id || crypto.randomUUID();
-  const row: Subject = {
+
+  // DB insert payload: only columns that actually exist in the subjects table.
+  // modules_count, lessons_count, and materials_count are computed/display-only
+  // fields that do NOT exist as database columns — never send them to Supabase.
+  const dbPayload: Record<string, unknown> = {
     id: newId,
     title: subject.title || "Untitled Subject",
     slug: subject.slug || `subject-${Date.now()}`,
@@ -470,24 +474,35 @@ export async function createSubject(subject: Partial<Subject>): Promise<Subject>
     display_order: subject.display_order ?? fallbackSubjects.length + 1,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    ...(subject.department_id !== undefined && { department_id: subject.department_id }),
+    ...(subject.semester_id !== undefined && { semester_id: subject.semester_id }),
+    ...(subject.semester_number !== undefined && { semester_number: subject.semester_number }),
+  };
+
+  // Full in-memory / fallback representation (includes computed frontend fields)
+  const row: Subject = {
+    ...(dbPayload as Omit<Subject, "modules_count" | "lessons_count" | "materials_count">),
     modules_count: 0,
     lessons_count: 0,
     materials_count: 0,
-  };
+  } as Subject;
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data, error } = await supabase.from("subjects").insert(row).select().single();
+      // Insert only dbPayload — excludes computed columns that don't exist in the DB schema
+      const { data, error } = await supabase.from("subjects").insert(dbPayload).select().single();
       if (error) {
         console.error("Supabase createSubject error:", error);
         throw new Error(`Failed to create subject: ${error.message}`);
       }
+      // Enrich with computed display fields (0 since subject was just created)
+      const enriched: Subject = { ...data, modules_count: 0, lessons_count: 0, materials_count: 0 };
       if (!isProduction()) {
-        fallbackSubjects.push(data);
+        fallbackSubjects.push(enriched);
       }
       await logActivity("Subject Created", "subject", { id: data.id, title: data.title, slug: data.slug });
-      return data;
+      return enriched;
     } catch (err: any) {
       console.error("Supabase createSubject error:", err);
       throw err;
