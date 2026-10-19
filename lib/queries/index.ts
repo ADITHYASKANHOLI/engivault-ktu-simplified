@@ -1556,31 +1556,26 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     updated_at: new Date().toISOString(),
   };
 
+  if (data.created_by) {
+    insertPayload.created_by = data.created_by;
+  }
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      let { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
-
-      // Resilience against databases missing migration 006 (academic hierarchy columns on lessons)
-      if (error && error.message.includes("in the schema cache")) {
-        const optionalHierarchyCols = ["topic_id", "faculty_id", "instructor", "status"];
-        const retryPayload = { ...insertPayload };
-        let stripped = false;
-        for (const col of optionalHierarchyCols) {
-          if (error.message.includes(`'${col}'`)) {
-            delete retryPayload[col];
-            stripped = true;
-          }
-        }
-        if (stripped) {
-          console.warn("Retrying lecture insert without unmigrated academic hierarchy columns:", error.message);
-          const retry = await supabase.from("lessons").insert(retryPayload).select().single();
-          created = retry.data;
-          error = retry.error;
-        }
-      }
+      const { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
 
       if (error) {
+        if (error.message.includes("instructor") && error.message.includes("schema cache")) {
+          const diagnostic = `Database schema mismatch: Could not find the 'instructor' column of 'lessons' in the schema cache. Please apply migration 007 (supabase/migrations/007_reconcile_lesson_instructor_column.sql) in your Supabase SQL Editor: ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text; NOTIFY pgrst, 'reload schema'; Original error: ${error.message}`;
+          console.error("Supabase createLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
+        if (error.message.includes("in the schema cache")) {
+          const diagnostic = `Database schema mismatch on 'lessons' table: ${error.message}. Please verify migrations 005, 006, and 007 have been applied to your Supabase database and execute NOTIFY pgrst, 'reload schema'; to refresh the schema cache.`;
+          console.error("Supabase createLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
         console.error("Supabase createLesson error:", error);
         throw new Error(`Failed to create lesson in database: ${error.message}`);
       }
@@ -1653,33 +1648,31 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
       delete payload.module;
       delete payload.video;
       delete payload.materials;
+      delete payload.faculty;
+      delete payload.topic;
+      delete payload.subject;
+      delete payload.lectures_count;
+      delete payload.lessons_count;
+      delete payload.materials_count;
       delete payload.youtubeUrl;
       delete payload.youtubeVideoId;
       delete payload.order_index;
       delete payload.orderIndex;
       delete payload.sequence_order;
 
-      let { data, error } = await supabase.from("lessons").update(payload).eq("id", id).select().single();
-
-      if (error && error.message.includes("in the schema cache")) {
-        const optionalHierarchyCols = ["topic_id", "faculty_id", "instructor", "status"];
-        const retryPayload = { ...payload };
-        let stripped = false;
-        for (const col of optionalHierarchyCols) {
-          if (error.message.includes(`'${col}'`)) {
-            delete retryPayload[col];
-            stripped = true;
-          }
-        }
-        if (stripped) {
-          console.warn("Retrying lecture update without unmigrated academic hierarchy columns:", error.message);
-          const retry = await supabase.from("lessons").update(retryPayload).eq("id", id).select().single();
-          data = retry.data;
-          error = retry.error;
-        }
-      }
+      const { data, error } = await supabase.from("lessons").update(payload).eq("id", id).select().single();
 
       if (error) {
+        if (error.message.includes("instructor") && error.message.includes("schema cache")) {
+          const diagnostic = `Database schema mismatch: Could not find the 'instructor' column of 'lessons' in the schema cache. Please apply migration 007 (supabase/migrations/007_reconcile_lesson_instructor_column.sql) in your Supabase SQL Editor: ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text; NOTIFY pgrst, 'reload schema'; Original error: ${error.message}`;
+          console.error("Supabase updateLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
+        if (error.message.includes("in the schema cache")) {
+          const diagnostic = `Database schema mismatch on 'lessons' table: ${error.message}. Please verify migrations 005, 006, and 007 have been applied to your Supabase database and execute NOTIFY pgrst, 'reload schema'; to refresh the schema cache.`;
+          console.error("Supabase updateLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
         console.error("Supabase updateLesson error:", error);
         throw new Error(`Failed to update lesson in database: ${error.message}`);
       }

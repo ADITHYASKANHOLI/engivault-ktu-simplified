@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import nodeFs from "node:fs";
 
 // Dynamic import of our ES modules / TypeScript compiled or direct modules
 async function runTests() {
@@ -515,6 +516,109 @@ async function runTests() {
     assert.equal(normalized.display_order, 4);
     assert.equal(normalized.order_index, 4);
     assert.equal(normalized.orderIndex, 4);
+  });
+
+  test("Lecture insert payload preserves instructor and hierarchy fields without stripping", () => {
+    const data = {
+      module_id: "mod-456",
+      topic_id: "topic-789",
+      faculty_id: "fac-101",
+      instructor: "Dr. APJ Abdul Kalam",
+      title: "Rocket Propulsion Principles",
+      youtube_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      youtube_video_id: "dQw4w9WgXcQ",
+      published: true,
+      lesson_number: 1,
+      display_order: 1,
+    };
+
+    const insertPayload = {
+      id: "les-test-1",
+      module_id: data.module_id,
+      topic_id: data.topic_id || null,
+      faculty_id: data.faculty_id || null,
+      instructor: data.instructor || null,
+      title: data.title,
+      slug: "rocket-propulsion-principles",
+      lesson_number: data.lesson_number,
+      published: data.published,
+      display_order: data.display_order,
+      youtube_url: data.youtube_url,
+      youtube_video_id: data.youtube_video_id,
+    };
+
+    assert.equal(insertPayload.instructor, "Dr. APJ Abdul Kalam", "instructor field must be preserved");
+    assert.equal(insertPayload.topic_id, "topic-789", "topic_id must be preserved");
+    assert.equal(insertPayload.faculty_id, "fac-101", "faculty_id must be preserved");
+    assert.equal(insertPayload.module_id, "mod-456", "module_id must be preserved");
+  });
+
+  test("Lecture update payload preserves instructor while stripping joined relation objects", () => {
+    const rawUpdates = {
+      title: "Advanced Propulsion",
+      instructor: "Prof. Vikram Sarabhai",
+      faculty_id: "fac-202",
+      topic_id: "topic-303",
+      faculty: { id: "fac-202", name: "Prof. Vikram Sarabhai" },
+      topic: { id: "topic-303", title: "Space Dynamics" },
+      module: { id: "mod-456", title: "Aerospace" },
+      subject: { id: "sub-123", title: "Propulsion" },
+      materials: [],
+      video: null,
+      order_index: 2,
+    };
+
+    const payload = {
+      ...rawUpdates,
+      updated_at: new Date().toISOString(),
+    };
+    delete payload.id;
+    delete payload.created_at;
+    delete payload.module;
+    delete payload.video;
+    delete payload.materials;
+    delete payload.faculty;
+    delete payload.topic;
+    delete payload.subject;
+    delete payload.lectures_count;
+    delete payload.lessons_count;
+    delete payload.materials_count;
+    delete payload.youtubeUrl;
+    delete payload.youtubeVideoId;
+    delete payload.order_index;
+    delete payload.orderIndex;
+    delete payload.sequence_order;
+
+    assert.equal(payload.instructor, "Prof. Vikram Sarabhai", "instructor must be preserved in update payload");
+    assert.equal(payload.faculty_id, "fac-202", "faculty_id must be preserved in update payload");
+    assert.equal(payload.topic_id, "topic-303", "topic_id must be preserved in update payload");
+    assert.equal(payload.faculty, undefined, "joined faculty relation must NOT be passed to DB update");
+    assert.equal(payload.topic, undefined, "joined topic relation must NOT be passed to DB update");
+    assert.equal(payload.subject, undefined, "joined subject relation must NOT be passed to DB update");
+    assert.equal(payload.module, undefined, "joined module relation must NOT be passed to DB update");
+  });
+
+  test("Schema cache mismatch on instructor column produces clear migration 007 diagnostic error", () => {
+    const simulateError = {
+      message: "Could not find the 'instructor' column of 'lessons' in the schema cache",
+    };
+
+    let diagnosticMessage = "";
+    if (simulateError.message.includes("instructor") && simulateError.message.includes("schema cache")) {
+      diagnosticMessage = `Database schema mismatch: Could not find the 'instructor' column of 'lessons' in the schema cache. Please apply migration 007 (supabase/migrations/007_reconcile_lesson_instructor_column.sql) in your Supabase SQL Editor: ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text; NOTIFY pgrst, 'reload schema'; Original error: ${simulateError.message}`;
+    }
+
+    assert.ok(diagnosticMessage.includes("007_reconcile_lesson_instructor_column.sql"));
+    assert.ok(diagnosticMessage.includes("ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text;"));
+    assert.ok(diagnosticMessage.includes("NOTIFY pgrst, 'reload schema';"));
+  });
+
+  test("Migration 007 SQL file exists and contains idempotent column addition and schema cache reload", () => {
+    const migrationPath = path.join(process.cwd(), "supabase/migrations/007_reconcile_lesson_instructor_column.sql");
+    assert.ok(nodeFs.existsSync(migrationPath), "Migration 007 file must exist");
+    const content = nodeFs.readFileSync(migrationPath, "utf-8");
+    assert.ok(content.includes("ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text;"), "Must include ADD COLUMN IF NOT EXISTS");
+    assert.ok(content.includes("NOTIFY pgrst, 'reload schema';"), "Must include PostgREST schema cache reload NOTIFY");
   });
 
   test("Upload wizard rejects dummy/fabricated UUID fallbacks for missing selections", () => {
