@@ -244,3 +244,69 @@ export interface SearchResultItem {
   youtube_url?: string | null;
   youtube_video_id?: string | null;
 }
+
+/**
+ * FOLE WORKS - Professional & Operational Activities System
+ */
+export type WorksCategory =
+  | "Workshop"
+  | "Internship"
+  | "Technical Training"
+  | "Collaborative Project"
+  | "Seminar / Talk"
+  | "Hackathon / Contest"
+  | "Certification"
+  | "Other";
+
+export type WorksDeliveryMode = "in_person" | "online" | "hybrid";
+export type WorksActivityStatus = "draft" | "published" | "archived";
+
+export interface WorksSupportingResource {
+  title: string;
+  url: string;
+  type?: "document" | "link" | "slides" | "code" | "form" | "other";
+}
+
+export interface WorksActivity {
+  id: string;
+  title: string;
+  slug: string;
+  short_description?: string | null;
+  description: string;
+  category: WorksCategory | string;
+  activity_type: string;
+  delivery_mode: WorksDeliveryMode;
+  venue?: string | null;
+  cover_image?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  timezone?: string;
+  organizer_details?: string | null;
+  learning_outcomes?: string[] | null;
+  registration_url?: string | null;
+  registration_opens_at?: string | null;
+  registration_closes_at?: string | null;
+  fee_amount?: number;
+  currency?: string;
+  capacity?: number | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  supporting_resources?: WorksSupportingResource[];
+  status: WorksActivityStatus;
+  is_featured: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+  archived_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export interface WorksActivityMetrics {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  upcoming: number;
+}
+

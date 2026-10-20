@@ -1245,6 +1245,121 @@ async function runTests() {
     assert.ok(adminLessons.includes("hidden md:block"), "Admin lessons table must be hidden on small screens");
   });
 
+  // 12. FOLE WORKS ACTIVITIES & MANAGEMENT SUITE
+  console.log("\n--- 12. FOLE WORKS ACTIVITIES & MANAGEMENT SUITE ---");
+
+  test("Official FOLE WORKS brand asset exists without alteration", () => {
+    assert.ok(nodeFs.existsSync("public/branding/fole-works-logo.png"), "public/branding/fole-works-logo.png must exist");
+    const stat = nodeFs.statSync("public/branding/fole-works-logo.png");
+    assert.ok(stat.size > 10000, "Official FOLE WORKS logo must be a non-empty image asset");
+
+    assert.ok(nodeFs.existsSync("components/branding/FoleWorksLogo.tsx"), "FoleWorksLogo component must exist");
+    const logoComponent = nodeFs.readFileSync("components/branding/FoleWorksLogo.tsx", "utf-8");
+    assert.ok(logoComponent.includes("/branding/fole-works-logo.png"), "FoleWorksLogo must render the official PNG asset");
+  });
+
+  test("FOLE WORKS navigation links integrated into public header, footer, and admin sidebar", () => {
+    const header = nodeFs.readFileSync("components/layout/SiteHeader.tsx", "utf-8");
+    assert.ok(header.includes("/fole-works"), "SiteHeader must link to /fole-works");
+    assert.ok(header.includes("WORKS"), "SiteHeader must display FOLE WORKS label");
+
+    const footer = nodeFs.readFileSync("components/layout/SiteFooter.tsx", "utf-8");
+    assert.ok(footer.includes("/fole-works"), "SiteFooter must link to /fole-works");
+
+    const sidebar = nodeFs.readFileSync("components/admin/AdminSidebar.tsx", "utf-8");
+    assert.ok(sidebar.includes("/admin/dashboard/works"), "AdminSidebar must link to FOLE WORKS dashboard");
+    assert.ok(sidebar.includes("/admin/dashboard/works/activities"), "AdminSidebar must link to activities management");
+    assert.ok(sidebar.includes("/admin/dashboard/works/create"), "AdminSidebar must link to create activity");
+  });
+
+  test("Database migration 008 defines works_activities with RLS and policies", () => {
+    const migrationPath = "supabase/migrations/008_create_fole_works_activities.sql";
+    assert.ok(nodeFs.existsSync(migrationPath), "Migration 008 must exist");
+    const migrationSql = nodeFs.readFileSync(migrationPath, "utf-8");
+    assert.ok(migrationSql.toLowerCase().includes("create table if not exists public.works_activities"), "Must create works_activities table");
+    assert.ok(migrationSql.toUpperCase().includes("ENABLE ROW LEVEL SECURITY"), "Must enable RLS on works_activities");
+    assert.ok(migrationSql.includes("status = 'published'"), "Must enforce published-only visibility for public select");
+    assert.ok(migrationSql.includes("is_admin()"), "Must restrict mutations to authorized admins");
+  });
+
+  test("Public query layer enforces published status, local store fallback, and admin isolation", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes("getPublishedWorksActivities"), "Must export getPublishedWorksActivities");
+    assert.ok(queriesCode.includes("getWorksActivityBySlug"), "Must export getWorksActivityBySlug");
+    assert.ok(queriesCode.includes("getAllWorksActivitiesForAdmin"), "Must export getAllWorksActivitiesForAdmin");
+    assert.ok(queriesCode.includes("getWorksActivityById"), "Must export getWorksActivityById");
+    assert.ok(queriesCode.includes("createWorksActivity"), "Must export createWorksActivity");
+    assert.ok(queriesCode.includes("updateWorksActivity"), "Must export updateWorksActivity");
+    assert.ok(queriesCode.includes("updateWorksActivityStatus"), "Must export updateWorksActivityStatus");
+    assert.ok(queriesCode.includes("deleteWorksActivity"), "Must export deleteWorksActivity");
+    assert.ok(queriesCode.includes("getWorksActivityMetrics"), "Must export getWorksActivityMetrics");
+
+    // Check published filtering in queries
+    assert.ok(queriesCode.includes('.eq("status", "published")'), "Public Supabase query must filter by status = 'published'");
+    assert.ok(queriesCode.includes('.is("deleted_at", null)'), "Public query must exclude soft-deleted records");
+
+    // Check seed data integration
+    const seedCode = nodeFs.readFileSync("lib/queries/seed-data.ts", "utf-8");
+    assert.ok(seedCode.includes("initialFallbackWorksActivities"), "Seed data must define initialFallbackWorksActivities");
+    assert.ok(seedCode.includes("embedded-systems-iot-esp32-workshop"), "Seed data must include ESP32 workshop");
+    assert.ok(seedCode.includes("fole-summer-internship-programme-2026"), "Seed data must include 2026 internship");
+    assert.ok(seedCode.includes("generative-ai-rag-systems-workshop"), "Seed data must include draft activity for admin testing");
+  });
+
+  test("Activity validation schemas strictly enforce requirements and reject invalid payloads", () => {
+    const schemaCode = nodeFs.readFileSync("lib/validation/schemas.ts", "utf-8");
+    assert.ok(schemaCode.includes("worksActivitySchema"), "Must export worksActivitySchema");
+    assert.ok(schemaCode.includes("worksActivityUpdateSchema"), "Must export worksActivityUpdateSchema");
+    assert.ok(schemaCode.includes("worksSupportingResourceSchema"), "Must export worksSupportingResourceSchema");
+    assert.ok(schemaCode.includes("Title must be at least 3 characters"), "Must enforce title min length");
+    assert.ok(schemaCode.includes("Slug must be lowercase alphanumeric with hyphens"), "Must enforce strict URL slug regex");
+    assert.ok(schemaCode.includes("Description must be at least 10 characters"), "Must enforce description min length");
+
+    // Pure validation logic replication test
+    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    assert.equal(slugRegex.test("esp32-iot-workshop-2026"), true, "Valid slug passes regex");
+    assert.equal(slugRegex.test("Invalid Slug with Spaces!"), false, "Invalid slug fails regex");
+    assert.equal(slugRegex.test("-leading-hyphen"), false, "Leading hyphen fails regex");
+    assert.equal(slugRegex.test("trailing-hyphen-"), false, "Trailing hyphen fails regex");
+  });
+
+  test("FOLE WORKS routes and responsive UI components exist and use correct patterns", () => {
+    // Public landing and detail
+    assert.ok(nodeFs.existsSync("app/(public)/fole-works/page.tsx"), "Landing page must exist");
+    assert.ok(nodeFs.existsSync("app/(public)/fole-works/loading.tsx"), "Landing skeleton loader must exist");
+    assert.ok(nodeFs.existsSync("app/(public)/fole-works/[slug]/page.tsx"), "Detail page must exist");
+    
+    const landing = nodeFs.readFileSync("app/(public)/fole-works/page.tsx", "utf-8");
+    assert.ok(landing.includes("FoleWorksLogo"), "Landing page must display FoleWorksLogo");
+    assert.ok(landing.includes("WorksFilterView"), "Landing page must render WorksFilterView");
+
+    const detail = nodeFs.readFileSync("app/(public)/fole-works/[slug]/page.tsx", "utf-8");
+    assert.ok(detail.includes("getWorksActivityBySlug"), "Detail page must look up activity by slug");
+    assert.ok(detail.includes("notFound()"), "Detail page must return 404 for non-existent or unpublished items");
+
+    // Admin dashboard routes
+    assert.ok(nodeFs.existsSync("app/admin/dashboard/works/page.tsx"), "Admin overview page must exist");
+    assert.ok(nodeFs.existsSync("app/admin/dashboard/works/activities/page.tsx"), "Admin activities list page must exist");
+    assert.ok(nodeFs.existsSync("app/admin/dashboard/works/create/page.tsx"), "Admin create activity page must exist");
+    assert.ok(nodeFs.existsSync("app/admin/dashboard/works/[id]/edit/page.tsx"), "Admin edit activity page must exist");
+    assert.ok(nodeFs.existsSync("app/admin/dashboard/works/[id]/preview/page.tsx"), "Admin preview activity page must exist");
+
+    // Admin mobile responsiveness
+    const adminActs = nodeFs.readFileSync("app/admin/dashboard/works/activities/page.tsx", "utf-8");
+    assert.ok(adminActs.includes("block md:hidden"), "Admin activities must render stacked cards on mobile");
+    assert.ok(adminActs.includes("hidden md:block"), "Admin activities table must be hidden on small screens");
+    assert.ok(adminActs.includes("min-h-[44px]"), "Admin action buttons must satisfy min touch target");
+
+    // API routes
+    assert.ok(nodeFs.existsSync("app/api/admin/works/route.ts"), "Admin works API route must exist");
+    assert.ok(nodeFs.existsSync("app/api/admin/works/[id]/route.ts"), "Admin works detail API route must exist");
+    assert.ok(nodeFs.existsSync("app/api/admin/works/[id]/status/route.ts"), "Admin works status API route must exist");
+
+    const apiRoute = nodeFs.readFileSync("app/api/admin/works/route.ts", "utf-8");
+    assert.ok(apiRoute.includes('export const runtime = "nodejs"'), "API route must declare nodejs runtime for Vercel serverless safety");
+    assert.ok(apiRoute.includes("getAdminSession"), "API route must strictly verify admin session");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

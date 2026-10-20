@@ -13,6 +13,9 @@ import {
   Semester,
   Topic,
   Faculty,
+  WorksActivity,
+  WorksActivityStatus,
+  WorksActivityMetrics,
 } from "@/types";
 import { createClient as createServerSupabase, isSupabaseConfigured } from "../supabase/server";
 import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
@@ -30,6 +33,7 @@ export {
   initialFallbackVideos,
   initialFallbackMaterials,
   initialFallbackActivity,
+  initialFallbackWorksActivities,
 } from "./seed-data";
 import {
   initialFallbackSiteSettings,
@@ -43,6 +47,7 @@ import {
   initialFallbackVideos,
   initialFallbackMaterials,
   initialFallbackActivity,
+  initialFallbackWorksActivities,
 } from "./seed-data";
 
 // ---------------- Synchronized File-Backed Fallback Store ----------------
@@ -62,6 +67,7 @@ interface FallbackStoreData {
   videos: Video[];
   materials: Material[];
   activity: ActivityLog[];
+  worksActivities: WorksActivity[];
 }
 
 const STORE_FILE_PATH = path.join(process.cwd(), ".engivault-local-store.json");
@@ -79,6 +85,7 @@ function getInitialStore(): FallbackStoreData {
     videos: [...initialFallbackVideos],
     materials: [...initialFallbackMaterials],
     activity: [...initialFallbackActivity],
+    worksActivities: [...initialFallbackWorksActivities],
   };
 }
 
@@ -106,6 +113,9 @@ function getStore(): FallbackStoreData {
         }
         if (!Array.isArray(parsed.topics) || parsed.topics.length === 0) {
           parsed.topics = [...initialFallbackTopics];
+        }
+        if (!Array.isArray(parsed.worksActivities) || parsed.worksActivities.length === 0) {
+          parsed.worksActivities = [...initialFallbackWorksActivities];
         }
         return parsed;
       }
@@ -182,6 +192,7 @@ const fallbackLessons: Lesson[] = createStoreArrayProxy<Lesson>("lessons");
 const fallbackVideos: Video[] = createStoreArrayProxy<Video>("videos");
 const fallbackMaterials: Material[] = createStoreArrayProxy<Material>("materials");
 const fallbackActivity: ActivityLog[] = createStoreArrayProxy<ActivityLog>("activity");
+const fallbackWorksActivities: WorksActivity[] = createStoreArrayProxy<WorksActivity>("worksActivities");
 
 // Helper to populate virtual relations in fallback arrays
 function enrichFallbackLesson(lesson: Lesson): Lesson {
@@ -2968,3 +2979,578 @@ export async function getLecturesByHierarchy(filter: {
 
   return filtered;
 }
+
+// ============================================================================
+// FOLE WORKS Operational & Professional Activities Data Access Layer
+// ============================================================================
+
+interface WorksQueryOptions {
+  category?: string;
+  deliveryMode?: string;
+  status?: string;
+  search?: string;
+  limit?: number;
+}
+
+function filterFallbackWorksActivities(
+  options?: WorksQueryOptions,
+  requirePublished = false
+): WorksActivity[] {
+  let list = fallbackWorksActivities.filter((a) => !a.deleted_at);
+
+  if (requirePublished) {
+    list = list.filter((a) => a.status === "published");
+  }
+
+  if (options?.status && !requirePublished) {
+    list = list.filter((a) => a.status === options.status);
+  }
+
+  if (options?.category && options.category !== "all") {
+    list = list.filter((a) => a.category.toLowerCase() === options.category?.toLowerCase());
+  }
+
+  if (options?.deliveryMode && options.deliveryMode !== "all") {
+    list = list.filter((a) => a.delivery_mode.toLowerCase() === options.deliveryMode?.toLowerCase());
+  }
+
+  if (options?.search && options.search.trim()) {
+    const q = options.search.toLowerCase().trim();
+    list = list.filter(
+      (a) =>
+        a.title.toLowerCase().includes(q) ||
+        (a.short_description || "").toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.category.toLowerCase().includes(q) ||
+        (a.venue || "").toLowerCase().includes(q) ||
+        (a.organizer_details || "").toLowerCase().includes(q)
+    );
+  }
+
+  // Sort: featured first, then by start_at ascending (upcoming first)
+  list.sort((a, b) => {
+    if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
+    const timeA = a.start_at ? new Date(a.start_at).getTime() : 0;
+    const timeB = b.start_at ? new Date(b.start_at).getTime() : 0;
+    return timeA - timeB;
+  });
+
+  if (options?.limit && options.limit > 0) {
+    list = list.slice(0, options.limit);
+  }
+
+  return list;
+}
+
+/**
+ * Public query: retrieves published FOLE WORKS activities for student catalogue.
+ * Strictly filters out drafts, archived, and soft-deleted records.
+ */
+export async function getPublishedWorksActivities(
+  options?: WorksQueryOptions
+): Promise<WorksActivity[]> {
+  if (!isSupabaseConfigured()) {
+    return filterFallbackWorksActivities(options, true);
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .order("is_featured", { ascending: false })
+      .order("start_at", { ascending: true, nullsFirst: false });
+
+    if (options?.category && options.category !== "all") {
+      q = q.eq("category", options.category);
+    }
+
+    if (options?.deliveryMode && options.deliveryMode !== "all") {
+      q = q.eq("delivery_mode", options.deliveryMode);
+    }
+
+    if (options?.limit && options.limit > 0) {
+      q = q.limit(options.limit);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return filterFallbackWorksActivities(options, true);
+      }
+      throw new Error(`Failed to fetch published FOLE WORKS activities: ${error.message}`);
+    }
+
+    let results = (data || []) as WorksActivity[];
+
+    if (options?.search && options.search.trim()) {
+      const query = options.search.toLowerCase().trim();
+      results = results.filter(
+        (a) =>
+          a.title.toLowerCase().includes(query) ||
+          (a.short_description || "").toLowerCase().includes(query) ||
+          a.description.toLowerCase().includes(query) ||
+          a.category.toLowerCase().includes(query) ||
+          (a.venue || "").toLowerCase().includes(query)
+      );
+    }
+
+    return results;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return filterFallbackWorksActivities(options, true);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Public query: retrieves a single activity by slug.
+ * If requirePublished is true (default), rejects draft or archived activities.
+ */
+export async function getWorksActivityBySlug(
+  slug: string,
+  requirePublished = true
+): Promise<WorksActivity | null> {
+  if (!slug) return null;
+
+  if (!isSupabaseConfigured()) {
+    const act = fallbackWorksActivities.find(
+      (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+    );
+    return act || null;
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .eq("slug", slug)
+      .is("deleted_at", null);
+
+    if (requirePublished) {
+      q = q.eq("status", "published");
+    }
+
+    const { data, error } = await q.maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const act = fallbackWorksActivities.find(
+          (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+        );
+        return act || null;
+      }
+      throw new Error(`Failed to fetch activity by slug from Supabase: ${error.message}`);
+    }
+
+    return (data as WorksActivity) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const act = fallbackWorksActivities.find(
+        (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+      );
+      return act || null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Admin query: retrieves all activities including drafts and archives.
+ */
+export async function getAllWorksActivitiesForAdmin(
+  options?: WorksQueryOptions
+): Promise<WorksActivity[]> {
+  if (!isSupabaseConfigured()) {
+    return filterFallbackWorksActivities(options, false);
+  }
+
+  try {
+    const supabase = createAdminClient();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (options?.status && options.status !== "all") {
+      q = q.eq("status", options.status);
+    }
+
+    if (options?.category && options.category !== "all") {
+      q = q.eq("category", options.category);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return filterFallbackWorksActivities(options, false);
+      }
+      throw new Error(`Failed to fetch admin activities from Supabase: ${error.message}`);
+    }
+
+    let results = (data || []) as WorksActivity[];
+
+    if (options?.search && options.search.trim()) {
+      const query = options.search.toLowerCase().trim();
+      results = results.filter(
+        (a) =>
+          a.title.toLowerCase().includes(query) ||
+          (a.short_description || "").toLowerCase().includes(query) ||
+          a.description.toLowerCase().includes(query) ||
+          a.category.toLowerCase().includes(query)
+      );
+    }
+
+    return results;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return filterFallbackWorksActivities(options, false);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Admin query: retrieves a single activity by ID.
+ */
+export async function getWorksActivityById(id: string): Promise<WorksActivity | null> {
+  if (!id) return null;
+
+  if (!isSupabaseConfigured()) {
+    const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+    return act || null;
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("works_activities")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+        return act || null;
+      }
+      throw new Error(`Failed to fetch activity by ID: ${error.message}`);
+    }
+
+    return (data as WorksActivity) || null;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+      return act || null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Admin mutation: creates a new FOLE WORKS activity.
+ */
+export async function createWorksActivity(
+  input: Partial<WorksActivity>
+): Promise<WorksActivity> {
+  const newId = input.id || crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  // Ensure unique slug
+  let slug = input.slug || input.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `activity-${Date.now()}`;
+  if (fallbackWorksActivities.some((a) => a.slug === slug && a.id !== newId)) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
+
+  const isPublished = input.status === "published";
+
+  const dbPayload: Record<string, unknown> = {
+    id: newId,
+    title: input.title || "Untitled Activity",
+    slug,
+    short_description: input.short_description || null,
+    description: input.description || "",
+    category: input.category || "Workshop",
+    activity_type: input.activity_type || "Workshop",
+    delivery_mode: input.delivery_mode || "in_person",
+    venue: input.venue || null,
+    cover_image: input.cover_image || null,
+    start_at: input.start_at || null,
+    end_at: input.end_at || null,
+    timezone: input.timezone || "Asia/Kolkata",
+    organizer_details: input.organizer_details || null,
+    learning_outcomes: input.learning_outcomes || [],
+    registration_url: input.registration_url || null,
+    registration_opens_at: input.registration_opens_at || null,
+    registration_closes_at: input.registration_closes_at || null,
+    fee_amount: typeof input.fee_amount === "number" ? input.fee_amount : 0,
+    currency: input.currency || "INR",
+    capacity: input.capacity ?? null,
+    contact_email: input.contact_email || null,
+    contact_phone: input.contact_phone || null,
+    supporting_resources: input.supporting_resources || [],
+    status: input.status || "draft",
+    is_featured: Boolean(input.is_featured),
+    created_at: now,
+    updated_at: now,
+    published_at: isPublished ? now : null,
+    archived_at: input.status === "archived" ? now : null,
+    deleted_at: null,
+  };
+
+  const createdActivity = dbPayload as unknown as WorksActivity;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("works_activities")
+        .insert(dbPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase createWorksActivity error:", error);
+        throw new Error(`Failed to create works activity: ${error.message}`);
+      }
+
+      if (!isProduction()) {
+        fallbackWorksActivities.unshift(data as WorksActivity);
+      }
+
+      await logActivity("FOLE WORKS Activity Created", "works_activity", {
+        id: data.id,
+        title: data.title,
+        slug: data.slug,
+        status: data.status,
+      });
+
+      return data as WorksActivity;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        fallbackWorksActivities.unshift(createdActivity);
+        await logActivity("FOLE WORKS Activity Created (Fallback)", "works_activity", {
+          id: createdActivity.id,
+          title: createdActivity.title,
+        });
+        return createdActivity;
+      }
+      throw err;
+    }
+  }
+
+  fallbackWorksActivities.unshift(createdActivity);
+  await logActivity("FOLE WORKS Activity Created", "works_activity", {
+    id: createdActivity.id,
+    title: createdActivity.title,
+  });
+  return createdActivity;
+}
+
+/**
+ * Admin mutation: updates an existing FOLE WORKS activity.
+ */
+export async function updateWorksActivity(
+  id: string,
+  updates: Partial<WorksActivity>
+): Promise<WorksActivity> {
+  const existing = await getWorksActivityById(id);
+  if (!existing) {
+    throw new Error(`Works activity with ID ${id} not found.`);
+  }
+
+  const now = new Date().toISOString();
+  const nextStatus = updates.status || existing.status;
+  const isNowPublished = nextStatus === "published" && existing.status !== "published";
+  const isNowArchived = nextStatus === "archived" && existing.status !== "archived";
+
+  const dbPayload: Record<string, unknown> = {
+    updated_at: now,
+  };
+
+  if (updates.title !== undefined) dbPayload.title = updates.title;
+  if (updates.slug !== undefined) dbPayload.slug = updates.slug;
+  if (updates.short_description !== undefined) dbPayload.short_description = updates.short_description;
+  if (updates.description !== undefined) dbPayload.description = updates.description;
+  if (updates.category !== undefined) dbPayload.category = updates.category;
+  if (updates.activity_type !== undefined) dbPayload.activity_type = updates.activity_type;
+  if (updates.delivery_mode !== undefined) dbPayload.delivery_mode = updates.delivery_mode;
+  if (updates.venue !== undefined) dbPayload.venue = updates.venue;
+  if (updates.cover_image !== undefined) dbPayload.cover_image = updates.cover_image;
+  if (updates.start_at !== undefined) dbPayload.start_at = updates.start_at;
+  if (updates.end_at !== undefined) dbPayload.end_at = updates.end_at;
+  if (updates.timezone !== undefined) dbPayload.timezone = updates.timezone;
+  if (updates.organizer_details !== undefined) dbPayload.organizer_details = updates.organizer_details;
+  if (updates.learning_outcomes !== undefined) dbPayload.learning_outcomes = updates.learning_outcomes;
+  if (updates.registration_url !== undefined) dbPayload.registration_url = updates.registration_url;
+  if (updates.registration_opens_at !== undefined) dbPayload.registration_opens_at = updates.registration_opens_at;
+  if (updates.registration_closes_at !== undefined) dbPayload.registration_closes_at = updates.registration_closes_at;
+  if (updates.fee_amount !== undefined) dbPayload.fee_amount = updates.fee_amount;
+  if (updates.currency !== undefined) dbPayload.currency = updates.currency;
+  if (updates.capacity !== undefined) dbPayload.capacity = updates.capacity;
+  if (updates.contact_email !== undefined) dbPayload.contact_email = updates.contact_email;
+  if (updates.contact_phone !== undefined) dbPayload.contact_phone = updates.contact_phone;
+  if (updates.supporting_resources !== undefined) dbPayload.supporting_resources = updates.supporting_resources;
+  if (updates.status !== undefined) {
+    dbPayload.status = updates.status;
+    if (isNowPublished) dbPayload.published_at = now;
+    if (isNowArchived) dbPayload.archived_at = now;
+  }
+  if (updates.is_featured !== undefined) dbPayload.is_featured = Boolean(updates.is_featured);
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("works_activities")
+        .update(dbPayload)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase updateWorksActivity error:", error);
+        throw new Error(`Failed to update works activity: ${error.message}`);
+      }
+
+      if (!isProduction()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          fallbackWorksActivities[idx] = data as WorksActivity;
+        }
+      }
+
+      await logActivity("FOLE WORKS Activity Updated", "works_activity", {
+        id: data.id,
+        title: data.title,
+        status: data.status,
+      });
+
+      return data as WorksActivity;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        const updated = { ...existing, ...dbPayload } as WorksActivity;
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) fallbackWorksActivities[idx] = updated;
+        return updated;
+      }
+      throw err;
+    }
+  }
+
+  const updated = { ...existing, ...dbPayload } as WorksActivity;
+  const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+  if (idx !== -1) fallbackWorksActivities[idx] = updated;
+
+  await logActivity("FOLE WORKS Activity Updated", "works_activity", {
+    id: updated.id,
+    title: updated.title,
+    status: updated.status,
+  });
+
+  return updated;
+}
+
+/**
+ * Admin mutation: quick status transition (draft | published | archived).
+ */
+export async function updateWorksActivityStatus(
+  id: string,
+  status: WorksActivityStatus
+): Promise<WorksActivity> {
+  return updateWorksActivity(id, { status });
+}
+
+/**
+ * Admin mutation: deletes or soft-deletes an activity.
+ */
+export async function deleteWorksActivity(
+  id: string,
+  soft = true
+): Promise<boolean> {
+  const existing = await getWorksActivityById(id);
+  if (!existing) return false;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      if (soft) {
+        const { error } = await supabase
+          .from("works_activities")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from("works_activities").delete().eq("id", id);
+        if (error) throw new Error(error.message);
+      }
+
+      if (!isProduction()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+          else fallbackWorksActivities.splice(idx, 1);
+        }
+      }
+
+      await logActivity("FOLE WORKS Activity Deleted", "works_activity", {
+        id: existing.id,
+        title: existing.title,
+        soft,
+      });
+
+      return true;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+          else fallbackWorksActivities.splice(idx, 1);
+        }
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+  if (idx !== -1) {
+    if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+    else fallbackWorksActivities.splice(idx, 1);
+  }
+
+  await logActivity("FOLE WORKS Activity Deleted", "works_activity", {
+    id: existing.id,
+    title: existing.title,
+    soft,
+  });
+
+  return true;
+}
+
+/**
+ * Admin query: computes real activity metrics for FOLE WORKS dashboard overview.
+ */
+export async function getWorksActivityMetrics(): Promise<WorksActivityMetrics> {
+  const all = await getAllWorksActivitiesForAdmin();
+  const now = Date.now();
+
+  return {
+    total: all.length,
+    published: all.filter((a) => a.status === "published").length,
+    draft: all.filter((a) => a.status === "draft").length,
+    archived: all.filter((a) => a.status === "archived").length,
+    upcoming: all.filter(
+      (a) => a.status === "published" && a.start_at && new Date(a.start_at).getTime() >= now
+    ).length,
+  };
+}
+

@@ -15,6 +15,7 @@ import {
   Home,
   Info,
   MessageSquare,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
@@ -65,6 +66,7 @@ export function SiteHeader() {
     { label: "Lectures", href: "/lectures", icon: BookOpen },
     { label: "Subjects", href: "/subjects", icon: Compass },
     { label: "Materials", href: "/materials", icon: FileText },
+    { label: "FOLE WORKS", href: "/fole-works", icon: Briefcase },
     { label: "About", href: "/about", icon: Info },
     { label: "Contact", href: "/contact", icon: MessageSquare },
   ];

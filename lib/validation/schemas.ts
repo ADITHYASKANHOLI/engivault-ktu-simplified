@@ -241,6 +241,47 @@ export const uploadAuthorizeSchema = z.object({
   lesson_id: uuidSchema.optional().nullable().or(z.literal("")),
 });
 
+export const worksSupportingResourceSchema = z.object({
+  title: z.string().min(1).max(200),
+  url: z.string().min(1, "URL is required"),
+  type: z.enum(["document", "link", "slides", "code", "form", "other"]).optional().default("link"),
+});
+
+export const worksActivitySchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").max(200, "Title is too long"),
+  slug: z
+    .string()
+    .min(2, "Slug must be at least 2 characters")
+    .max(120)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with hyphens"),
+  short_description: z.string().max(500).optional().nullable(),
+  description: z.string().min(10, "Description must be at least 10 characters").max(10000),
+  category: z.string().min(1, "Category is required").max(100),
+  activity_type: z.string().min(1, "Activity type is required").max(100),
+  delivery_mode: z.enum(["in_person", "online", "hybrid"]).default("in_person"),
+  venue: z.string().max(300).optional().nullable(),
+  cover_image: z.string().optional().nullable(),
+  start_at: z.string().optional().nullable(),
+  end_at: z.string().optional().nullable(),
+  timezone: z.string().max(100).optional().default("Asia/Kolkata"),
+  organizer_details: z.string().max(500).optional().nullable(),
+  learning_outcomes: z.array(z.string()).optional().nullable(),
+  registration_url: z.string().optional().nullable(),
+  registration_opens_at: z.string().optional().nullable(),
+  registration_closes_at: z.string().optional().nullable(),
+  fee_amount: z.number().min(0).default(0),
+  currency: z.string().max(10).default("INR"),
+  capacity: z.number().int().positive().optional().nullable(),
+  contact_email: z.string().optional().nullable(),
+  contact_phone: z.string().max(50).optional().nullable(),
+  supporting_resources: z.array(worksSupportingResourceSchema).optional().default([]),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  is_featured: z.boolean().default(false),
+});
+
+export const worksActivityUpdateSchema = worksActivitySchema.partial();
+
 export * from "./contact";
+
 
 

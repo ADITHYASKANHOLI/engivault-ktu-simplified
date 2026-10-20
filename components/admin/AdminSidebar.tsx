@@ -16,6 +16,9 @@ import {
   LogOut,
   ExternalLink,
   X,
+  Briefcase,
+  Calendar,
+  PlusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +77,14 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
         { label: "Modules", href: "/admin/dashboard/modules", icon: Layers },
         { label: "Lessons", href: "/admin/dashboard/lessons", icon: Video },
         { label: "Materials", href: "/admin/dashboard/materials", icon: FileText },
+      ],
+    },
+    {
+      group: "FOLE WORKS",
+      items: [
+        { label: "Works Overview", href: "/admin/dashboard/works", icon: Briefcase },
+        { label: "Activities", href: "/admin/dashboard/works/activities", icon: Calendar },
+        { label: "Create Activity", href: "/admin/dashboard/works/create", icon: PlusCircle },
       ],
     },
     {

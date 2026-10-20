@@ -91,6 +91,12 @@ export async function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/fole-works" className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span>FOLE WORKS Activities</span>
+                </Link>
+              </li>
+              <li>
                 <Link href="/about" className="hover:text-white transition-colors">
                   About KTU Simplified
                 </Link>

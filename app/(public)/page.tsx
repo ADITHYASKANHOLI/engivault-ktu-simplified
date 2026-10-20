@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle, Play, GraduationCap, AlertCircle } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle, Play, GraduationCap, AlertCircle, Briefcase } from "lucide-react";
 import {
   getPublishedSubjects,
   getSiteSettings,
@@ -86,6 +86,14 @@ export default async function HomePage() {
                 >
                   <BookOpen className="w-4 h-4 text-blue-700" />
                   <span>Curriculum Subjects</span>
+                </Link>
+
+                <Link
+                  href="/fole-works"
+                  className="w-full sm:w-auto px-7 py-4 rounded-xl text-sm font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 border border-emerald-300/80 dark:border-emerald-700/60 shadow-xs transition-all flex items-center justify-center gap-2"
+                >
+                  <Briefcase className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>FOLE WORKS Activities</span>
                 </Link>
               </div>
 
