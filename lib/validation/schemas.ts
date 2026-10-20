@@ -240,3 +240,7 @@ export const uploadAuthorizeSchema = z.object({
   module_id: uuidSchema.optional().nullable().or(z.literal("")),
   lesson_id: uuidSchema.optional().nullable().or(z.literal("")),
 });
+
+export * from "./contact";
+
+

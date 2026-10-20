@@ -18,7 +18,7 @@ export const initialFallbackSiteSettings: SiteSettings = {
   headline: "Learn Engineering. Build Confidence.",
   tagline: "KTU Learning. Simplified.",
   logo_path: "/branding/fole-logo.png",
-  contact_email: "contact@engivault.edu",
+  contact_email: "folecev@gmail.com",
   about_text:
     "ENGIVAULT is a dedicated academic digital vault for engineering students providing structured academic lectures, syllabus units, and authenticated study resources.",
   footer_text: "© 2026 ENGIVAULT. All rights reserved. KTU Engineering Learning Simplified.",

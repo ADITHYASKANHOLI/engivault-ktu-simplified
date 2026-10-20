@@ -872,6 +872,295 @@ async function runTests() {
     assert.ok(adminLessonsCode.includes("getYouTubeWatchUrl"), "Admin dashboard must validate watch URL on submit/preview");
   });
 
+  // 10. Contact Form & FOLE CEV Email Forwarding Suite
+  console.log("\n--- 10. CONTACT FORM & FOLE CEV EMAIL FORWARDING WORKFLOW ---");
+
+  const {
+    escapeHtml,
+    sanitizeHeader,
+    formatContactEmailSubject,
+    buildContactEmailText,
+    buildContactEmailHtml,
+    sendContactEmail,
+    setMockEmailSender,
+  } = await import("../lib/email/index.ts");
+  const { checkRateLimit, _resetRateLimits } = await import("../lib/security/rate-limit.ts");
+  const { contactFormSchema } = await import("../lib/validation/contact.ts");
+
+
+
+  test("Valid contact form submission passes schema validation", () => {
+    const validData = {
+      name: "Adithyan S",
+      email: "student@engivault.edu",
+      subject: "Feedback on MAT101 Linear Algebra lecture notes",
+      message: "The eigenvalues explanation in module 2 was exceptionally clear. Thank you FOLE team!",
+      hp_company: "",
+    };
+    const parsed = contactFormSchema.safeParse(validData);
+    assert.equal(parsed.success, true);
+    if (parsed.success) {
+      assert.equal(parsed.data.name, "Adithyan S");
+      assert.equal(parsed.data.email, "student@engivault.edu");
+    }
+  });
+
+  test("Invalid or missing email addresses are rejected with helpful errors", () => {
+    const testCases = [
+      { email: "", reason: "missing" },
+      { email: "not-an-email", reason: "missing at sign" },
+      { email: "student@", reason: "missing domain" },
+      { email: "@domain.com", reason: "missing user" },
+      { email: "a".repeat(250) + "@domain.com", reason: "exceeds max length" },
+    ];
+    for (const tc of testCases) {
+      const res = contactFormSchema.safeParse({
+        name: "Test Student",
+        email: tc.email,
+        subject: "General KTU inquiry",
+        message: "Valid message content over ten chars",
+      });
+      assert.equal(res.success, false, `Expected failure for email: ${tc.reason}`);
+    }
+  });
+
+  test("Missing required fields fail validation (name, subject, message)", () => {
+    // Missing name
+    const missingName = contactFormSchema.safeParse({
+      name: " ",
+      email: "student@engivault.edu",
+      subject: "Course Question",
+      message: "Valid message content over ten chars",
+    });
+    assert.equal(missingName.success, false);
+
+    // Missing subject
+    const missingSubject = contactFormSchema.safeParse({
+      name: "Test Student",
+      email: "student@engivault.edu",
+      subject: "  ",
+      message: "Valid message content over ten chars",
+    });
+    assert.equal(missingSubject.success, false);
+
+    // Missing message
+    const missingMessage = contactFormSchema.safeParse({
+      name: "Test Student",
+      email: "student@engivault.edu",
+      subject: "Course Question",
+      message: " ",
+    });
+    assert.equal(missingMessage.success, false);
+  });
+
+  test("Empty and excessively long messages are rejected", () => {
+    // Too short (<10 chars)
+    const tooShort = contactFormSchema.safeParse({
+      name: "Test Student",
+      email: "student@engivault.edu",
+      subject: "Course Question",
+      message: "Hi",
+    });
+    assert.equal(tooShort.success, false);
+
+    // Too long (>5000 chars)
+    const tooLong = contactFormSchema.safeParse({
+      name: "Test Student",
+      email: "student@engivault.edu",
+      subject: "Course Question",
+      message: "A".repeat(5001),
+    });
+    assert.equal(tooLong.success, false);
+  });
+
+  test("Email header injection (CRLF in subject or name) is strictly prevented", () => {
+    const injectedSubject = contactFormSchema.safeParse({
+      name: "Test Student",
+      email: "student@engivault.edu",
+      subject: "Legit Subject\r\nBcc: victim@attacker.com",
+      message: "Testing header injection rejection",
+    });
+    assert.equal(injectedSubject.success, false);
+
+    const injectedName = contactFormSchema.safeParse({
+      name: "Attacker\nCc: spam@attacker.com",
+      email: "student@engivault.edu",
+      subject: "Valid Subject",
+      message: "Testing header injection rejection in name",
+    });
+    assert.equal(injectedName.success, false);
+
+    // Sanitize helper also strips all newlines defensively
+    const sanitized = sanitizeHeader("Line 1\r\nLine 2\nLine 3");
+    assert.equal(sanitized, "Line 1 Line 2 Line 3");
+  });
+
+  test("Spam honeypot field presence triggers rejection", () => {
+    const botSubmission = contactFormSchema.safeParse({
+      name: "Spam Bot",
+      email: "spambot@marketing-crawler.com",
+      subject: "Buy Cheap SEO Services",
+      message: "Automated crawling message for marketing purposes.",
+      hp_company: "Evil Spammer Corp",
+    });
+    assert.equal(botSubmission.success, false, "Honeypot filled must trigger schema validation failure");
+  });
+
+  test("In-memory rate limiting restricts repeated submissions from the same IP", () => {
+    _resetRateLimits();
+    const testIp = "192.168.1.100";
+
+    // 5 allowed attempts
+    for (let i = 1; i <= 5; i++) {
+      const res = checkRateLimit(testIp, { max: 5, windowMs: 60000 });
+      assert.equal(res.success, true, `Attempt ${i} should succeed`);
+      assert.equal(res.remaining, 5 - i);
+    }
+
+    // 6th attempt must be rejected
+    const blockedRes = checkRateLimit(testIp, { max: 5, windowMs: 60000 });
+    assert.equal(blockedRes.success, false, "6th attempt must be blocked by rate limiter");
+    assert.equal(blockedRes.remaining, 0);
+    assert.ok(blockedRes.resetInSeconds > 0);
+
+    // Different IP is isolated and not blocked
+    const distinctIpRes = checkRateLimit("192.168.1.200", { max: 5, windowMs: 60000 });
+    assert.equal(distinctIpRes.success, true, "Distinct IP should have independent allowance");
+    assert.equal(distinctIpRes.remaining, 4);
+
+    _resetRateLimits();
+  });
+
+  test("Subject line formatting adheres to canonical pattern [FOLE Web Contact] — [Subject]", () => {
+    const formatted = formatContactEmailSubject("KTU S3 Data Structures syllabus doubt");
+    assert.equal(formatted, "[FOLE Web Contact] — KTU S3 Data Structures syllabus doubt");
+  });
+
+  test("HTML escaping safely neutralizes HTML and script tags", () => {
+    const malicious = '<script>alert("xss")</script> & "quotes" \'apostrophe\'';
+    const escaped = escapeHtml(malicious);
+    assert.ok(!escaped.includes("<script>"));
+    assert.ok(escaped.includes("&lt;script&gt;"));
+    assert.ok(escaped.includes("&amp;"));
+    assert.ok(escaped.includes("&quot;"));
+  });
+
+  test("Plain text and HTML email templates preserve complete message and attribution", () => {
+    const submission = {
+      name: "Rohit Mohan",
+      email: "rohit@student.ktu.edu.in",
+      subject: "Question about EST130 Basics of Electrical Engineering",
+      message: "In Module 3, could you explain the derivation for three phase star connection line currents in more detail?",
+      submittedAt: "2026-10-20T10:00:00.000Z",
+    };
+
+    const text = buildContactEmailText(submission);
+    assert.ok(text.includes("FOLE WEB — NEW CONTACT US INQUIRY"));
+    assert.ok(text.includes("Rohit Mohan"));
+    assert.ok(text.includes("rohit@student.ktu.edu.in"));
+    assert.ok(text.includes("EST130 Basics of Electrical Engineering"));
+    assert.ok(text.includes("three phase star connection line currents"));
+    assert.ok(text.includes("FOLE Web Contact Us Form"));
+
+    const html = buildContactEmailHtml(submission);
+    assert.ok(html.includes("FOLE"));
+    assert.ok(html.includes("Rohit Mohan"));
+    assert.ok(html.includes("rohit@student.ktu.edu.in"));
+    assert.ok(html.includes("three phase star connection line currents"));
+    assert.ok(html.includes("folecev@gmail.com"));
+  });
+
+  await testAsync("sendContactEmail sends to official recipient folecev@gmail.com with student in Reply-To", async () => {
+    let capturedPayload = null;
+    setMockEmailSender(async (payload) => {
+      capturedPayload = payload;
+      return { id: "mock-resend-id-9988" };
+    });
+
+    const res = await sendContactEmail({
+      name: "Ananya Pillai",
+      email: "ananya@student.ktu.edu.in",
+      subject: "Question Paper 2024 Solution Request",
+      message: "Could you upload the solved 2024 university question paper for CY100 Engineering Chemistry?",
+      submittedAt: "2026-10-20T10:15:00.000Z",
+    });
+
+    assert.equal(res.success, true);
+    assert.equal(res.messageId, "mock-resend-id-9988");
+    assert.ok(capturedPayload, "Mock sender must have been invoked with payload");
+    assert.deepEqual(capturedPayload.to, ["folecev@gmail.com"], "Recipient must be official email folecev@gmail.com");
+    assert.equal(capturedPayload.replyTo, "ananya@student.ktu.edu.in", "Reply-To must be student's email");
+    assert.notEqual(capturedPayload.from, "ananya@student.ktu.edu.in", "From must NOT be student's email (anti-spoofing)");
+    assert.equal(capturedPayload.subject, "[FOLE Web Contact] — Question Paper 2024 Solution Request");
+
+    // Clean up mock
+    setMockEmailSender(null);
+  });
+
+  await testAsync("sendContactEmail handles provider failure gracefully without crashing", async () => {
+    setMockEmailSender(async () => {
+      return { error: { message: "Resend rate limit exceeded on free tier" } };
+    });
+
+    const res = await sendContactEmail({
+      name: "Test",
+      email: "test@example.com",
+      subject: "Test Subject",
+      message: "Testing provider error response handling",
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.error, "Resend rate limit exceeded on free tier");
+
+    setMockEmailSender(null);
+  });
+
+  await testAsync("sendContactEmail detects unconfigured API key gracefully", async () => {
+    const originalKey = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+
+    const res = await sendContactEmail({
+      name: "Test",
+      email: "test@example.com",
+      subject: "Test Subject",
+      message: "Testing unconfigured environment handling",
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.error, "EMAIL_SERVICE_UNCONFIGURED");
+
+    if (originalKey) {
+      process.env.RESEND_API_KEY = originalKey;
+    }
+  });
+
+  test("Contact Us page component contains all required elements, security, and states", () => {
+    const contactPageCode = nodeFs.readFileSync("app/(public)/contact/page.tsx", "utf-8");
+    assert.ok(contactPageCode.includes('folecev@gmail.com'), "Must display official contact email folecev@gmail.com");
+    assert.ok(contactPageCode.includes('name="name"'), "Must collect Full Name");
+    assert.ok(contactPageCode.includes('name="email"'), "Must collect Email Address");
+    assert.ok(contactPageCode.includes('name="subject"'), "Must collect Subject");
+    assert.ok(contactPageCode.includes('name="message"'), "Must collect Message");
+    assert.ok(contactPageCode.includes('hp_company'), "Must include spam honeypot field");
+    assert.ok(contactPageCode.includes('aria-hidden="true"'), "Honeypot must be hidden from screen readers");
+    assert.ok(contactPageCode.includes('isSubmitting'), "Must track and handle submission state");
+    assert.ok(contactPageCode.includes('disabled={isSubmitting}'), "Submit button must be disabled during submission");
+    assert.ok(contactPageCode.includes('Thank you for contacting FOLE CEV'), "Must show confirmed success message");
+    assert.ok(contactPageCode.includes('We could not send your message right now'), "Must show user-safe failure message");
+    assert.ok(contactPageCode.includes('/api/contact'), "Must submit via server-side /api/contact route");
+  });
+
+  test("Contact API route enforces nodejs runtime, size limits, and security headers", () => {
+    const routeCode = nodeFs.readFileSync("app/api/contact/route.ts", "utf-8");
+    assert.ok(routeCode.includes('export const runtime = "nodejs"'), "Route must declare nodejs runtime");
+    assert.ok(routeCode.includes('checkRateLimit'), "Route must enforce rate limiting");
+    assert.ok(routeCode.includes('contactFormSchema'), "Route must validate via schema");
+    assert.ok(routeCode.includes('hp_company'), "Route must check honeypot");
+    assert.ok(routeCode.includes('status: 429'), "Route must return 429 when rate limited");
+    assert.ok(routeCode.includes('status: 400'), "Route must return 400 for validation errors or honeypot");
+    assert.ok(routeCode.includes('status: 503'), "Route must return 503 when email dispatch fails");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");
@@ -882,3 +1171,4 @@ async function runTests() {
 }
 
 runTests();
+
