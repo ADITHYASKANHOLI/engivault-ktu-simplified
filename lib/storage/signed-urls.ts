@@ -39,11 +39,14 @@ export async function getSignedVideoUrl(storagePath: string): Promise<string> {
  * Creates a short-lived signed URL for downloadable materials in Supabase Storage.
  */
 export async function getSignedMaterialUrl(storagePath: string): Promise<string> {
+  if (!storagePath) return "";
+
+  if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
+    return storagePath;
+  }
+
   if (!isSupabaseConfigured()) {
-    if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) {
-      return storagePath;
-    }
-    return "#sample-material-download";
+    return `/api/materials/download?path=${encodeURIComponent(storagePath)}`;
   }
 
   try {
@@ -55,13 +58,13 @@ export async function getSignedMaterialUrl(storagePath: string): Promise<string>
       });
 
     if (error || !data?.signedUrl) {
-      console.error("Failed to create signed material URL:", error);
-      return "";
+      console.warn("Could not generate signed material URL directly, using route fallback:", error?.message);
+      return `/api/materials/download?path=${encodeURIComponent(storagePath)}`;
     }
 
     return data.signedUrl;
   } catch (err) {
-    console.error("Error signing material URL:", err);
-    return "";
+    console.warn("Error signing material URL, using route fallback:", err);
+    return `/api/materials/download?path=${encodeURIComponent(storagePath)}`;
   }
 }

@@ -10,7 +10,6 @@ import {
   Globe,
   EyeOff,
   Video as VideoIcon,
-  Clock,
   X,
   Filter,
   CheckCircle2,
@@ -45,7 +44,7 @@ function AdminLessonsContent() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [_semesters, setSemesters] = useState<Semester[]>([]);
   const [facultyList, setFacultyList] = useState<Faculty[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
 
@@ -726,9 +725,109 @@ function AdminLessonsContent() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+          <>
+            {/* Mobile Record Cards for Lessons */}
+            <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredLessons.map((l) => {
+                const rawUrl = l.youtube_url || l.youtubeUrl || null;
+                const ytVideoId = l.youtube_video_id || (rawUrl ? extractYouTubeVideoId(rawUrl) : null);
+                const thumb = l.thumbnail_path || (ytVideoId ? getYouTubeThumbnailUrl(ytVideoId, "default") : null);
+                const tableWatchUrl = getYouTubeWatchUrl(ytVideoId || rawUrl);
+
+                return (
+                  <div key={l.id} className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-16 h-11 rounded-lg overflow-hidden shrink-0 bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-xs">
+                        {thumb ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={thumb} alt={l.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500">
+                            <VideoIcon className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            Lec #{l.lesson_number ?? 1}
+                          </span>
+                          {l.published ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                              <Globe className="w-2.5 h-2.5" />
+                              Published
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              <EyeOff className="w-2.5 h-2.5" />
+                              Draft
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm mt-1 leading-snug break-words">
+                          {l.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Academic Context */}
+                    <div className="text-xs text-slate-600 dark:text-slate-300 space-y-0.5 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="font-semibold text-slate-900 dark:text-white truncate">
+                        {l.module?.subject?.title || "Subject"}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {l.module?.title || "Module"}
+                        {l.topic && ` • Topic: ${l.topic.title}`}
+                      </div>
+                      {(l.instructor || l.faculty?.name) && (
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
+                          <User className="w-3 h-3 text-slate-400" />
+                          <span>{l.instructor || l.faculty?.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mobile Actions with touch target compliance (>= 44px) */}
+                    <div className="flex items-center gap-2 pt-1">
+                      {tableWatchUrl && (
+                        <a
+                          href={tableWatchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 transition-colors"
+                        >
+                          <YoutubeIcon className="w-4 h-4 text-red-600" />
+                          <span>YouTube</span>
+                        </a>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(l)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalLesson(l)}
+                        className="w-11 h-11 inline-flex items-center justify-center rounded-xl text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition-colors shrink-0"
+                        aria-label={`Delete ${l.title}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="p-4">Lecture</th>
                   <th className="p-4">Academic Hierarchy</th>
@@ -892,8 +991,9 @@ function AdminLessonsContent() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </>
+      )}
+    </div>
 
       {/* ========================================================================= */}
       {/* EXACT ADD / EDIT LECTURE MODAL                                            */}

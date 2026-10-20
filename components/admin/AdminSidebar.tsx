@@ -28,6 +28,33 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
   const pathname = usePathname();
   const router = useRouter();
 
+  // Close mobile drawer on route changes
+  React.useEffect(() => {
+    if (mobileOpen && onCloseMobile) {
+      onCloseMobile();
+    }
+  }, [pathname, mobileOpen, onCloseMobile]);
+
+  // Lock body scroll and listen for Escape key when mobile drawer is open
+  React.useEffect(() => {
+    if (!mobileOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && onCloseMobile) {
+        onCloseMobile();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen, onCloseMobile]);
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     router.push("/admin/login");
@@ -111,9 +138,9 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
                   href={item.href}
                   onClick={onCloseMobile}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 min-h-[44px]",
                     active
-                      ? "bg-blue-600 text-white shadow-xs font-bold"
+                      ? "bg-emerald-600 text-white shadow-xs font-bold"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                   )}
                 >
@@ -137,10 +164,10 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+          className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors min-h-[44px]"
         >
           <span className="flex items-center gap-2">
-            <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
             <span>Open Public Site</span>
           </span>
           <span className="text-[10px] font-mono text-slate-500">↗</span>
@@ -148,7 +175,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 transition-colors text-left"
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 transition-colors text-left min-h-[44px]"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
@@ -166,7 +193,12 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
 
       {/* Mobile / Tablet Drawer & Backdrop */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div
+          className="fixed inset-0 z-50 lg:hidden flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin Navigation Drawer"
+        >
           {/* Backdrop */}
           <div
             onClick={onCloseMobile}

@@ -507,7 +507,7 @@ function AdminModulesContent() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
                     {/* Public visibility toggle */}
                     <button
                       onClick={() => handleTogglePublish(m)}

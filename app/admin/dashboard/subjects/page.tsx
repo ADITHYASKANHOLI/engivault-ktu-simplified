@@ -222,8 +222,98 @@ export default function AdminSubjectsPage() {
         </button>
       </div>
 
-      {/* Subjects Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* Mobile Stacked Record Cards (Narrow screens < 768px) */}
+      <div className="block md:hidden space-y-3.5">
+        {loading ? (
+          <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200">
+            Loading subjects...
+          </div>
+        ) : subjects.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="font-semibold text-slate-700">No subjects created yet.</p>
+            <p className="text-[11px] text-slate-500">Click &quot;New Subject&quot; above to create one.</p>
+          </div>
+        ) : (
+          subjects.map((s) => (
+            <div
+              key={s.id}
+              className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {s.code && (
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono text-[10px] font-bold border border-blue-100">
+                        {s.code}
+                      </span>
+                    )}
+                    <span className="text-slate-400 text-[10px] font-mono">
+                      /{s.slug}
+                    </span>
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-900 mt-1 break-words">
+                    {s.title}
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => togglePublish(s)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-bold shrink-0 transition-colors ${
+                    s.published
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {s.published ? <Globe className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span>{s.published ? "PUBLISHED" : "DRAFT"}</span>
+                </button>
+              </div>
+
+              {/* Stats & Modules Link */}
+              <div className="text-xs text-slate-500 font-mono flex items-center justify-between pt-1 border-t border-slate-100">
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-cyan-600" />
+                  <span>{s.modules_count || 0} modules • {s.lessons_count || 0} lectures</span>
+                </div>
+              </div>
+
+              {/* Mobile Actions with >= 44px touch targets */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <Link
+                  href={`/admin/dashboard/modules?subjectId=${s.id}`}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 transition-colors"
+                >
+                  <Layers className="w-4 h-4 text-cyan-700" />
+                  <span>Modules</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => openEditModal(s)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  <span>Edit</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalSubject(s)}
+                  className="w-11 h-11 inline-flex items-center justify-center rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-colors shrink-0"
+                  aria-label={`Delete ${s.title}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Subjects Table */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">

@@ -1161,6 +1161,90 @@ async function runTests() {
     assert.ok(routeCode.includes('status: 503'), "Route must return 503 when email dispatch fails");
   });
 
+  // 11. Mobile-First UI/UX, Materials Catalogue & Admin Responsiveness
+  console.log("\n--- 11. MOBILE-FIRST UI/UX, MATERIALS CATALOGUE & ADMIN RESPONSIVENESS ---");
+
+  test("getPublishedMaterialsForCatalog filters unpublished and soft-deleted records across 4 tiers", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes("getPublishedMaterialsForCatalog"), "Must export getPublishedMaterialsForCatalog");
+    assert.ok(queriesCode.includes('.eq("published", true)'), "Must filter materials by published = true");
+    assert.ok(queriesCode.includes('.is("deleted_at", null)'), "Must exclude soft-deleted materials");
+    assert.ok(queriesCode.includes("getMaterialsForSubject"), "Must export getMaterialsForSubject");
+    assert.ok(queriesCode.includes("getMaterialsForModule"), "Must export getMaterialsForModule");
+  });
+
+  test("Download route /api/materials/download verifies publication and soft-delete status", () => {
+    const downloadRoute = nodeFs.readFileSync("app/api/materials/download/route.ts", "utf-8");
+    assert.ok(downloadRoute.includes('export const runtime = "nodejs"'), "Download route must declare nodejs runtime");
+    assert.ok(downloadRoute.includes("!data.published || data.deleted_at !== null"), "Must reject unpublished or deleted materials");
+    assert.ok(downloadRoute.includes("createSignedUrl"), "Must generate short-lived signed URLs");
+  });
+
+  test("Public SiteHeader provides Materials navigation link and accessible mobile drawer", () => {
+    const headerCode = nodeFs.readFileSync("components/layout/SiteHeader.tsx", "utf-8");
+    assert.ok(headerCode.includes('href: "/materials"'), "Navigation links must include /materials");
+    assert.ok(headerCode.includes('aria-expanded={mobileMenuOpen}'), "Must set aria-expanded on menu toggle");
+    assert.ok(headerCode.includes('aria-controls="mobile-navigation-drawer"'), "Must set aria-controls on menu toggle");
+    assert.ok(headerCode.includes("overflow = \"hidden\""), "Must lock body scroll while mobile drawer is open");
+    assert.ok(headerCode.includes('e.key === "Escape"'), "Must close drawer on Escape key");
+  });
+
+  test("CatalogMaterialCard formats file size, upload date, metadata, and wraps long text safely", () => {
+    const cardCode = nodeFs.readFileSync("components/materials/CatalogMaterialCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("formatFileSize"), "Must format file size");
+    assert.ok(cardCode.includes("break-words"), "Must prevent text overflow with break-words");
+    assert.ok(cardCode.includes("min-h-[44px]"), "Actions must meet 44px min touch target");
+    assert.ok(cardCode.includes("download"), "Must provide download attribute");
+  });
+
+  test("Public Materials page provides search, filters, breadcrumbs, and error handling", () => {
+    assert.ok(nodeFs.existsSync("app/(public)/materials/page.tsx"), "app/(public)/materials/page.tsx must exist");
+    assert.ok(nodeFs.existsSync("app/(public)/materials/loading.tsx"), "app/(public)/materials/loading.tsx must exist");
+    const pageCode = nodeFs.readFileSync("app/(public)/materials/page.tsx", "utf-8");
+    assert.ok(pageCode.includes("MaterialsFilterView"), "Must render MaterialsFilterView");
+    assert.ok(pageCode.includes("getPublishedMaterialsForCatalog"), "Must fetch published catalog materials");
+
+    const filterCode = nodeFs.readFileSync("components/materials/MaterialsFilterView.tsx", "utf-8");
+    assert.ok(filterCode.includes("filter-dept"), "Must provide department filter");
+    assert.ok(filterCode.includes("filter-sem"), "Must provide semester filter");
+    assert.ok(filterCode.includes("filter-subject"), "Must provide subject filter");
+    assert.ok(filterCode.includes("filter-module"), "Must provide module filter");
+    assert.ok(filterCode.includes("filter-type"), "Must provide material type filter");
+    assert.ok(filterCode.includes("resetAllFilters"), "Must provide reset filters action");
+  });
+
+  test("Academic hierarchy pages (Subject, Module, Lesson) link to materials catalog", () => {
+    const subjectPage = nodeFs.readFileSync("app/(public)/subjects/[subjectSlug]/page.tsx", "utf-8");
+    assert.ok(subjectPage.includes("/materials?subject="), "Subject page must link to filtered materials");
+
+    const modulePage = nodeFs.readFileSync("app/(public)/subjects/[subjectSlug]/[moduleSlug]/page.tsx", "utf-8");
+    assert.ok(modulePage.includes("/materials?subject="), "Module page must link to filtered materials");
+
+    const lessonPage = nodeFs.readFileSync("app/(public)/subjects/[subjectSlug]/[moduleSlug]/[lessonSlug]/page.tsx", "utf-8");
+    assert.ok(lessonPage.includes("/materials?subject="), "Lesson page must link to module materials in catalog");
+  });
+
+  test("Admin dashboard components provide mobile drawers and stacked card views", () => {
+    const shellCode = nodeFs.readFileSync("components/admin/AdminDashboardShell.tsx", "utf-8");
+    assert.ok(shellCode.includes("p-3.5 sm:p-6"), "Shell must use compact padding on mobile");
+
+    const sidebarCode = nodeFs.readFileSync("components/admin/AdminSidebar.tsx", "utf-8");
+    assert.ok(sidebarCode.includes("overflow = \"hidden\""), "Admin sidebar drawer must lock body scroll");
+    assert.ok(sidebarCode.includes('e.key === "Escape"'), "Admin sidebar must close on Escape key");
+    assert.ok(sidebarCode.includes("min-h-[44px]"), "Admin links must meet 44px min touch target");
+
+    const adminHeader = nodeFs.readFileSync("components/admin/AdminHeader.tsx", "utf-8");
+    assert.ok(adminHeader.includes("w-11 h-11"), "Admin menu button must meet 44px touch target");
+
+    const adminMaterials = nodeFs.readFileSync("app/admin/dashboard/materials/page.tsx", "utf-8");
+    assert.ok(adminMaterials.includes("block md:hidden"), "Admin materials must render stacked cards on mobile");
+    assert.ok(adminMaterials.includes("hidden md:block"), "Admin materials table must be hidden on small screens");
+
+    const adminLessons = nodeFs.readFileSync("app/admin/dashboard/lessons/page.tsx", "utf-8");
+    assert.ok(adminLessons.includes("block md:hidden"), "Admin lessons must render stacked cards on mobile");
+    assert.ok(adminLessons.includes("hidden md:block"), "Admin lessons table must be hidden on small screens");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

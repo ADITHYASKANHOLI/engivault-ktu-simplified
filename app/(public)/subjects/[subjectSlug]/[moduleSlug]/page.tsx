@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, ArrowLeft, BookOpen, Video } from "lucide-react";
-import { getSubjectBySlug, getModuleBySlug, getLessonsForModule } from "@/lib/queries";
+import { ChevronRight, ArrowLeft, Video, FileText } from "lucide-react";
+import { getSubjectBySlug, getModuleBySlug, getLessonsForModule, getMaterialsForModule } from "@/lib/queries";
 import { LessonRow } from "@/components/lessons/LessonRow";
+import { CatalogMaterialCard } from "@/components/materials/CatalogMaterialCard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,10 @@ export default async function ModuleDetailPage({ params }: ModuleDetailPageProps
   const mod = await getModuleBySlug(subject.id, moduleSlug);
   if (!mod) notFound();
 
-  const lessons = await getLessonsForModule(mod.id);
+  const [lessons, moduleMaterials] = await Promise.all([
+    getLessonsForModule(mod.id),
+    getMaterialsForModule(mod.id),
+  ]);
 
   return (
     <main className="flex-1 pt-28 pb-24 bg-[#F7F9FC]">
@@ -86,6 +90,31 @@ export default async function ModuleDetailPage({ params }: ModuleDetailPageProps
             ))
           )}
         </div>
+
+        {/* Module Study Materials Section */}
+        {moduleMaterials.length > 0 && (
+          <div className="pt-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 font-mono flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <span>Notes & Study Materials for {mod.title}</span>
+              </h2>
+              <Link
+                href={`/materials?subject=${subject.slug}&module=${mod.slug}`}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              >
+                <span>View all in materials vault</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {moduleMaterials.map((material) => (
+                <CatalogMaterialCard key={material.id} material={material} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

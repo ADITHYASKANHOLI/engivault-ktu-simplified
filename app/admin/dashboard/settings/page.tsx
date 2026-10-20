@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Settings, Save, CheckCircle2 } from "lucide-react";
+import { Save, CheckCircle2 } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -116,7 +116,7 @@ export default function AdminSettingsPage() {
         <div className="pt-4 border-t border-slate-100 flex justify-end">
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-xs"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 transition-colors shadow-xs min-h-[44px]"
           >
             <Save className="w-4 h-4" />
             <span>Save Settings</span>

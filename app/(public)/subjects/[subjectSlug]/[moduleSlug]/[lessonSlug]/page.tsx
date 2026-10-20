@@ -294,6 +294,16 @@ export default async function LessonPage({ params }: LessonPageProps) {
                   ))}
                 </div>
               )}
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                <Link
+                  href={`/materials?subject=${subject.slug}&module=${currentModule.slug}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <span>Browse all notes & question banks for this module</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 

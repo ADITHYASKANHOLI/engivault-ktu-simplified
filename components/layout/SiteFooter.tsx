@@ -76,8 +76,18 @@ export async function SiteFooter() {
             </h3>
             <ul className="space-y-2.5 text-sm text-slate-400">
               <li>
+                <Link href="/lectures" className="hover:text-white transition-colors">
+                  Video Lectures
+                </Link>
+              </li>
+              <li>
                 <Link href="/subjects" className="hover:text-white transition-colors">
                   Subject Catalog
+                </Link>
+              </li>
+              <li>
+                <Link href="/materials" className="hover:text-white transition-colors">
+                  Study Materials
                 </Link>
               </li>
               <li>

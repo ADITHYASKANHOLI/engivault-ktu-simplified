@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, ShieldCheck, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { getActivityLogs } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 
@@ -15,7 +15,36 @@ export default async function AdminActivityPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+      {/* Mobile Activity Stacked Cards */}
+      <div className="block md:hidden divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        {logs.map((log) => (
+          <div key={log.id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="font-bold text-slate-900 text-xs truncate">{log.action}</span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-bold uppercase text-[10px] shrink-0">
+                {log.entity_type || "SYSTEM"}
+              </span>
+            </div>
+
+            {log.metadata && (
+              <div className="text-[11px] font-mono text-slate-500 bg-slate-50 p-2 rounded-lg break-words">
+                {JSON.stringify(log.metadata)}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+              <Clock className="w-3 h-3 text-slate-400" />
+              <span>{formatDate(log.created_at)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Activity Table */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
@@ -31,7 +60,7 @@ export default async function AdminActivityPage() {
                 <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="p-4 font-bold text-slate-900">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span>{log.action}</span>
                     </div>
                   </td>

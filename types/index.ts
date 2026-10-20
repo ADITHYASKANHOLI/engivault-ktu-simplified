@@ -183,6 +183,10 @@ export interface Material {
   deleted_at?: string | null;
   // Virtual signed download URL
   download_url?: string;
+  // Joined academic relations
+  subject?: Subject;
+  module?: Module;
+  lesson?: Lesson;
 }
 
 export type UploadStatus = "pending" | "uploading" | "completed" | "failed" | "deleted";

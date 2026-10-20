@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, BookOpen, Layers, Video, FileText, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { getSubjectBySlug, getModulesForSubject, getLessonsForModule } from "@/lib/queries";
+import { ChevronRight, BookOpen, Layers, Video, FileText, ArrowLeft } from "lucide-react";
+import { getSubjectBySlug, getModulesForSubject, getLessonsForModule, getMaterialsForSubject } from "@/lib/queries";
 import { LessonRow } from "@/components/lessons/LessonRow";
+import { CatalogMaterialCard } from "@/components/materials/CatalogMaterialCard";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,11 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
     notFound();
   }
 
-  const modules = await getModulesForSubject(subject.id);
+  const [modules, subjectMaterials] = await Promise.all([
+    getModulesForSubject(subject.id),
+    getMaterialsForSubject(subject.id),
+  ]);
+
   const modulesWithLessons = await Promise.all(
     modules.map(async (mod) => {
       const lessons = await getLessonsForModule(mod.id);
@@ -77,6 +82,11 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
                 <Video className="w-3.5 h-3.5 text-cyan-400" />
                 {totalLessons} Video Lectures
               </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                {subjectMaterials.length} Study Materials
+              </span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
@@ -86,6 +96,16 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal">
               {subject.description || subject.short_description || "Comprehensive syllabus breakdown with recorded lectures, derivations, and question papers for KTU university exams."}
             </p>
+
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <Link
+                href={`/materials?subject=${subject.slug}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors shadow-sm"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-950" />
+                <span>Browse Subject Notes & PYQs</span>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -155,6 +175,36 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             ))
           )}
         </div>
+
+        {/* Subject Study Materials Section */}
+        {subjectMaterials.length > 0 && (
+          <div className="mt-14 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-600" />
+                  <span>Subject Study Materials & Question Banks</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Handpicked revision notes, module slides, and previous KTU question papers for this subject.
+                </p>
+              </div>
+              <Link
+                href={`/materials?subject=${subject.slug}`}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 shrink-0"
+              >
+                <span>View all in materials catalog</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {subjectMaterials.slice(0, 6).map((material) => (
+                <CatalogMaterialCard key={material.id} material={material} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

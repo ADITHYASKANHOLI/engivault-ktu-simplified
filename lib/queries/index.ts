@@ -133,7 +133,7 @@ function saveStore(data: FallbackStoreData): void {
 
 function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
   return new Proxy([] as unknown as T[], {
-    get(target, prop, receiver) {
+    get(_target, prop, _receiver) {
       const store = getStore();
       const arr = store[key] as unknown as any[];
       const val = Reflect.get(arr, prop, arr);
@@ -150,7 +150,7 @@ function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
       }
       return val;
     },
-    set(target, prop, value) {
+    set(_target, prop, value) {
       const s = getStore();
       Reflect.set(s[key] as unknown as any, prop, value, s[key]);
       saveStore(s);
@@ -160,11 +160,11 @@ function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
 }
 
 const fallbackSiteSettings: SiteSettings = new Proxy({} as SiteSettings, {
-  get(target, prop, receiver) {
+  get(_target, prop, _receiver) {
     const s = getStore().siteSettings;
     return Reflect.get(s, prop, s);
   },
-  set(target, prop, value) {
+  set(_target, prop, value) {
     const s = getStore();
     Reflect.set(s.siteSettings, prop, value, s.siteSettings);
     saveStore(s);
@@ -2083,7 +2083,7 @@ export async function getMaterialsForLesson(lessonId: string): Promise<Material[
     return data;
   } catch (err) {
     if (isLocalFallbackAllowed()) {
-      const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published);
+      const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published && !m.deleted_at);
       for (const mat of list) {
         mat.download_url = await getSignedMaterialUrl(mat.storage_path);
       }
@@ -2092,6 +2092,191 @@ export async function getMaterialsForLesson(lessonId: string): Promise<Material[
     throw err;
   }
 }
+
+/**
+ * Public-Safe Study Materials Query for Student Catalogue.
+ *
+ * Enforces:
+ * - Public createServerSupabase client (no administrative service-role exposure).
+ * - published = true on materials, parent lessons, parent modules, and parent subjects.
+ * - Soft-deleted records excluded (deleted_at is null).
+ * - Generates secure signed download URLs.
+ */
+export async function getPublishedMaterialsForCatalog(): Promise<Material[]> {
+  if (!isSupabaseConfigured()) {
+    const list: Material[] = [];
+    for (const mat of fallbackMaterials) {
+      if (!mat.published || mat.deleted_at) continue;
+
+      const lesson = fallbackLessons.find((l) => l.id === mat.lesson_id);
+      if (!lesson || !lesson.published) continue;
+
+      const mod = fallbackModules.find((m) => m.id === (mat.module_id || lesson.module_id));
+      if (!mod || !mod.published) continue;
+
+      const subject = fallbackSubjects.find((s) => s.id === (mat.subject_id || mod.subject_id));
+      if (!subject || !subject.published) continue;
+
+      const download_url = await getSignedMaterialUrl(mat.storage_path);
+
+      list.push({
+        ...mat,
+        download_url,
+        lesson,
+        module: mod,
+        subject,
+      });
+    }
+
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("materials")
+      .select(`
+        id,
+        lesson_id,
+        subject_id,
+        module_id,
+        title,
+        description,
+        material_type,
+        storage_path,
+        original_filename,
+        mime_type,
+        file_size,
+        published,
+        display_order,
+        created_at,
+        updated_at,
+        deleted_at,
+        lessons (
+          id,
+          title,
+          slug,
+          published,
+          modules (
+            id,
+            title,
+            slug,
+            published,
+            subjects (
+              id,
+              title,
+              slug,
+              code,
+              department_id,
+              semester_number,
+              published
+            )
+          )
+        )
+      `)
+      .eq("published", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return getPublishedMaterialsForCatalogFallback();
+      }
+      throw new Error(`Failed to fetch published materials from Supabase: ${error.message}`);
+    }
+
+    if (!data) return [];
+
+    const results: Material[] = [];
+    for (const raw of data as any[]) {
+      const lesson = raw.lessons;
+      const mod = lesson?.modules;
+      const subject = mod?.subjects;
+
+      // Defensive check: ensure full hierarchy is published
+      if (!lesson || !lesson.published || !mod || !mod.published || !subject || !subject.published) {
+        continue;
+      }
+
+      const download_url = await getSignedMaterialUrl(raw.storage_path);
+
+      results.push({
+        id: raw.id,
+        lesson_id: raw.lesson_id,
+        subject_id: raw.subject_id || subject?.id,
+        module_id: raw.module_id || mod?.id,
+        title: raw.title,
+        description: raw.description,
+        material_type: raw.material_type,
+        storage_path: raw.storage_path,
+        original_filename: raw.original_filename,
+        mime_type: raw.mime_type,
+        file_size: raw.file_size,
+        published: raw.published,
+        display_order: raw.display_order,
+        created_at: raw.created_at,
+        updated_at: raw.updated_at,
+        deleted_at: raw.deleted_at,
+        download_url,
+        lesson,
+        module: mod,
+        subject,
+      });
+    }
+
+    return results;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return getPublishedMaterialsForCatalogFallback();
+    }
+    throw err;
+  }
+}
+
+async function getPublishedMaterialsForCatalogFallback(): Promise<Material[]> {
+  const list: Material[] = [];
+  for (const mat of fallbackMaterials) {
+    if (!mat.published || mat.deleted_at) continue;
+
+    const lesson = fallbackLessons.find((l) => l.id === mat.lesson_id);
+    if (!lesson || !lesson.published) continue;
+
+    const mod = fallbackModules.find((m) => m.id === (mat.module_id || lesson.module_id));
+    if (!mod || !mod.published) continue;
+
+    const subject = fallbackSubjects.find((s) => s.id === (mat.subject_id || mod.subject_id));
+    if (!subject || !subject.published) continue;
+
+    const download_url = await getSignedMaterialUrl(mat.storage_path);
+
+    list.push({
+      ...mat,
+      download_url,
+      lesson,
+      module: mod,
+      subject,
+    });
+  }
+
+  return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+/**
+ * Returns published study materials for a specific subject.
+ */
+export async function getMaterialsForSubject(subjectId: string): Promise<Material[]> {
+  const all = await getPublishedMaterialsForCatalog();
+  return all.filter((m) => m.subject_id === subjectId || m.subject?.id === subjectId);
+}
+
+/**
+ * Returns published study materials for a specific module.
+ */
+export async function getMaterialsForModule(moduleId: string): Promise<Material[]> {
+  const all = await getPublishedMaterialsForCatalog();
+  return all.filter((m) => m.module_id === moduleId || m.module?.id === moduleId);
+}
+
 
 export async function getAllMaterials(): Promise<Material[]> {
   if (!isSupabaseConfigured()) {

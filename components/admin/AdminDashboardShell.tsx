@@ -25,7 +25,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
         <AdminHeader onToggleMobileSidebar={() => setMobileSidebarOpen(true)} />
 
         {/* Page Content Viewport */}
-        <main className="flex-1 w-full max-w-7xl mx-auto p-6 sm:p-8 lg:p-10 space-y-8">
+        <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 space-y-6">
           {children}
         </main>
       </div>
