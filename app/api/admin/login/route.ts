@@ -2,34 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyCodeSchema } from "@/lib/validation/schemas";
 import { verifyAdminAccessCode, setAdminSessionCookie } from "@/lib/auth/session";
 import { logActivity } from "@/lib/queries";
-
-// In-memory rate limiter for the admin login endpoint
-const attemptTracker = new Map<string, { count: number; firstAttempt: number }>();
-const MAX_ATTEMPTS = 6;
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+import {
+  checkDbRateLimit,
+  getClientIp,
+  hashIdentifier,
+  rateLimitResponse,
+} from "@/lib/security/db-rate-limit";
+import { isSafeOrigin } from "@/lib/security/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown-ip";
-  const now = Date.now();
+  if (!isSafeOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
 
-  const record = attemptTracker.get(ip);
-  if (record) {
-    if (now - record.firstAttempt < WINDOW_MS) {
-      if (record.count >= MAX_ATTEMPTS) {
-        return NextResponse.json(
-          { error: "Too many authentication attempts. Please try again in 15 minutes." },
-          { status: 429 }
-        );
-      }
-    } else {
-      // Window expired, reset
-      attemptTracker.set(ip, { count: 0, firstAttempt: now });
-    }
-  } else {
-    attemptTracker.set(ip, { count: 0, firstAttempt: now });
+  const ip = getClientIp(request);
+  const ipHash = hashIdentifier(`admin-login:ip:${ip}`);
+
+  const rateLimit = await checkDbRateLimit(ipHash, {
+    windowSeconds: 15 * 60, // 15 minutes
+    maxAttempts: 6,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      "Too many authentication attempts. Please try again in 15 minutes.",
+      rateLimit.resetInSeconds
+    );
   }
 
   try {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { code } = result.data;
 
-    // Check server authentication configuration
+    // Check server administrator authentication configuration
     if (!process.env.ADMIN_ACCESS_CODE && !process.env.ADMIN_ACCESS_CODE_HASH) {
       console.error("ADMIN_ACCESS_CODE environment variable is missing on server.");
       return NextResponse.json(
@@ -57,10 +58,6 @@ export async function POST(request: NextRequest) {
     const isValid = verifyAdminAccessCode(code);
 
     if (!isValid) {
-      // Increment failed attempts
-      const current = attemptTracker.get(ip) || { count: 0, firstAttempt: now };
-      attemptTracker.set(ip, { count: current.count + 1, firstAttempt: current.firstAttempt });
-
       await logActivity("Failed Admin Login Attempt", "security", { ip });
 
       return NextResponse.json(
@@ -68,9 +65,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    // Clear failed attempts on success
-    attemptTracker.delete(ip);
 
     // Set secure HTTP-only session cookie
     await setAdminSessionCookie();
@@ -90,3 +84,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
