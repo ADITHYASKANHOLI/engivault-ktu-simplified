@@ -1974,6 +1974,186 @@ async function runTests() {
     assert.ok(studentsAdminCode.includes("getAdminSession"), "Students admin route must enforce getAdminSession");
   });
 
+  // 18. FOLE SPACE System Tests
+  console.log("\n--- 18. FOLE SPACE SYSTEM & LOGIC (Open Space, Tickets, Flyers, Invariants) ---");
+
+  await testAsync("Ticket code generation produces >=128-bit unguessable base64url codes", async () => {
+    const { generateTicketCode } = await import("../lib/space/tickets.ts");
+    const code1 = generateTicketCode();
+    const code2 = generateTicketCode();
+
+    assert.ok(code1 && typeof code1 === "string", "Ticket code must be a non-empty string");
+    assert.ok(code1.length >= 22, `Ticket code must be at least 22 chars for >=128-bit entropy (got ${code1.length})`);
+    assert.notStrictEqual(code1, code2, "Subsequent ticket codes must be unique and unguessable");
+    assert.match(code1, /^[A-Za-z0-9_-]+$/, "Ticket code must only contain URL-safe base64 characters");
+  });
+
+  await testAsync("QR payload encoding and decoding enforces strict FS1 format", async () => {
+    const { encodeTicketPayload, decodeTicketPayload } = await import("../lib/space/tickets.ts");
+    const testCode = "test_ticket_code_12345";
+    const payload = encodeTicketPayload(testCode);
+
+    assert.strictEqual(payload, `FS1.${testCode}`, "Payload must be prefixed with FS1.");
+    assert.strictEqual(decodeTicketPayload(payload), testCode, "Decoding valid payload must return original code");
+
+    // Invalid formats
+    assert.strictEqual(decodeTicketPayload("FS2.invalid"), null, "Non-FS1 version must be rejected");
+    assert.strictEqual(decodeTicketPayload("invalid_plain_code"), null, "Unprefixed code must be rejected");
+    assert.strictEqual(decodeTicketPayload("FS1."), null, "Empty ticket code payload must be rejected");
+    assert.strictEqual(decodeTicketPayload(""), null, "Empty payload string must be rejected");
+  });
+
+  await testAsync("Time and countdown calculations handle server clock drift and expiry", async () => {
+    const { calculateRemainingSeconds, formatCountdown, formatDateTimeIST } = await import("../lib/space/time.ts");
+
+    const serverNow = "2026-10-22T10:00:00.000Z";
+    const expiresFuture = "2026-10-22T10:30:00.000Z";
+    const expiresPast = "2026-10-22T09:59:00.000Z";
+
+    assert.strictEqual(calculateRemainingSeconds(expiresFuture, serverNow), 1800, "Should calculate exactly 1800s (30m)");
+    assert.strictEqual(calculateRemainingSeconds(expiresPast, serverNow), 0, "Past expiry must clamp to 0s");
+
+    assert.strictEqual(formatCountdown(1800), "30:00", "1800s must format to 30:00");
+    assert.strictEqual(formatCountdown(65), "01:05", "65s must format to 01:05");
+    assert.strictEqual(formatCountdown(0), "00:00", "0s must format to 00:00");
+
+    const formattedIst = formatDateTimeIST("2026-10-22T10:00:00.000Z");
+    assert.ok(formattedIst.includes("IST") || formattedIst.includes("pm"), "Must format explicitly in Asia/Kolkata");
+  });
+
+  await testAsync("Flyer magic-byte and raster validation accepts valid images and rejects SVG/scripts", async () => {
+    const { validateFlyerBuffer, isRasterImageMime } = await import("../lib/space/flyer.ts");
+
+    // Valid PNG minimal header (16x16 dummy IHDR)
+    const pngHeader = Buffer.from([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+      0x00, 0x00, 0x00, 0x0D, // IHDR chunk length (13)
+      0x49, 0x48, 0x44, 0x52, // IHDR chunk type
+      0x00, 0x00, 0x01, 0x00, // Width: 256
+      0x00, 0x00, 0x02, 0x00, // Height: 512
+      0x08, 0x06, 0x00, 0x00, 0x00,
+    ]);
+
+    const pngVal = validateFlyerBuffer(pngHeader);
+    assert.ok(pngVal.isValid, "Valid PNG header must pass validation");
+    assert.strictEqual(pngVal.mimeType, "image/png");
+    assert.strictEqual(pngVal.width, 256, "Should extract natural width 256");
+    assert.strictEqual(pngVal.height, 512, "Should extract natural height 512");
+
+    // Invalid SVG / XSS attempt
+    const svgBuffer = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const svgVal = validateFlyerBuffer(svgBuffer);
+    assert.strictEqual(svgVal.isValid, false, "SVG buffer must be rejected for flyers");
+    assert.strictEqual(isRasterImageMime("image/svg+xml"), false, "SVG MIME must not be allowed");
+
+    // Truncated / empty buffer
+    const emptyVal = validateFlyerBuffer(Buffer.alloc(0));
+    assert.strictEqual(emptyVal.isValid, false, "Empty buffer must be rejected");
+  });
+
+  test("Database migration 011 defines complete FOLE SPACE schema, RLS, and atomic RPCs", () => {
+    const sql = nodeFs.readFileSync("supabase/migrations/011_fole_space_system.sql", "utf-8");
+
+    assert.ok(sql.includes("create table if not exists public.space_settings"), "Must define space_settings table");
+    assert.ok(sql.includes("create table if not exists public.space_sessions"), "Must define space_sessions table");
+    assert.ok(sql.includes("create table if not exists public.space_organizers"), "Must define space_organizers table");
+    assert.ok(sql.includes("create table if not exists public.space_events"), "Must define space_events table");
+    assert.ok(sql.includes("create table if not exists public.space_event_registrations"), "Must define space_event_registrations table");
+    assert.ok(sql.includes("create table if not exists public.space_event_checkins"), "Must define space_event_checkins table");
+    assert.ok(sql.includes("create table if not exists public.space_audit_logs"), "Must define space_audit_logs table");
+
+    // RLS Enforcement
+    assert.ok(sql.includes("alter table public.space_settings enable row level security;"), "RLS must be enabled on space_settings");
+    assert.ok(sql.includes("alter table public.space_sessions enable row level security;"), "RLS must be enabled on space_sessions");
+    assert.ok(sql.includes("alter table public.space_organizers enable row level security;"), "RLS must be enabled on space_organizers");
+    assert.ok(sql.includes("alter table public.space_events enable row level security;"), "RLS must be enabled on space_events");
+    assert.ok(sql.includes("alter table public.space_event_registrations enable row level security;"), "RLS must be enabled on space_event_registrations");
+    assert.ok(sql.includes("alter table public.space_event_checkins enable row level security;"), "RLS must be enabled on space_event_checkins");
+
+    // Atomic SECURITY DEFINER RPCs
+    assert.ok(sql.includes("rpc_space_checkin"), "Must define rpc_space_checkin");
+    assert.ok(sql.includes("rpc_space_checkout"), "Must define rpc_space_checkout");
+    assert.ok(sql.includes("rpc_space_extend"), "Must define rpc_space_extend");
+    assert.ok(sql.includes("rpc_space_register_event"), "Must define rpc_space_register_event");
+    assert.ok(sql.includes("rpc_space_cancel_registration"), "Must define rpc_space_cancel_registration");
+    assert.ok(sql.includes("rpc_space_checkin_ticket"), "Must define rpc_space_checkin_ticket");
+    assert.ok(sql.includes("rpc_space_virtual_checkin"), "Must define rpc_space_virtual_checkin");
+    assert.ok(sql.includes("rpc_space_revoke_checkin"), "Must define rpc_space_revoke_checkin");
+
+    // Row-level Locking & Concurrency Invariants
+    assert.ok(sql.includes("for update"), "RPCs must lock settings and event rows with FOR UPDATE to prevent race conditions");
+
+    // Security Grants
+    assert.ok(sql.includes("revoke all on function public.rpc_space_checkin"), "Must revoke execution from public");
+    assert.ok(sql.includes("grant execute on function public.rpc_space_checkin"), "Must grant execution to service_role");
+  });
+
+  test("All FOLE SPACE API routes declare nodejs runtime and origin protection", () => {
+    const spaceRoutes = [
+      "app/api/space/status/route.ts",
+      "app/api/space/checkin/route.ts",
+      "app/api/space/checkout/route.ts",
+      "app/api/space/extend/route.ts",
+      "app/api/space/my/route.ts",
+      "app/api/space/events/route.ts",
+      "app/api/space/events/[slug]/flyer/route.ts",
+      "app/api/space/events/[id]/registration/route.ts",
+      "app/api/space/events/[id]/checkin/virtual/route.ts",
+      "app/api/space/organizer/events/route.ts",
+      "app/api/space/organizer/events/[id]/route.ts",
+      "app/api/space/organizer/events/[id]/publish/route.ts",
+      "app/api/space/organizer/events/[id]/unpublish/route.ts",
+      "app/api/space/organizer/events/[id]/cancel/route.ts",
+      "app/api/space/organizer/events/[id]/live/route.ts",
+      "app/api/space/organizer/events/[id]/end/route.ts",
+      "app/api/space/organizer/events/[id]/desk/route.ts",
+      "app/api/space/organizer/events/[id]/checkin/qr/route.ts",
+      "app/api/space/organizer/events/[id]/checkin/manual/route.ts",
+      "app/api/space/organizer/events/[id]/checkin/[checkinId]/route.ts",
+      "app/api/space/organizer/flyer/sign/route.ts",
+      "app/api/space/organizer/flyer/finalize/route.ts",
+      "app/api/admin/space/settings/route.ts",
+      "app/api/admin/space/sessions/route.ts",
+      "app/api/admin/space/sessions/[id]/force-checkout/route.ts",
+      "app/api/admin/space/organizers/route.ts",
+      "app/api/admin/space/organizers/[userId]/route.ts",
+      "app/api/admin/space/events/route.ts",
+      "app/api/admin/space/events/[id]/moderate/route.ts",
+      "app/api/admin/space/reports/route.ts",
+    ];
+
+    for (const routePath of spaceRoutes) {
+      assert.ok(nodeFs.existsSync(routePath), `Route file must exist: ${routePath}`);
+      const content = nodeFs.readFileSync(routePath, "utf-8");
+      assert.ok(
+        content.includes('runtime = "nodejs"'),
+        `Route ${routePath} must declare export const runtime = "nodejs"`
+      );
+
+      // Mutation routes must check origin
+      if (
+        routePath.includes("checkin") ||
+        routePath.includes("checkout") ||
+        routePath.includes("extend") ||
+        routePath.includes("registration") ||
+        routePath.includes("publish") ||
+        routePath.includes("unpublish") ||
+        routePath.includes("cancel") ||
+        routePath.includes("live") ||
+        routePath.includes("end") ||
+        routePath.includes("sign") ||
+        routePath.includes("finalize") ||
+        routePath.includes("moderate") ||
+        routePath.includes("force-checkout")
+      ) {
+        assert.ok(
+          content.includes("isSafeOrigin"),
+          `Mutation route ${routePath} must check isSafeOrigin`
+        );
+      }
+    }
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

@@ -20,6 +20,11 @@ import {
   Calendar,
   PlusCircle,
   Users,
+  DoorOpen,
+  Sliders,
+  UserCheck,
+  CalendarCheck,
+  BarChart3,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -87,6 +92,16 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
         { label: "Works Overview", href: "/admin/dashboard/works", icon: Briefcase },
         { label: "Activities", href: "/admin/dashboard/works/activities", icon: Calendar },
         { label: "Create Activity", href: "/admin/dashboard/works/create", icon: PlusCircle },
+      ],
+    },
+    {
+      group: "FOLE SPACE",
+      items: [
+        { label: "Space Overview", href: "/admin/dashboard/space", icon: DoorOpen },
+        { label: "Space Settings", href: "/admin/dashboard/space/settings", icon: Sliders },
+        { label: "Organizers", href: "/admin/dashboard/space/organizers", icon: UserCheck },
+        { label: "Events Moderation", href: "/admin/dashboard/space/events", icon: CalendarCheck },
+        { label: "Usage Reports", href: "/admin/dashboard/space/reports", icon: BarChart3 },
       ],
     },
     {
