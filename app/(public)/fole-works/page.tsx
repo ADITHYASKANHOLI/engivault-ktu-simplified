@@ -9,9 +9,13 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
+import { WorksActivity } from "@/types";
 import { getPublishedWorksActivities } from "@/lib/queries";
 import { FoleWorksLogo } from "@/components/branding/FoleWorksLogo";
 import { WorksFilterView } from "@/components/works/WorksFilterView";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "FOLE WORKS — Operational & Professional Activities | FOLE CEV",
@@ -26,7 +30,19 @@ export const metadata: Metadata = {
 };
 
 export default async function FoleWorksPage() {
-  const activities = await getPublishedWorksActivities();
+  let activities: WorksActivity[] = [];
+  let fetchError: string | null = null;
+
+  try {
+    activities = await getPublishedWorksActivities();
+  } catch (err: any) {
+    // Record useful server-side diagnostics without exposing credentials to public visitors
+    console.error("[FOLE WORKS PAGE] Failed to retrieve published activities during SSR:", {
+      message: err?.message || "Unknown error",
+      timestamp: new Date().toISOString(),
+    });
+    fetchError = "We were unable to retrieve published activities from the vault. Please try reloading.";
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
@@ -134,7 +150,7 @@ export default async function FoleWorksPage() {
           </div>
 
           {/* Interactive Filter View */}
-          <WorksFilterView initialActivities={activities} />
+          <WorksFilterView initialActivities={activities} error={fetchError} />
         </div>
       </section>
 

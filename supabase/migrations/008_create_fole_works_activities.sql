@@ -72,3 +72,11 @@ create policy "Admins can update works activities"
 create policy "Admins can delete works activities"
   on public.works_activities for delete
   using (public.is_admin());
+
+-- 4. Explicit Permissions / Grants
+grant usage on schema public to anon, authenticated;
+grant select on public.works_activities to anon, authenticated;
+grant all on public.works_activities to service_role;
+
+-- 5. Refresh PostgREST schema cache
+notify pgrst, 'reload schema';

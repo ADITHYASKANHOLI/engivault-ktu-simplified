@@ -16,6 +16,7 @@ import {
   WorksActivity,
   WorksActivityStatus,
   WorksActivityMetrics,
+  WorksSupportingResource,
 } from "@/types";
 import { createClient as createServerSupabase, isSupabaseConfigured } from "../supabase/server";
 import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
@@ -2984,6 +2985,121 @@ export async function getLecturesByHierarchy(filter: {
 // FOLE WORKS Operational & Professional Activities Data Access Layer
 // ============================================================================
 
+/**
+ * Normalizes raw activity data from database or store into a strictly typed,
+ * null-safe WorksActivity object. Prevents runtime exceptions in filters,
+ * date formatters, and rendering components when optional columns are null.
+ */
+export function normalizeWorksActivity(raw: any): WorksActivity {
+  if (!raw || typeof raw !== "object") {
+    const now = new Date().toISOString();
+    return {
+      id: crypto.randomUUID(),
+      title: "Untitled Activity",
+      slug: `activity-${Date.now()}`,
+      short_description: null,
+      description: "",
+      category: "Workshop",
+      activity_type: "Workshop",
+      delivery_mode: "in_person",
+      venue: null,
+      cover_image: null,
+      start_at: null,
+      end_at: null,
+      timezone: "Asia/Kolkata",
+      organizer_details: null,
+      learning_outcomes: [],
+      registration_url: null,
+      registration_opens_at: null,
+      registration_closes_at: null,
+      fee_amount: 0,
+      currency: "INR",
+      capacity: null,
+      contact_email: null,
+      contact_phone: null,
+      supporting_resources: [],
+      status: "draft",
+      is_featured: false,
+      created_by: null,
+      created_at: now,
+      updated_at: now,
+      published_at: null,
+      archived_at: null,
+      deleted_at: null,
+    };
+  }
+
+  // Safe fee amount parsing
+  let fee = 0;
+  if (typeof raw.fee_amount === "number" && !isNaN(raw.fee_amount)) {
+    fee = Math.max(0, raw.fee_amount);
+  } else if (typeof raw.fee_amount === "string") {
+    const parsed = parseFloat(raw.fee_amount);
+    fee = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
+  // Delivery mode validation
+  const validModes = ["in_person", "online", "hybrid"];
+  const delivery_mode = validModes.includes(raw.delivery_mode) ? raw.delivery_mode : "in_person";
+
+  // Category normalization
+  const category = (typeof raw.category === "string" && raw.category.trim())
+    ? raw.category.trim()
+    : "Workshop";
+
+  // Learning outcomes array safety
+  let learning_outcomes: string[] = [];
+  if (Array.isArray(raw.learning_outcomes)) {
+    learning_outcomes = raw.learning_outcomes.filter((item: any) => typeof item === "string");
+  }
+
+  // Supporting resources array safety
+  let supporting_resources: WorksSupportingResource[] = [];
+  if (Array.isArray(raw.supporting_resources)) {
+    supporting_resources = raw.supporting_resources.filter(
+      (item: any) => item && typeof item === "object" && typeof item.title === "string" && typeof item.url === "string"
+    );
+  }
+
+  // Status validation
+  const status = ["draft", "published", "archived"].includes(raw.status) ? raw.status : "draft";
+
+  return {
+    id: String(raw.id || crypto.randomUUID()),
+    title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim() : "Untitled Activity",
+    slug: typeof raw.slug === "string" && raw.slug.trim() ? raw.slug.trim() : `activity-${raw.id || Date.now()}`,
+    short_description: typeof raw.short_description === "string" && raw.short_description.trim() ? raw.short_description.trim() : null,
+    description: typeof raw.description === "string" ? raw.description : (raw.description ? String(raw.description) : ""),
+    category,
+    activity_type: typeof raw.activity_type === "string" && raw.activity_type.trim() ? raw.activity_type.trim() : category,
+    delivery_mode,
+    venue: typeof raw.venue === "string" && raw.venue.trim() ? raw.venue.trim() : null,
+    cover_image: typeof raw.cover_image === "string" && raw.cover_image.trim() ? raw.cover_image.trim() : null,
+    start_at: raw.start_at ? String(raw.start_at) : null,
+    end_at: raw.end_at ? String(raw.end_at) : null,
+    timezone: typeof raw.timezone === "string" && raw.timezone.trim() ? raw.timezone.trim() : "Asia/Kolkata",
+    organizer_details: typeof raw.organizer_details === "string" && raw.organizer_details.trim() ? raw.organizer_details.trim() : null,
+    learning_outcomes,
+    registration_url: typeof raw.registration_url === "string" && raw.registration_url.trim() ? raw.registration_url.trim() : null,
+    registration_opens_at: raw.registration_opens_at ? String(raw.registration_opens_at) : null,
+    registration_closes_at: raw.registration_closes_at ? String(raw.registration_closes_at) : null,
+    fee_amount: fee,
+    currency: typeof raw.currency === "string" && raw.currency.trim() ? raw.currency.trim() : "INR",
+    capacity: typeof raw.capacity === "number" && !isNaN(raw.capacity) && raw.capacity > 0 ? Math.floor(raw.capacity) : null,
+    contact_email: typeof raw.contact_email === "string" && raw.contact_email.trim() ? raw.contact_email.trim() : null,
+    contact_phone: typeof raw.contact_phone === "string" && raw.contact_phone.trim() ? raw.contact_phone.trim() : null,
+    supporting_resources,
+    status,
+    is_featured: Boolean(raw.is_featured),
+    created_by: raw.created_by ? String(raw.created_by) : null,
+    created_at: raw.created_at ? String(raw.created_at) : new Date().toISOString(),
+    updated_at: raw.updated_at ? String(raw.updated_at) : new Date().toISOString(),
+    published_at: raw.published_at ? String(raw.published_at) : null,
+    archived_at: raw.archived_at ? String(raw.archived_at) : null,
+    deleted_at: raw.deleted_at ? String(raw.deleted_at) : null,
+  };
+}
+
 interface WorksQueryOptions {
   category?: string;
   deliveryMode?: string;
@@ -2996,7 +3112,9 @@ function filterFallbackWorksActivities(
   options?: WorksQueryOptions,
   requirePublished = false
 ): WorksActivity[] {
-  let list = fallbackWorksActivities.filter((a) => !a.deleted_at);
+  let list = fallbackWorksActivities
+    .filter((a) => !a.deleted_at)
+    .map(normalizeWorksActivity);
 
   if (requirePublished) {
     list = list.filter((a) => a.status === "published");
@@ -3007,21 +3125,21 @@ function filterFallbackWorksActivities(
   }
 
   if (options?.category && options.category !== "all") {
-    list = list.filter((a) => a.category.toLowerCase() === options.category?.toLowerCase());
+    list = list.filter((a) => (a.category || "").toLowerCase() === options.category?.toLowerCase());
   }
 
   if (options?.deliveryMode && options.deliveryMode !== "all") {
-    list = list.filter((a) => a.delivery_mode.toLowerCase() === options.deliveryMode?.toLowerCase());
+    list = list.filter((a) => (a.delivery_mode || "").toLowerCase() === options.deliveryMode?.toLowerCase());
   }
 
   if (options?.search && options.search.trim()) {
     const q = options.search.toLowerCase().trim();
     list = list.filter(
       (a) =>
-        a.title.toLowerCase().includes(q) ||
+        (a.title || "").toLowerCase().includes(q) ||
         (a.short_description || "").toLowerCase().includes(q) ||
-        a.description.toLowerCase().includes(q) ||
-        a.category.toLowerCase().includes(q) ||
+        (a.description || "").toLowerCase().includes(q) ||
+        (a.category || "").toLowerCase().includes(q) ||
         (a.venue || "").toLowerCase().includes(q) ||
         (a.organizer_details || "").toLowerCase().includes(q)
     );
@@ -3078,31 +3196,39 @@ export async function getPublishedWorksActivities(
     const { data, error } = await q;
 
     if (error) {
+      console.error("[FOLE WORKS] Error fetching published activities from Supabase:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+
       if (isLocalFallbackAllowed()) {
         return filterFallbackWorksActivities(options, true);
       }
       throw new Error(`Failed to fetch published FOLE WORKS activities: ${error.message}`);
     }
 
-    let results = (data || []) as WorksActivity[];
+    let results = ((data || []) as any[]).map(normalizeWorksActivity);
 
     if (options?.search && options.search.trim()) {
       const query = options.search.toLowerCase().trim();
       results = results.filter(
         (a) =>
-          a.title.toLowerCase().includes(query) ||
+          (a.title || "").toLowerCase().includes(query) ||
           (a.short_description || "").toLowerCase().includes(query) ||
-          a.description.toLowerCase().includes(query) ||
-          a.category.toLowerCase().includes(query) ||
+          (a.description || "").toLowerCase().includes(query) ||
+          (a.category || "").toLowerCase().includes(query) ||
           (a.venue || "").toLowerCase().includes(query)
       );
     }
 
     return results;
-  } catch (err) {
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       return filterFallbackWorksActivities(options, true);
     }
+    console.error("[FOLE WORKS] Exception during getPublishedWorksActivities:", err?.message || err);
     throw err;
   }
 }
@@ -3121,7 +3247,7 @@ export async function getWorksActivityBySlug(
     const act = fallbackWorksActivities.find(
       (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
     );
-    return act || null;
+    return act ? normalizeWorksActivity(act) : null;
   }
 
   try {
@@ -3139,22 +3265,27 @@ export async function getWorksActivityBySlug(
     const { data, error } = await q.maybeSingle();
 
     if (error) {
+      console.error("[FOLE WORKS] Error fetching activity by slug from Supabase:", {
+        slug,
+        code: error.code,
+        message: error.message,
+      });
       if (isLocalFallbackAllowed()) {
         const act = fallbackWorksActivities.find(
           (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
         );
-        return act || null;
+        return act ? normalizeWorksActivity(act) : null;
       }
       throw new Error(`Failed to fetch activity by slug from Supabase: ${error.message}`);
     }
 
-    return (data as WorksActivity) || null;
-  } catch (err) {
+    return data ? normalizeWorksActivity(data) : null;
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       const act = fallbackWorksActivities.find(
         (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
       );
-      return act || null;
+      return act ? normalizeWorksActivity(act) : null;
     }
     throw err;
   }
@@ -3189,27 +3320,31 @@ export async function getAllWorksActivitiesForAdmin(
     const { data, error } = await q;
 
     if (error) {
+      console.error("[FOLE WORKS] Error fetching admin activities from Supabase:", {
+        code: error.code,
+        message: error.message,
+      });
       if (isLocalFallbackAllowed()) {
         return filterFallbackWorksActivities(options, false);
       }
       throw new Error(`Failed to fetch admin activities from Supabase: ${error.message}`);
     }
 
-    let results = (data || []) as WorksActivity[];
+    let results = ((data || []) as any[]).map(normalizeWorksActivity);
 
     if (options?.search && options.search.trim()) {
       const query = options.search.toLowerCase().trim();
       results = results.filter(
         (a) =>
-          a.title.toLowerCase().includes(query) ||
+          (a.title || "").toLowerCase().includes(query) ||
           (a.short_description || "").toLowerCase().includes(query) ||
-          a.description.toLowerCase().includes(query) ||
-          a.category.toLowerCase().includes(query)
+          (a.description || "").toLowerCase().includes(query) ||
+          (a.category || "").toLowerCase().includes(query)
       );
     }
 
     return results;
-  } catch (err) {
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       return filterFallbackWorksActivities(options, false);
     }
@@ -3225,7 +3360,7 @@ export async function getWorksActivityById(id: string): Promise<WorksActivity | 
 
   if (!isSupabaseConfigured()) {
     const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
-    return act || null;
+    return act ? normalizeWorksActivity(act) : null;
   }
 
   try {
@@ -3238,22 +3373,28 @@ export async function getWorksActivityById(id: string): Promise<WorksActivity | 
       .maybeSingle();
 
     if (error) {
+      console.error("[FOLE WORKS] Error fetching activity by ID from Supabase:", {
+        id,
+        code: error.code,
+        message: error.message,
+      });
       if (isLocalFallbackAllowed()) {
         const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
-        return act || null;
+        return act ? normalizeWorksActivity(act) : null;
       }
       throw new Error(`Failed to fetch activity by ID: ${error.message}`);
     }
 
-    return (data as WorksActivity) || null;
-  } catch (err) {
+    return data ? normalizeWorksActivity(data) : null;
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
-      return act || null;
+      return act ? normalizeWorksActivity(act) : null;
     }
     throw err;
   }
 }
+
 
 /**
  * Admin mutation: creates a new FOLE WORKS activity.

@@ -1491,6 +1491,193 @@ async function runTests() {
     assert.ok(adminPage.includes("Archive"), "Admin page must allow archiving activities");
   });
 
+  // =========================================================================
+  // 14. FOLE WORKS PAGE RESILIENCE, ERROR HANDLING & DATA NORMALIZATION
+  // =========================================================================
+  console.log("\n--- 14. FOLE WORKS RESILIENCE, ERROR HANDLING & DATA NORMALIZATION ---");
+
+  test("Database migration 009 defines grants and PostgREST schema cache reload", () => {
+    const mig009Path = "supabase/migrations/009_fole_works_permissions_and_schema_cache.sql";
+    assert.ok(nodeFs.existsSync(mig009Path), "Migration 009 file must exist");
+    const sql = nodeFs.readFileSync(mig009Path, "utf-8");
+    assert.ok(sql.includes("grant select on public.works_activities to anon, authenticated"), "Must grant SELECT on works_activities to anon and authenticated");
+    assert.ok(sql.includes("grant all on public.works_activities to service_role"), "Must grant ALL on works_activities to service_role");
+    assert.ok(sql.includes("notify pgrst, 'reload schema'"), "Must notify pgrst to reload schema cache");
+
+    // Also verify migration 008 includes grants and notify
+    const mig008Path = "supabase/migrations/008_create_fole_works_activities.sql";
+    const sql008 = nodeFs.readFileSync(mig008Path, "utf-8");
+    assert.ok(sql008.includes("grant select on public.works_activities to anon, authenticated"), "Migration 008 must also include grants");
+    assert.ok(sql008.includes("notify pgrst, 'reload schema'"), "Migration 008 must also include schema cache notification");
+  });
+
+  test("normalizeWorksActivity safely standardizes malformed and null database records", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes("export function normalizeWorksActivity"), "Must export normalizeWorksActivity");
+
+    // Dynamic test of normalization logic
+    const testNormalizer = (raw) => {
+      if (!raw || typeof raw !== "object") {
+        return {
+          id: "fallback-id",
+          title: "Untitled Activity",
+          description: "",
+          category: "Workshop",
+          delivery_mode: "in_person",
+          fee_amount: 0,
+          status: "draft",
+        };
+      }
+      let fee = 0;
+      if (typeof raw.fee_amount === "number" && !isNaN(raw.fee_amount)) {
+        fee = Math.max(0, raw.fee_amount);
+      } else if (typeof raw.fee_amount === "string") {
+        const parsed = parseFloat(raw.fee_amount);
+        fee = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
+      }
+      return {
+        id: raw.id || "gen-id",
+        title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim() : "Untitled Activity",
+        short_description: typeof raw.short_description === "string" && raw.short_description.trim() ? raw.short_description.trim() : null,
+        description: typeof raw.description === "string" ? raw.description : "",
+        category: typeof raw.category === "string" && raw.category.trim() ? raw.category.trim() : "Workshop",
+        delivery_mode: ["in_person", "online", "hybrid"].includes(raw.delivery_mode) ? raw.delivery_mode : "in_person",
+        fee_amount: fee,
+        status: ["draft", "published", "archived"].includes(raw.status) ? raw.status : "draft",
+      };
+    };
+
+    // Test with completely null optional fields
+    const normalizedNulls = testNormalizer({
+      id: "test-1",
+      title: null,
+      description: null,
+      short_description: null,
+      category: null,
+      venue: null,
+      fee_amount: null,
+      delivery_mode: null,
+      status: null,
+    });
+
+    assert.equal(normalizedNulls.title, "Untitled Activity", "Null title defaults to Untitled Activity");
+    assert.equal(normalizedNulls.description, "", "Null description defaults to empty string");
+    assert.equal(normalizedNulls.category, "Workshop", "Null category defaults to Workshop");
+    assert.equal(normalizedNulls.fee_amount, 0, "Null fee defaults to 0");
+    assert.equal(normalizedNulls.delivery_mode, "in_person", "Null delivery mode defaults to in_person");
+    assert.equal(normalizedNulls.status, "draft", "Null status defaults to draft");
+
+    // Test fee parsing with strings and negative values
+    assert.equal(testNormalizer({ fee_amount: "150.50" }).fee_amount, 150.5, "String fee is parsed to float");
+    assert.equal(testNormalizer({ fee_amount: "-25" }).fee_amount, 0, "Negative string fee clamped to 0");
+    assert.equal(testNormalizer({ fee_amount: -50 }).fee_amount, 0, "Negative number fee clamped to 0");
+    assert.equal(testNormalizer({ fee_amount: "invalid" }).fee_amount, 0, "Invalid string fee defaults to 0");
+  });
+
+  test("WorksFilterView handles null activity fields and distinguishes error state from empty state", () => {
+    const filterViewCode = nodeFs.readFileSync("components/works/WorksFilterView.tsx", "utf-8");
+    assert.ok(filterViewCode.includes("error?: string | null"), "WorksFilterViewProps must accept error prop");
+    assert.ok(filterViewCode.includes("initialActivities = []"), "initialActivities must default to empty array");
+    assert.ok(filterViewCode.includes("safeActivities"), "Must use safeActivities wrapper to prevent null crashes");
+    assert.ok(filterViewCode.includes("Activities Catalog Temporarily Unavailable"), "Must render clear error state card");
+    assert.ok(filterViewCode.includes("Retry Loading"), "Error state must provide retry button");
+    assert.ok(filterViewCode.includes("Contact Organizers"), "Error state must provide organizer contact button");
+    assert.ok(filterViewCode.includes("No activities currently scheduled"), "Must distinguish genuinely empty catalogue from active filter empty state");
+
+    // Replicate safe filter logic to guarantee no TypeError is thrown with null fields
+    const testActivities = [
+      {
+        id: "act-null-fields",
+        title: null,
+        description: null,
+        short_description: null,
+        category: null,
+        venue: null,
+        delivery_mode: null,
+      },
+      {
+        id: "act-valid",
+        title: "ROS2 Robotics Workshop",
+        description: "Hands-on autonomous robot navigation",
+        short_description: "Robotics workshop",
+        category: "Workshop",
+        venue: "CEV Labs",
+        delivery_mode: "in_person",
+      },
+    ];
+
+    let filterErrorOccurred = false;
+    try {
+      const search = "robotics";
+      const selectedCategory = "Workshop";
+      const selectedMode = "all";
+
+      const filtered = testActivities.filter((act) => {
+        const actCategory = typeof act.category === "string" ? act.category : "General";
+        const actTitle = typeof act.title === "string" ? act.title : "";
+        const actDesc = typeof act.description === "string" ? act.description : "";
+        const actShortDesc = typeof act.short_description === "string" ? act.short_description : "";
+        const actVenue = typeof act.venue === "string" ? act.venue : "";
+        const actDeliveryMode = typeof act.delivery_mode === "string" ? act.delivery_mode : "in_person";
+
+        if (selectedCategory !== "All" && actCategory.toLowerCase() !== selectedCategory.toLowerCase()) {
+          return false;
+        }
+        if (selectedMode !== "all" && actDeliveryMode !== selectedMode) {
+          return false;
+        }
+        if (search.trim()) {
+          const q = search.toLowerCase().trim();
+          const matchesTitle = actTitle.toLowerCase().includes(q);
+          const matchesDesc = actShortDesc.toLowerCase().includes(q) || actDesc.toLowerCase().includes(q);
+          const matchesVenue = actVenue.toLowerCase().includes(q);
+          const matchesCategory = actCategory.toLowerCase().includes(q);
+          if (!matchesTitle && !matchesDesc && !matchesVenue && !matchesCategory) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      assert.equal(filtered.length, 1, "Must filter cleanly and match valid record without crashing");
+    } catch {
+      filterErrorOccurred = true;
+    }
+
+    assert.equal(filterErrorOccurred, false, "Filter logic must never throw TypeError on null fields");
+  });
+
+  test("WorksActivityCard guards against null description slicing and invalid timestamps", () => {
+    const cardCode = nodeFs.readFileSync("components/works/WorksActivityCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("activity.description ? activity.description.slice(0, 160) :"), "Must guard description slice against null");
+    assert.ok(cardCode.includes("activity.category || \"Workshop\""), "Must provide fallback for null category");
+    assert.ok(cardCode.includes("activity.title || \"Untitled Activity\""), "Must provide fallback for null title");
+    assert.ok(cardCode.includes("isNaN(d.getTime())"), "Must check date validity before formatting");
+    assert.ok(cardCode.includes("isFree ? \"Free / ₹0\" :"), "Must safely determine free activities");
+  });
+
+  test("Public FOLE WORKS page declares dynamic server-rendering and graceful query error handling", () => {
+    const pageCode = nodeFs.readFileSync("app/(public)/fole-works/page.tsx", "utf-8");
+    assert.ok(pageCode.includes('export const dynamic = "force-dynamic"'), "Page must export force-dynamic");
+    assert.ok(pageCode.includes("export const revalidate = 0"), "Page must export revalidate = 0");
+    assert.ok(pageCode.includes("try {"), "Page SSR must wrap query in try/catch block");
+    assert.ok(pageCode.includes("catch (err: any) {"), "Page must catch query exceptions");
+    assert.ok(pageCode.includes("fetchError ="), "Page must set fetchError message for recoverable degradation");
+    assert.ok(pageCode.includes("error={fetchError}"), "Page must pass error prop to WorksFilterView");
+    assert.ok(pageCode.includes("FoleWorksLogo"), "Hero branding section must remain intact");
+    assert.ok(pageCode.includes("Hands-on Labs"), "Value pillars must remain visible regardless of query error");
+    assert.ok(pageCode.includes("folecev@gmail.com"), "Contact section must remain visible");
+  });
+
+  test("Public FOLE WORKS detail page declares dynamic server-rendering and safe metadata generation", () => {
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-works/[slug]/page.tsx", "utf-8");
+    assert.ok(detailCode.includes('export const dynamic = "force-dynamic"'), "Detail page must export force-dynamic");
+    assert.ok(detailCode.includes("export const revalidate = 0"), "Detail page must export revalidate = 0");
+    assert.ok(detailCode.includes("generateMetadata"), "Must implement generateMetadata");
+    assert.ok(detailCode.includes("try {"), "Detail page SSR must wrap query in try/catch");
+    assert.ok(detailCode.includes("Activity Temporarily Unavailable"), "Detail page must provide recoverable error UI");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

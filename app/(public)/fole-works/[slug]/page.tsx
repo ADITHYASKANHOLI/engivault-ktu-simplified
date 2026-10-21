@@ -17,7 +17,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getWorksActivityBySlug } from "@/lib/queries";
+import { WorksActivity } from "@/types";
 import { WorksRegistrationCTA } from "@/components/works/WorksRegistrationCTA";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -25,71 +29,128 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const activity = await getWorksActivityBySlug(slug, true);
+  try {
+    const activity = await getWorksActivityBySlug(slug, true);
 
-  if (!activity) {
+    if (!activity) {
+      return {
+        title: "Activity Not Found | FOLE WORKS",
+      };
+    }
+
+    const desc = activity.short_description || (activity.description ? activity.description.slice(0, 160) : "") || "FOLE WORKS activity details";
+
     return {
-      title: "Activity Not Found | FOLE WORKS",
+      title: `${activity.title || "Activity"} — FOLE WORKS | FOLE CEV`,
+      description: desc,
+      openGraph: {
+        title: `${activity.title || "Activity"} | FOLE WORKS`,
+        description: desc,
+        images: [{ url: activity.cover_image || "/branding/fole-works-logo.png" }],
+      },
+    };
+  } catch (err) {
+    console.error("[FOLE WORKS] Metadata error for slug:", slug, err);
+    return {
+      title: "FOLE WORKS Activity | FOLE CEV",
     };
   }
-
-  return {
-    title: `${activity.title} — FOLE WORKS | FOLE CEV`,
-    description: activity.short_description || activity.description.slice(0, 160),
-    openGraph: {
-      title: `${activity.title} | FOLE WORKS`,
-      description: activity.short_description || activity.description.slice(0, 160),
-      images: [{ url: activity.cover_image || "/branding/fole-works-logo.png" }],
-    },
-  };
 }
 
 export default async function WorksActivityDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const activity = await getWorksActivityBySlug(slug, true);
+  let activity: WorksActivity | null = null;
+  let fetchError: string | null = null;
+
+  try {
+    activity = await getWorksActivityBySlug(slug, true);
+  } catch (err: any) {
+    console.error("[FOLE WORKS] Error fetching activity by slug:", slug, err?.message || err);
+    fetchError = "Unable to load activity details at this time.";
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">
+        <div className="max-w-xl mx-auto px-4 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/40 p-8 shadow-xs space-y-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              Activity Temporarily Unavailable
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              We encountered a temporary connection issue while retrieving this activity. Please try again shortly.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/fole-works"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to FOLE WORKS</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!activity) {
     notFound();
   }
 
-  // Format start & end timestamps
-  const startDateStr = activity.start_at
-    ? new Date(activity.start_at).toLocaleDateString("en-IN", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: activity.timezone || "Asia/Kolkata",
-      })
-    : null;
+  // Format start & end timestamps safely
+  const formatTimestamp = (iso?: string | null, opts?: Intl.DateTimeFormatOptions) => {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleDateString("en-IN", {
+        timeZone: activity?.timezone || "Asia/Kolkata",
+        ...opts,
+      });
+    } catch {
+      return null;
+    }
+  };
 
-  const startTimeStr = activity.start_at
-    ? new Date(activity.start_at).toLocaleTimeString("en-IN", {
+  const formatTime = (iso?: string | null) => {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-        timeZone: activity.timezone || "Asia/Kolkata",
-      })
-    : null;
+        timeZone: activity?.timezone || "Asia/Kolkata",
+      });
+    } catch {
+      return null;
+    }
+  };
 
-  const endDateStr = activity.end_at
-    ? new Date(activity.end_at).toLocaleDateString("en-IN", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: activity.timezone || "Asia/Kolkata",
-      })
-    : null;
+  const startDateStr = formatTimestamp(activity.start_at, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
-  const regDeadlineStr = activity.registration_closes_at
-    ? new Date(activity.registration_closes_at).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: activity.timezone || "Asia/Kolkata",
-      })
-    : null;
+  const startTimeStr = formatTime(activity.start_at);
+
+  const endDateStr = formatTimestamp(activity.end_at, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const regDeadlineStr = formatTimestamp(activity.registration_closes_at, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">

@@ -26,6 +26,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
     if (!activity.start_at) return "Dates to be announced";
     try {
       const d = new Date(activity.start_at);
+      if (isNaN(d.getTime())) return "Dates to be announced";
       return d.toLocaleDateString("en-IN", {
         weekday: "short",
         day: "numeric",
@@ -42,6 +43,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
     if (!activity.start_at) return null;
     try {
       const d = new Date(activity.start_at);
+      if (isNaN(d.getTime())) return null;
       return d.toLocaleTimeString("en-IN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -61,25 +63,26 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
 
   // Determine registration status
   const regStatus = React.useMemo(() => {
+    const hasPlatformLink = Boolean(activity.registration_url && activity.registration_url.trim());
     if (!currentTime) {
       return {
-        label: activity.registration_url ? "Registration Open" : "Details Available",
+        label: hasPlatformLink ? "Registration Open" : "Details Available",
         variant: "open" as const,
       };
     }
     const openTime = activity.registration_opens_at ? new Date(activity.registration_opens_at).getTime() : 0;
     const closeTime = activity.registration_closes_at ? new Date(activity.registration_closes_at).getTime() : 0;
 
-    if (closeTime && currentTime > closeTime) {
+    if (closeTime && !isNaN(closeTime) && currentTime > closeTime) {
       return { label: "Registration Closed", variant: "closed" as const };
     }
-    if (openTime && currentTime < openTime) {
+    if (openTime && !isNaN(openTime) && currentTime < openTime) {
       return { label: "Registration Soon", variant: "upcoming" as const };
     }
-    if (closeTime && closeTime - currentTime < 48 * 3600 * 1000) {
+    if (closeTime && !isNaN(closeTime) && closeTime - currentTime < 48 * 3600 * 1000) {
       return { label: "Closing Soon", variant: "urgent" as const };
     }
-    if (activity.registration_url) {
+    if (hasPlatformLink) {
       return { label: "Registration Open", variant: "open" as const };
     }
     return { label: "Details Available", variant: "info" as const };
@@ -102,10 +105,14 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
 
   // Destination URL: configured platform link is primary
   const hasPlatformLink = Boolean(activity.registration_url && activity.registration_url.trim());
-  const destinationUrl = hasPlatformLink ? activity.registration_url!.trim() : `/fole-works/${activity.slug}`;
+  const destinationUrl = hasPlatformLink ? activity.registration_url!.trim() : `/fole-works/${activity.slug || activity.id}`;
 
   // Image error state fallback
   const [imgError, setImgError] = React.useState(false);
+
+  // Safe fee amount calculation
+  const feeAmountNum = typeof activity.fee_amount === "number" ? activity.fee_amount : parseFloat(String(activity.fee_amount || 0));
+  const isFree = isNaN(feeAmountNum) || feeAmountNum <= 0;
 
   return (
     <article className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
@@ -119,13 +126,13 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
           target={hasPlatformLink ? "_blank" : undefined}
           rel={hasPlatformLink ? "noopener noreferrer" : undefined}
           className="block w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          title={`Open ${activity.title}`}
-          aria-label={`Open ${activity.title} platform link`}
+          title={`Open ${activity.title || "Activity"}`}
+          aria-label={`Open ${activity.title || "Activity"} platform link`}
         >
           {activity.cover_image && !imgError ? (
             <img
               src={activity.cover_image}
-              alt={`${activity.title} flyer`}
+              alt={`${activity.title || "Activity"} flyer`}
               onError={() => setImgError(true)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
@@ -138,7 +145,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
                 FOLE WORKS
               </span>
               <span className="text-[10px] font-mono text-slate-500">
-                {activity.category}
+                {activity.category || "Workshop"}
               </span>
             </div>
           )}
@@ -175,7 +182,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
         {/* Badges: Category & Delivery Mode */}
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
           <span className="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700">
-            {activity.category}
+            {activity.category || "Workshop"}
           </span>
           <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1 border font-mono", deliveryInfo.color)}>
             <DeliveryIcon className="w-3 h-3 shrink-0" />
@@ -191,13 +198,13 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
             rel={hasPlatformLink ? "noopener noreferrer" : undefined}
             className="focus:outline-none focus-visible:underline"
           >
-            {activity.title}
+            {activity.title || "Untitled Activity"}
           </a>
         </h3>
 
         {/* Short Description */}
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed flex-1">
-          {activity.short_description || activity.description.slice(0, 160)}
+          {activity.short_description || (activity.description ? activity.description.slice(0, 160) : "") || "Learn more about this FOLE WORKS initiative."}
         </p>
 
         {/* Date, Time & Venue Meta Strip */}
@@ -245,9 +252,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
               Registration Fee
             </span>
             <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-mono">
-              {!activity.fee_amount || activity.fee_amount === 0
-                ? "Free / ₹0"
-                : `₹${activity.fee_amount} ${activity.currency || "INR"}`}
+              {isFree ? "Free / ₹0" : `₹${feeAmountNum} ${activity.currency || "INR"}`}
             </span>
           </div>
 
@@ -270,7 +275,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
         {/* Secondary link for syllabus and details */}
         <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-end">
           <Link
-            href={`/fole-works/${activity.slug}`}
+            href={`/fole-works/${activity.slug || activity.id}`}
             className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors inline-flex items-center gap-1"
           >
             <span>Activity Syllabus & Guidelines</span>
@@ -281,3 +286,4 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
     </article>
   );
 }
+
