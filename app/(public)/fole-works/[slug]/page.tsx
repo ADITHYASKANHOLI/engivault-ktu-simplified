@@ -19,6 +19,7 @@ import {
 import { getWorksActivityBySlug } from "@/lib/queries";
 import { WorksActivity } from "@/types";
 import { WorksRegistrationCTA } from "@/components/works/WorksRegistrationCTA";
+import { WorksShareButton } from "@/components/works/WorksShareButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -196,16 +197,19 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
                   />
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                  {activity.category}
-                </span>
-                <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">
-                  {activity.activity_type}
-                </span>
-                <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/30">
-                  {activity.delivery_mode === "in_person" ? "In-Person" : activity.delivery_mode === "online" ? "Online" : "Hybrid"}
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                    {activity.category}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">
+                    {activity.activity_type}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/30">
+                    {activity.delivery_mode === "in_person" ? "In-Person" : activity.delivery_mode === "online" ? "Online" : "Hybrid"}
+                  </span>
+                </div>
+                <WorksShareButton activity={activity} variant="detail-header" />
               </div>
 
               <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight break-words leading-tight">
@@ -299,6 +303,9 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
                 registrationOpensAt={activity.registration_opens_at}
                 registrationClosesAt={activity.registration_closes_at}
               />
+
+              {/* Share Activity Action */}
+              <WorksShareButton activity={activity} variant="detail-cta" />
 
               {/* Key Event Details List */}
               <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">

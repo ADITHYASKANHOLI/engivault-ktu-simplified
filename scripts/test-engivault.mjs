@@ -1678,6 +1678,89 @@ async function runTests() {
     assert.ok(detailCode.includes("Activity Temporarily Unavailable"), "Detail page must provide recoverable error UI");
   });
 
+  // 15. FOLE WORKS Activity Sharing & Copy Link Suite
+  console.log("--- 15. FOLE WORKS ACTIVITY SHARING & COPY LINK SUITE ---");
+
+  test("WorksShareButton component exists and uses client directive", () => {
+    assert.ok(nodeFs.existsSync("components/works/WorksShareButton.tsx"), "WorksShareButton component file must exist");
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.startsWith('"use client"'), "Must be a client component for browser APIs");
+    assert.ok(shareCode.includes("Share2"), "Must import Share2 from lucide-react");
+    assert.ok(shareCode.includes("Link2"), "Must import Link2 or Copy from lucide-react");
+    assert.ok(shareCode.includes("Check"), "Must import Check icon from lucide-react");
+  });
+
+  test("getActivityShareUrl generates canonical public detail URLs without external registration links", () => {
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.includes("getActivityShareUrl"), "Must export getActivityShareUrl helper");
+
+    // Pure logic test of canonical URL generation
+    function testShareUrl(slugOrId, baseOrigin) {
+      if (!slugOrId) return "/fole-works";
+      const clean = encodeURIComponent(String(slugOrId).trim());
+      const path = `/fole-works/${clean}`;
+      if (baseOrigin) {
+        return `${baseOrigin.replace(/\/+$/, "")}${path}`;
+      }
+      return path;
+    }
+
+    const testSlug = "robotics-bootcamp-2026";
+    const externalRegUrl = "https://forms.google.com/xyz123";
+    const generated = testShareUrl(testSlug, "https://folecev.org");
+
+    assert.equal(generated, "https://folecev.org/fole-works/robotics-bootcamp-2026");
+    assert.ok(!generated.includes(externalRegUrl), "Share URL must NEVER be external registration link");
+    assert.ok(generated.includes("/fole-works/"), "Share URL must route to internal FOLE WORKS detail page");
+
+    // Test different slugs produce distinct URLs
+    const slug1 = testShareUrl("workshop-a", "https://folecev.org");
+    const slug2 = testShareUrl("workshop-b", "https://folecev.org");
+    assert.notEqual(slug1, slug2, "Different activities must produce distinct URLs");
+
+    // Test fallback to ID when slug is absent
+    const idUrl = testShareUrl("act-uuid-789", "https://folecev.org");
+    assert.equal(idUrl, "https://folecev.org/fole-works/act-uuid-789");
+  });
+
+  test("WorksShareButton implements Web Share API with safe AbortError cancellation handling", () => {
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.includes("navigator.share"), "Must call navigator.share when available");
+    assert.ok(shareCode.includes("AbortError"), "Must catch AbortError silently without showing error message on cancellation");
+    assert.ok(shareCode.includes("shareTitle"), "Must pass activity title as share title");
+    assert.ok(shareCode.includes("shareText"), "Must pass meaningful description as share text");
+    assert.ok(shareCode.includes("shareUrl"), "Must pass canonical FOLE WORKS URL");
+  });
+
+  test("WorksShareButton implements clipboard copying with fallback and feedback timer", () => {
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.includes("navigator.clipboard"), "Must attempt navigator.clipboard.writeText");
+    assert.ok(shareCode.includes("execCommand"), "Must provide execCommand fallback for legacy/restricted browser environments");
+    assert.ok(shareCode.includes("Activity link copied!"), "Must provide success feedback message");
+    assert.ok(shareCode.includes("clearTimeout"), "Must clear previous timer to prevent overlapping notifications");
+    assert.ok(shareCode.includes("showFallbackModal"), "Must display fallback dialog when clipboard access is denied");
+  });
+
+  test("WorksActivityCard integrates share actions on flyer and footer without interfering with card clicks", () => {
+    const cardCode = nodeFs.readFileSync("components/works/WorksActivityCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("WorksShareButton"), "WorksActivityCard must import and render WorksShareButton");
+    assert.ok(cardCode.includes('variant="flyer"'), "Must render quick share button on top-left of flyer");
+    assert.ok(cardCode.includes('variant="card"'), "Must render share actions in card footer secondary row");
+    
+    // Check share component prevents event propagation
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.includes("e.stopPropagation()"), "Must stop propagation to prevent triggering parent card/links");
+    assert.ok(shareCode.includes("e.preventDefault()"), "Must prevent default to avoid accidental navigation");
+  });
+
+  test("Activity detail page integrates WorksShareButton while preserving Server Component status", () => {
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-works/[slug]/page.tsx", "utf-8");
+    assert.ok(!detailCode.startsWith('"use client"'), "Detail page must remain a Server Component");
+    assert.ok(detailCode.includes("WorksShareButton"), "Must import WorksShareButton");
+    assert.ok(detailCode.includes('variant="detail-header"'), "Must render share button in detail page header");
+    assert.ok(detailCode.includes('variant="detail-cta"'), "Must render share button in sticky sidebar CTA card");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { WorksActivity } from "@/types";
 import { cn } from "@/lib/utils";
+import { WorksShareButton } from "./WorksShareButton";
 
 interface WorksActivityCardProps {
   activity: WorksActivity;
@@ -161,6 +162,11 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
           </div>
         </a>
 
+        {/* Quick Share Action Overlaid on Flyer */}
+        <div className="absolute top-3 left-3 z-10">
+          <WorksShareButton activity={activity} variant="flyer" />
+        </div>
+
         {/* Status Badge Overlaid on Flyer */}
         <div className="absolute top-3 right-3 pointer-events-none">
           <span
@@ -272,11 +278,12 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
           </a>
         </div>
 
-        {/* Secondary link for syllabus and details */}
-        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-end">
+        {/* Secondary row: Share actions & Syllabus link */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-between gap-2 flex-wrap">
+          <WorksShareButton activity={activity} variant="card" />
           <Link
             href={`/fole-works/${activity.slug || activity.id}`}
-            className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors inline-flex items-center gap-1"
+            className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors inline-flex items-center gap-1 shrink-0"
           >
             <span>Activity Syllabus & Guidelines</span>
             <ArrowRight className="w-3 h-3" />
