@@ -1826,6 +1826,154 @@ async function runTests() {
     assert.ok(worksIdRoute.includes("revalidateWorksActivity"), "Works admin update/delete route must call revalidateWorksActivity");
   });
 
+  // 17. Authentication, Access Control & Rate Limiting Suite
+  console.log("--- 17. AUTHENTICATION, ACCESS CONTROL & RATE LIMITING SUITE ---");
+
+  await testAsync("studentUsernameSchema strictly enforces 3-20 lowercase alphanumeric characters", async () => {
+    const { studentUsernameSchema } = await import("../lib/validation/student.ts");
+    assert.ok(studentUsernameSchema.safeParse("adithya").success, "Simple lowercase username must pass");
+    assert.ok(studentUsernameSchema.safeParse("user_123").success, "Username with underscores and numbers must pass");
+    assert.ok(!studentUsernameSchema.safeParse("ab").success, "Short username (< 3 chars) must be rejected");
+    assert.ok(!studentUsernameSchema.safeParse("a".repeat(21)).success, "Long username (> 20 chars) must be rejected");
+    assert.ok(!studentUsernameSchema.safeParse("Adithya").success, "Uppercase characters must be rejected");
+    assert.ok(!studentUsernameSchema.safeParse("user-name").success, "Hyphens must be rejected (only underscores)");
+    assert.ok(!studentUsernameSchema.safeParse("user.name").success, "Dots must be rejected");
+    assert.ok(!studentUsernameSchema.safeParse("user@name").success, "Special characters must be rejected");
+  });
+
+  await testAsync("studentUsernameSchema blocks reserved system words", async () => {
+    const { studentUsernameSchema } = await import("../lib/validation/student.ts");
+    const reserved = ["admin", "administrator", "fole", "engivault", "root", "support", "system", "moderator", "guest"];
+    for (const word of reserved) {
+      assert.ok(!studentUsernameSchema.safeParse(word).success, `Reserved word '${word}' must be rejected`);
+    }
+  });
+
+  await testAsync("studentPasswordSchema enforces 8-72 characters and rejects trivially weak passwords", async () => {
+    const { studentPasswordSchema } = await import("../lib/validation/student.ts");
+    assert.ok(studentPasswordSchema.safeParse("ValidPass123!").success, "Strong password must pass");
+    assert.ok(studentPasswordSchema.safeParse("p@ssword with spaces").success, "Passwords with spaces must pass");
+    assert.ok(!studentPasswordSchema.safeParse("short1").success, "Short password (<8 chars) must be rejected");
+    assert.ok(!studentPasswordSchema.safeParse("a".repeat(73)).success, "Long password (>72 chars) must be rejected");
+    assert.ok(!studentPasswordSchema.safeParse("password").success, "'password' must be rejected as trivially weak");
+    assert.ok(!studentPasswordSchema.safeParse("12345678").success, "'12345678' must be rejected as trivially weak");
+    assert.ok(!studentPasswordSchema.safeParse("qwertyui").success, "'qwertyui' must be rejected as trivially weak");
+  });
+
+  await testAsync("studentSignupSchema rejects passwords identical to the username", async () => {
+    const { studentSignupSchema } = await import("../lib/validation/student.ts");
+    const res = studentSignupSchema.safeParse({ username: "student99", password: "student99" });
+    assert.ok(!res.success, "Password equal to username must be rejected");
+  });
+
+  await testAsync("usernameToInternalEmail generates canonical non-routable RFC 2606 addresses", async () => {
+    const { usernameToInternalEmail, INTERNAL_STUDENT_DOMAIN } = await import("../lib/auth/student.ts");
+    assert.strictEqual(INTERNAL_STUDENT_DOMAIN, "students.fole.invalid");
+    assert.strictEqual(usernameToInternalEmail("Adithya_K"), "adithya_k@students.fole.invalid");
+    assert.strictEqual(usernameToInternalEmail("  STUDENT1  "), "student1@students.fole.invalid");
+  });
+
+  await testAsync("isSafeOrigin blocks cross-origin requests while permitting same-origin and mobile", async () => {
+    const { isSafeOrigin } = await import("../lib/security/origin.ts");
+    const safeDirect = new Request("https://engivault.com/api/test", { method: "POST" });
+    assert.ok(isSafeOrigin(safeDirect), "Request without Origin header must be permitted");
+
+    const sameOrigin = new Request("https://engivault.com/api/test", {
+      method: "POST",
+      headers: { origin: "https://engivault.com", host: "engivault.com" },
+    });
+    assert.ok(isSafeOrigin(sameOrigin), "Matching origin and host must be permitted");
+
+    const evilOrigin = new Request("https://engivault.com/api/test", {
+      method: "POST",
+      headers: { origin: "https://attacker-domain.evil", host: "engivault.com" },
+    });
+    assert.ok(!isSafeOrigin(evilOrigin), "Cross-origin attacker domain must be rejected");
+  });
+
+  await testAsync("getSafeRedirectUrl strictly allows relative same-origin paths and sanitizes open redirects", async () => {
+    const { getSafeRedirectUrl } = await import("../lib/auth/token.ts");
+    assert.strictEqual(getSafeRedirectUrl("/admin/dashboard"), "/admin/dashboard");
+    assert.strictEqual(getSafeRedirectUrl("/subjects/ktucs101"), "/subjects/ktucs101");
+    assert.strictEqual(getSafeRedirectUrl("https://evil.com"), "/admin/dashboard", "External absolute URL must return fallback");
+    assert.strictEqual(getSafeRedirectUrl("//evil.com"), "/admin/dashboard", "Protocol-relative URL must return fallback");
+    assert.strictEqual(getSafeRedirectUrl("/\\evil.com"), "/admin/dashboard", "Backslash injection must return fallback");
+    assert.strictEqual(getSafeRedirectUrl(null, "/fallback"), "/fallback");
+  });
+
+  await testAsync("Signed admin session tokens reject forgery and tampering", async () => {
+    const { createSignedToken, verifySignedToken } = await import("../lib/auth/token.ts");
+    process.env.ADMIN_SESSION_SECRET = "test-secret-key-for-automated-verification-123";
+    const token = createSignedToken({ role: "admin", createdAt: Date.now() });
+    assert.ok(token.includes("."), "Signed token must contain base64 data and HMAC signature separated by dot");
+
+    const valid = verifySignedToken(token);
+    assert.ok(valid && valid.role === "admin", "Valid signed token must decode correctly");
+
+    // Tampered data
+    const [, sig] = token.split(".");
+    const tamperedData = Buffer.from(JSON.stringify({ role: "admin", createdAt: Date.now() - 1000 })).toString("base64url");
+    const tampered = `${tamperedData}.${sig}`;
+    assert.strictEqual(verifySignedToken(tampered), null, "Tampered payload with mismatched signature must be rejected");
+
+    // Expired token (> 7 days)
+    const expiredData = Buffer.from(JSON.stringify({ role: "admin", createdAt: Date.now() - (8 * 24 * 60 * 60 * 1000) })).toString("base64url");
+    const { createHmac } = await import("node:crypto");
+    const expiredSig = createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(expiredData).digest("base64url");
+    assert.strictEqual(verifySignedToken(`${expiredData}.${expiredSig}`), null, "Expired token (> 7 days) must be rejected");
+  });
+
+  await testAsync("checkDbRateLimit enforces sliding window limits and reports reset timings", async () => {
+    const { checkDbRateLimit, _resetMemoryRateLimit } = await import("../lib/security/db-rate-limit.ts");
+    const testKey = "test-rate-limit-key-" + Date.now();
+    _resetMemoryRateLimit(testKey);
+
+    // 1st attempt
+    const r1 = await checkDbRateLimit(testKey, { windowSeconds: 60, maxAttempts: 2 });
+    assert.ok(r1.allowed, "First attempt must be allowed");
+    assert.strictEqual(r1.remaining, 1);
+
+    // 2nd attempt
+    const r2 = await checkDbRateLimit(testKey, { windowSeconds: 60, maxAttempts: 2 });
+    assert.ok(r2.allowed, "Second attempt must be allowed");
+    assert.strictEqual(r2.remaining, 0);
+
+    // 3rd attempt: must be blocked
+    const r3 = await checkDbRateLimit(testKey, { windowSeconds: 60, maxAttempts: 2 });
+    assert.ok(!r3.allowed, "Third attempt must be blocked by rate limit");
+    assert.strictEqual(r3.remaining, 0);
+    assert.ok(r3.resetInSeconds > 0, "Reset in seconds must be positive");
+  });
+
+  test("Database migration 010 defines username, unique index, format constraint, and auth_rate_limits", () => {
+    const sql = nodeFs.readFileSync("supabase/migrations/010_student_auth_and_rate_limits.sql", "utf-8");
+    assert.ok(sql.includes("add column if not exists username text;"), "Must add username column to profiles");
+    assert.ok(sql.includes("create unique index if not exists idx_profiles_lower_username"), "Must create lower(username) unique index");
+    assert.ok(sql.includes("chk_profiles_username_format"), "Must enforce username format check");
+    assert.ok(sql.includes("handle_new_user()"), "Must define handle_new_user trigger function");
+    assert.ok(sql.includes("on_auth_user_created"), "Must attach trigger to auth.users");
+    assert.ok(sql.includes("create table if not exists public.auth_rate_limits"), "Must define auth_rate_limits table");
+    assert.ok(sql.includes("check_and_increment_rate_limit"), "Must define atomic rate limit RPC");
+  });
+
+  test("Auth and access control routes enforce nodejs runtime and serverless safety", () => {
+    const signupCode = nodeFs.readFileSync("app/api/auth/student/signup/route.ts", "utf-8");
+    assert.ok(signupCode.includes('runtime = "nodejs"'), "Signup route must declare nodejs runtime");
+
+    const loginCode = nodeFs.readFileSync("app/api/auth/student/login/route.ts", "utf-8");
+    assert.ok(loginCode.includes('runtime = "nodejs"'), "Login route must declare nodejs runtime");
+
+    const logoutCode = nodeFs.readFileSync("app/api/auth/student/logout/route.ts", "utf-8");
+    assert.ok(logoutCode.includes('runtime = "nodejs"'), "Logout route must declare nodejs runtime");
+
+    const changePwCode = nodeFs.readFileSync("app/api/auth/student/change-password/route.ts", "utf-8");
+    assert.ok(changePwCode.includes('runtime = "nodejs"'), "Change password route must declare nodejs runtime");
+
+    const studentsAdminCode = nodeFs.readFileSync("app/api/admin/students/route.ts", "utf-8");
+    assert.ok(studentsAdminCode.includes('runtime = "nodejs"'), "Students admin route must declare nodejs runtime");
+    assert.ok(studentsAdminCode.includes("getAdminSession"), "Students admin route must enforce getAdminSession");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");
@@ -1834,6 +1982,7 @@ async function runTests() {
     process.exit(1);
   }
 }
+
 
 runTests();
 

@@ -1,6 +1,4 @@
 import { createHash } from "node:crypto";
-import { NextResponse } from "next/server";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 export interface DbRateLimitOptions {
   windowSeconds?: number; // Duration of rate limit window in seconds (default: 900 = 15m)
@@ -19,6 +17,17 @@ interface MemoryRecord {
   windowStart: number;
 }
 const memoryStore = new Map<string, MemoryRecord>();
+
+function isSupabaseAdminConfiguredFast(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || url.includes("your-project") || url.includes("placeholder") || !serviceKey || serviceKey.includes("placeholder")) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * Extracts client IP safely from standard headers
@@ -52,8 +61,9 @@ export async function checkDbRateLimit(
   const maxAttempts = options.maxAttempts ?? 6;
 
   // 1. Attempt DB-backed check if Supabase admin is configured
-  if (isSupabaseAdminConfigured()) {
+  if (isSupabaseAdminConfiguredFast()) {
     try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
       const supabase = createAdminClient();
       const { data, error } = await supabase.rpc("check_and_increment_rate_limit", {
         p_key: key,
@@ -129,8 +139,8 @@ export function _resetMemoryRateLimit(key?: string): void {
 export function rateLimitResponse(
   message: string,
   retryAfterSeconds: number
-): NextResponse {
-  return NextResponse.json(
+): Response {
+  return Response.json(
     { error: message },
     {
       status: 429,

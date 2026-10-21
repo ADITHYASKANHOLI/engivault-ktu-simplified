@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export const INTERNAL_STUDENT_DOMAIN = "students.fole.invalid";
 
 export const RESERVED_USERNAMES = [
@@ -18,7 +16,7 @@ export const RESERVED_USERNAMES = [
   "bot",
 ] as const;
 
-const RESERVED_SET = new Set<string>(RESERVED_USERNAMES);
+export const RESERVED_SET = new Set<string>(RESERVED_USERNAMES);
 
 export const TRIVIALLY_WEAK_PASSWORDS = new Set<string>([
   "password",
