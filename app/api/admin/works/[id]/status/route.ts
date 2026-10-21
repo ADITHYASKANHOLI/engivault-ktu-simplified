@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
-import { updateWorksActivityStatus } from "@/lib/queries";
+import { getWorksActivityById, updateWorksActivityStatus } from "@/lib/queries";
+import { validateActivityPublicationReadiness } from "@/lib/validation/schemas";
 import { WorksActivityStatus } from "@/types";
 
 export const runtime = "nodejs";
@@ -26,6 +27,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { error: "Invalid status value. Must be 'draft', 'published', or 'archived'." },
         { status: 400 }
       );
+    }
+
+    if (status === "published") {
+      const activity = await getWorksActivityById(id);
+      if (!activity) {
+        return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+      }
+
+      const readiness = validateActivityPublicationReadiness(activity);
+      if (!readiness.isReady) {
+        return NextResponse.json(
+          {
+            error: `Activity cannot be published. Missing required fields: ${readiness.missing.join(", ")}`,
+            missing: readiness.missing,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = await updateWorksActivityStatus(id, status);

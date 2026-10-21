@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       const subject_id = (formData.get("subject_id") as string) || "";
       const module_id = (formData.get("module_id") as string) || "";
       const lesson_id = (formData.get("lesson_id") as string) || "";
+      const folder = (formData.get("folder") as string) || "";
 
       if (!file) {
         return NextResponse.json({ error: "No file provided for upload" }, { status: 400 });
@@ -94,10 +95,38 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Validate image MIME types if target is engivault-thumbnails or engivault-branding
+      if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
+        const mime = file.type?.toLowerCase() || "";
+        const name = file.name.toLowerCase();
+        const isValidImg =
+          mime.startsWith("image/") ||
+          mime === "image/jpeg" ||
+          mime === "image/png" ||
+          mime === "image/webp" ||
+          name.endsWith(".jpg") ||
+          name.endsWith(".jpeg") ||
+          name.endsWith(".png") ||
+          name.endsWith(".webp") ||
+          name.endsWith(".svg");
+
+        if (!isValidImg) {
+          return NextResponse.json(
+            { error: "Invalid image format. Supported formats: JPEG, PNG, WebP." },
+            { status: 400 }
+          );
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+          return NextResponse.json({ error: "Image file exceeds 10MB maximum upload limit." }, { status: 400 });
+        }
+      }
+
       // Sanitize filename and generate collision-resistant storage path
       const safeFilename = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
       const uniquePrefix = crypto.randomUUID();
-      const storagePath = `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}/${uniquePrefix}-${safeFilename}`;
+      const basePath = folder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}`);
+      const storagePath = `${basePath}/${uniquePrefix}-${safeFilename}`;
 
       if (isSupabaseConfigured()) {
         const supabase = createAdminClient();
@@ -126,9 +155,12 @@ export async function POST(request: NextRequest) {
           size: file.size,
         });
 
+        const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+
         return NextResponse.json({
           success: true,
           storagePath,
+          publicUrl: publicUrlData?.publicUrl || storagePath,
           bucket,
           filename: file.name,
           size: file.size,
@@ -143,7 +175,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Local fallback mode: simulate upload
+      // Local fallback mode: simulate upload and provide base64 data URL for images so they preview immediately
       await logActivity("File Upload Simulated (Fallback)", "upload", {
         bucket,
         filename: file.name,
@@ -151,9 +183,17 @@ export async function POST(request: NextRequest) {
         size: file.size,
       });
 
+      let publicUrl = storagePath;
+      if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        publicUrl = `data:${file.type || "image/png"};base64,${base64}`;
+      }
+
       return NextResponse.json({
         success: true,
         storagePath,
+        publicUrl,
         bucket,
         filename: file.name,
         size: file.size,
@@ -237,9 +277,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate thumbnail/flyer MIME types if target is engivault-thumbnails or engivault-branding
+    if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
+      const mime = (mime_type || "").toLowerCase();
+      const name = filename.toLowerCase();
+      const isValidImg =
+        mime.startsWith("image/") ||
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".png") ||
+        name.endsWith(".webp") ||
+        name.endsWith(".svg");
+
+      if (!isValidImg) {
+        return NextResponse.json(
+          { error: "Invalid image format. Supported formats: JPEG, PNG, WebP." },
+          { status: 400 }
+        );
+      }
+
+      if (file_size > 10485760) {
+        return NextResponse.json({ error: "Image file exceeds 10MB maximum upload limit." }, { status: 400 });
+      }
+    }
+
     const safeFilename = filename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
     const uniquePrefix = crypto.randomUUID();
-    const storagePath = `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}/${uniquePrefix}-${safeFilename}`;
+    const folder = result.data.folder || "";
+    const basePath = folder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}`);
+    const storagePath = `${basePath}/${uniquePrefix}-${safeFilename}`;
 
     if (!isSupabaseConfigured()) {
       if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {

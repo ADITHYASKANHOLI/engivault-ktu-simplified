@@ -10,6 +10,8 @@ import {
   Laptop,
   Globe,
   Users,
+  ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react";
 import { WorksActivity } from "@/types";
 import { cn } from "@/lib/utils";
@@ -98,44 +100,99 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
 
   const DeliveryIcon = deliveryInfo.icon;
 
+  // Destination URL: configured platform link is primary
+  const hasPlatformLink = Boolean(activity.registration_url && activity.registration_url.trim());
+  const destinationUrl = hasPlatformLink ? activity.registration_url!.trim() : `/fole-works/${activity.slug}`;
+
+  // Image error state fallback
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <article className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
       {/* Top Banner Accent */}
       <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
 
-      <div className="p-4 sm:p-5 flex-1 flex flex-col">
-        {/* Badges: Category & Delivery Mode */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700">
-              {activity.category}
-            </span>
-            <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1 border font-mono", deliveryInfo.color)}>
-              <DeliveryIcon className="w-3 h-3 shrink-0" />
-              <span>{deliveryInfo.label}</span>
-            </span>
-          </div>
+      {/* Activity Flyer Poster (Opens configured platform destination) */}
+      <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80">
+        <a
+          href={destinationUrl}
+          target={hasPlatformLink ? "_blank" : undefined}
+          rel={hasPlatformLink ? "noopener noreferrer" : undefined}
+          className="block w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          title={`Open ${activity.title}`}
+          aria-label={`Open ${activity.title} platform link`}
+        >
+          {activity.cover_image && !imgError ? (
+            <img
+              src={activity.cover_image}
+              alt={`${activity.title} flyer`}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-[#07111F] to-slate-950 text-slate-400 group-hover:text-emerald-400 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-2">
+                <ImageIcon className="w-6 h-6 text-emerald-500" />
+              </div>
+              <span className="text-xs font-mono font-bold tracking-wider uppercase text-slate-300">
+                FOLE WORKS
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">
+                {activity.category}
+              </span>
+            </div>
+          )}
 
-          {/* Registration Status Pill */}
+          {/* Hover highlight overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
+            {hasPlatformLink && (
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold font-mono px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xs">
+                <span>Open Platform</span>
+                <ExternalLink className="w-3 h-3 text-emerald-400" />
+              </span>
+            )}
+          </div>
+        </a>
+
+        {/* Status Badge Overlaid on Flyer */}
+        <div className="absolute top-3 right-3 pointer-events-none">
           <span
             className={cn(
-              "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shrink-0",
-              regStatus.variant === "open" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30",
-              regStatus.variant === "urgent" && "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse",
-              regStatus.variant === "upcoming" && "bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30",
-              regStatus.variant === "closed" && "bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30",
-              regStatus.variant === "info" && "bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20"
+              "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-md backdrop-blur-md",
+              regStatus.variant === "open" && "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40",
+              regStatus.variant === "urgent" && "bg-amber-950/80 text-amber-300 border border-amber-500/40 animate-pulse",
+              regStatus.variant === "upcoming" && "bg-sky-950/80 text-sky-300 border border-sky-500/40",
+              regStatus.variant === "closed" && "bg-slate-950/80 text-slate-400 border border-slate-700/40",
+              regStatus.variant === "info" && "bg-slate-950/80 text-slate-300 border border-slate-700/40"
             )}
           >
             {regStatus.label}
           </span>
         </div>
+      </div>
 
-        {/* Title */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col">
+        {/* Badges: Category & Delivery Mode */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700">
+            {activity.category}
+          </span>
+          <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1 border font-mono", deliveryInfo.color)}>
+            <DeliveryIcon className="w-3 h-3 shrink-0" />
+            <span>{deliveryInfo.label}</span>
+          </span>
+        </div>
+
+        {/* Title (Opens configured platform destination) */}
         <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 break-words leading-snug mb-2">
-          <Link href={`/fole-works/${activity.slug}`} className="focus:outline-none focus-visible:underline">
+          <a
+            href={destinationUrl}
+            target={hasPlatformLink ? "_blank" : undefined}
+            rel={hasPlatformLink ? "noopener noreferrer" : undefined}
+            className="focus:outline-none focus-visible:underline"
+          >
             {activity.title}
-          </Link>
+          </a>
         </h3>
 
         {/* Short Description */}
@@ -179,28 +236,47 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
         </div>
       </div>
 
-      {/* Card Footer: Fee & View Action */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50/70 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-3">
-        {/* Fee Indicator */}
-        <div className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-wider font-mono text-slate-400">
-            Participation Fee
-          </span>
-          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-mono">
-            {!activity.fee_amount || activity.fee_amount === 0
-              ? "Free / Open"
-              : `${activity.currency || "INR"} ${activity.fee_amount}`}
-          </span>
+      {/* Card Footer: Fee & Primary Action */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50/70 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/60 flex flex-col gap-2.5">
+        <div className="flex items-center justify-between gap-3">
+          {/* Fee Indicator */}
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider font-mono text-slate-400">
+              Registration Fee
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-mono">
+              {!activity.fee_amount || activity.fee_amount === 0
+                ? "Free / ₹0"
+                : `₹${activity.fee_amount} ${activity.currency || "INR"}`}
+            </span>
+          </div>
+
+          {/* Primary Action Button (Opens platform link in new tab) */}
+          <a
+            href={destinationUrl}
+            target={hasPlatformLink ? "_blank" : undefined}
+            rel={hasPlatformLink ? "noopener noreferrer" : undefined}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
+          >
+            <span>{hasPlatformLink ? "Register on Platform" : "View Details"}</span>
+            {hasPlatformLink ? (
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+            )}
+          </a>
         </div>
 
-        {/* Action Link (min 44px touch target) */}
-        <Link
-          href={`/fole-works/${activity.slug}`}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-900 hover:text-white bg-slate-200/80 hover:bg-emerald-600 dark:bg-slate-800 dark:hover:bg-emerald-600 dark:text-slate-200 dark:hover:text-white transition-all shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
-        >
-          <span>View Details</span>
-          <ArrowRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+        {/* Secondary link for syllabus and details */}
+        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/40 flex items-center justify-end">
+          <Link
+            href={`/fole-works/${activity.slug}`}
+            className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors inline-flex items-center gap-1"
+          >
+            <span>Activity Syllabus & Guidelines</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
       </div>
     </article>
   );

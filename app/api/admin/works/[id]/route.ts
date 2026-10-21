@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
-import { worksActivityUpdateSchema } from "@/lib/validation/schemas";
+import { worksActivityUpdateSchema, validateActivityPublicationReadiness } from "@/lib/validation/schemas";
 import { getWorksActivityById, updateWorksActivity, deleteWorksActivity } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -48,6 +48,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         { error: "Validation failed", details: result.error.format() },
         { status: 400 }
       );
+    }
+
+    const existing = await getWorksActivityById(id);
+    if (!existing) {
+      return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+    }
+
+    if (result.data.status === "published") {
+      const merged = { ...existing, ...result.data };
+      const readiness = validateActivityPublicationReadiness(merged);
+      if (!readiness.isReady) {
+        return NextResponse.json(
+          {
+            error: `Cannot publish activity: Missing required fields: ${readiness.missing.join(", ")}`,
+            missing: readiness.missing,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = await updateWorksActivity(id, result.data);

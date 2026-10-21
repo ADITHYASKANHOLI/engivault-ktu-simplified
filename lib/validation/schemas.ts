@@ -239,6 +239,7 @@ export const uploadAuthorizeSchema = z.object({
   subject_id: uuidSchema.optional().nullable().or(z.literal("")),
   module_id: uuidSchema.optional().nullable().or(z.literal("")),
   lesson_id: uuidSchema.optional().nullable().or(z.literal("")),
+  folder: z.string().optional().nullable(),
 });
 
 export const worksSupportingResourceSchema = z.object({
@@ -247,7 +248,7 @@ export const worksSupportingResourceSchema = z.object({
   type: z.enum(["document", "link", "slides", "code", "form", "other"]).optional().default("link"),
 });
 
-export const worksActivitySchema = z.object({
+export const worksActivityBaseSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(200, "Title is too long"),
   slug: z
     .string()
@@ -266,10 +267,29 @@ export const worksActivitySchema = z.object({
   timezone: z.string().max(100).optional().default("Asia/Kolkata"),
   organizer_details: z.string().max(500).optional().nullable(),
   learning_outcomes: z.array(z.string()).optional().nullable(),
-  registration_url: z.string().optional().nullable(),
+  registration_url: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((val) => {
+      if (!val || !val.trim()) return true;
+      const trimmed = val.trim();
+      try {
+        const u = new URL(trimmed);
+        return (
+          u.protocol === "https:" ||
+          (process.env.NODE_ENV !== "production" && u.protocol === "http:")
+        );
+      } catch {
+        return false;
+      }
+    }, "Platform link must be a valid secure URL starting with https://"),
   registration_opens_at: z.string().optional().nullable(),
   registration_closes_at: z.string().optional().nullable(),
-  fee_amount: z.number().min(0).default(0),
+  fee_amount: z
+    .number()
+    .min(0, "Registration fee must be 0 or a positive number")
+    .default(0),
   currency: z.string().max(10).default("INR"),
   capacity: z.number().int().positive().optional().nullable(),
   contact_email: z.string().optional().nullable(),
@@ -279,7 +299,58 @@ export const worksActivitySchema = z.object({
   is_featured: z.boolean().default(false),
 });
 
-export const worksActivityUpdateSchema = worksActivitySchema.partial();
+export const worksActivitySchema = worksActivityBaseSchema.superRefine((data, ctx) => {
+  if (data.status === "published") {
+    if (!data.cover_image || !data.cover_image.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Activity flyer/poster is required before publication.",
+        path: ["cover_image"],
+      });
+    }
+    if (!data.registration_url || !data.registration_url.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Activity platform or registration link is required before publication.",
+        path: ["registration_url"],
+      });
+    }
+  }
+});
+
+export const worksActivityUpdateSchema = worksActivityBaseSchema.partial();
+
+/**
+ * Validates whether an activity satisfies all requirements for publication.
+ */
+export function validateActivityPublicationReadiness(activity: {
+  title?: string | null;
+  description?: string | null;
+  cover_image?: string | null;
+  registration_url?: string | null;
+  fee_amount?: number | null;
+}): { isReady: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!activity.title || activity.title.trim().length < 3) missing.push("Title (at least 3 characters)");
+  if (!activity.description || activity.description.trim().length < 10) missing.push("Description (at least 10 characters)");
+  if (!activity.cover_image || !activity.cover_image.trim()) missing.push("Flyer / Poster image");
+  if (!activity.registration_url || !activity.registration_url.trim()) {
+    missing.push("Activity Platform / Registration Link");
+  } else {
+    try {
+      const u = new URL(activity.registration_url.trim());
+      if (u.protocol !== "https:" && (process.env.NODE_ENV === "production" || u.protocol !== "http:")) {
+        missing.push("Secure HTTPS platform link");
+      }
+    } catch {
+      missing.push("Valid platform URL format");
+    }
+  }
+  if (typeof activity.fee_amount !== "number" || activity.fee_amount < 0) {
+    missing.push("Valid registration fee (0 or positive)");
+  }
+  return { isReady: missing.length === 0, missing };
+}
 
 export * from "./contact";
 

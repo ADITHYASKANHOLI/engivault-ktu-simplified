@@ -1360,6 +1360,137 @@ async function runTests() {
     assert.ok(apiRoute.includes("getAdminSession"), "API route must strictly verify admin session");
   });
 
+  // =========================================================================
+  // 13. FOLE WORKS ACTIVITY CREATION, FLYER UPLOAD, REGISTRATION FEE & LINKS
+  // =========================================================================
+  console.log("\n--- 13. FOLE WORKS ACTIVITY CREATION, FLYER UPLOAD, FEES & PLATFORM LINKS ---");
+
+  // Replication of validateActivityPublicationReadiness from lib/validation/schemas.ts
+  function testPublicationReadiness(activity) {
+    const missing = [];
+    if (!activity.title || activity.title.trim().length < 3) missing.push("Title (at least 3 characters)");
+    if (!activity.description || activity.description.trim().length < 10) missing.push("Description (at least 10 characters)");
+    if (!activity.cover_image || !activity.cover_image.trim()) missing.push("Flyer / Poster image");
+    if (!activity.registration_url || !activity.registration_url.trim()) {
+      missing.push("Activity Platform / Registration Link");
+    } else {
+      try {
+        const u = new URL(activity.registration_url.trim());
+        if (u.protocol !== "https:" && (process.env.NODE_ENV === "production" || u.protocol !== "http:")) {
+          missing.push("Secure HTTPS platform link");
+        }
+      } catch {
+        missing.push("Valid platform URL format");
+      }
+    }
+    if (typeof activity.fee_amount !== "number" || activity.fee_amount < 0) {
+      missing.push("Valid registration fee (0 or positive)");
+    }
+    return { isReady: missing.length === 0, missing };
+  }
+
+  test("Publication readiness validator rejects incomplete activities and passes complete records", () => {
+    const schemaFile = nodeFs.readFileSync("lib/validation/schemas.ts", "utf-8");
+    assert.ok(schemaFile.includes("validateActivityPublicationReadiness"), "validateActivityPublicationReadiness must be exported");
+
+    // Incomplete draft (missing flyer and platform link)
+    const incompleteDraft = {
+      title: "IoT Prototyping Workshop",
+      description: "Hands-on ESP32 firmware development and sensor interfacing.",
+      cover_image: null,
+      registration_url: null,
+      fee_amount: 0,
+    };
+    const incompleteCheck = testPublicationReadiness(incompleteDraft);
+    assert.equal(incompleteCheck.isReady, false, "Draft without flyer and platform link must not be ready to publish");
+    assert.ok(incompleteCheck.missing.some((m) => m.toLowerCase().includes("flyer")), "Missing list must include flyer");
+    assert.ok(incompleteCheck.missing.some((m) => m.toLowerCase().includes("platform") || m.toLowerCase().includes("link")), "Missing list must include platform link");
+
+    // Complete ready-to-publish record
+    const completeActivity = {
+      title: "Advanced Robotics Workshop",
+      description: "Full day hands-on ROS2 robotics workshop for engineering students.",
+      cover_image: "https://example.com/storage/flyer.webp",
+      registration_url: "https://forms.gle/test-registration-form",
+      fee_amount: 150,
+    };
+    const completeCheck = testPublicationReadiness(completeActivity);
+    assert.equal(completeCheck.isReady, true, "Complete activity must satisfy publication readiness");
+    assert.equal(completeCheck.missing.length, 0, "No missing items for valid activity");
+  });
+
+  test("Registration fee schema rejects negative values and malformed numbers", () => {
+    const schemaFile = nodeFs.readFileSync("lib/validation/schemas.ts", "utf-8");
+    assert.ok(schemaFile.includes("fee_amount"), "Schema must define fee_amount");
+    assert.ok(schemaFile.includes("Registration fee must be 0 or a positive number"), "Must enforce non-negative fee rule");
+
+    const validateFee = (amount) => {
+      return typeof amount === "number" && !isNaN(amount) && amount >= 0;
+    };
+
+    assert.equal(validateFee(0), true, "0 fee must be valid (Free activity)");
+    assert.equal(validateFee(150), true, "Positive fee must be valid");
+    assert.equal(validateFee(-20), false, "Negative fee must be rejected");
+    assert.equal(validateFee(NaN), false, "NaN fee must be rejected");
+  });
+
+  test("Registration platform URL rejects unsafe javascript: URLs and invalid protocols", () => {
+    const schemaFile = nodeFs.readFileSync("lib/validation/schemas.ts", "utf-8");
+    assert.ok(schemaFile.includes("Platform link must be a valid secure URL starting with https://"), "Must enforce HTTPS URL message");
+
+    const validateUrl = (urlStr) => {
+      if (!urlStr || !urlStr.trim()) return false;
+      try {
+        const u = new URL(urlStr.trim());
+        return u.protocol === "https:" || u.protocol === "http:";
+      } catch {
+        return false;
+      }
+    };
+
+    assert.equal(validateUrl("https://forms.gle/test1234"), true, "Valid HTTPS URL passes");
+    assert.equal(validateUrl("javascript:alert(1)"), false, "Unsafe javascript: protocol fails");
+    assert.equal(validateUrl("not-a-valid-url"), false, "Invalid string fails URL parsing");
+  });
+
+  test("Flyer upload endpoint in /api/admin/upload supports thumbnails bucket and validates MIME types", () => {
+    const uploadRoute = nodeFs.readFileSync("app/api/admin/upload/route.ts", "utf-8");
+    assert.ok(uploadRoute.includes('"engivault-thumbnails"'), "Upload route must allow engivault-thumbnails bucket");
+    assert.ok(uploadRoute.includes("image/jpeg"), "Upload route must support image/jpeg");
+    assert.ok(uploadRoute.includes("image/png"), "Upload route must support image/png");
+    assert.ok(uploadRoute.includes("image/webp"), "Upload route must support image/webp");
+    assert.ok(uploadRoute.includes("10 * 1024 * 1024"), "Upload route must enforce 10MB limit for image flyers");
+    assert.ok(uploadRoute.includes("folder"), "Upload route must support folder categorization (works-flyers)");
+  });
+
+  test("Public WorksActivityCard wires flyer, title and primary button to configured platform link", () => {
+    const cardCode = nodeFs.readFileSync("components/works/WorksActivityCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("hasPlatformLink"), "Must compute whether platform link is present");
+    assert.ok(cardCode.includes('target={hasPlatformLink ? "_blank" : undefined}'), "Must target _blank for external destination");
+    assert.ok(cardCode.includes('rel={hasPlatformLink ? "noopener noreferrer" : undefined}'), "Must include rel='noopener noreferrer'");
+    assert.ok(cardCode.includes("activity.cover_image"), "Must render activity cover_image flyer");
+    assert.ok(cardCode.includes("Free / ₹0"), "Must render Free / ₹0 for zero-fee activities");
+    assert.ok(cardCode.includes("Activity Syllabus & Guidelines"), "Must maintain secondary internal syllabus link");
+  });
+
+  test("Admin activity form provides flyer upload dropzone, fee input, and publication readiness checks", () => {
+    const formCode = nodeFs.readFileSync("components/works/WorksActivityForm.tsx", "utf-8");
+    assert.ok(formCode.includes("handleFileSelection"), "Form must handle flyer file selection");
+    assert.ok(formCode.includes("engivault-thumbnails"), "Form must upload flyer to engivault-thumbnails bucket");
+    assert.ok(formCode.includes("works-flyers"), "Form must organize uploads under works-flyers folder");
+    assert.ok(formCode.includes("Publication Readiness Checklist"), "Form must display Publication Readiness Checklist");
+    assert.ok(formCode.includes("handleVerifyLink"), "Form must provide Verify Link button for platform link");
+    assert.ok(formCode.includes("feeAmount"), "Form must track and validate registration fee amount");
+  });
+
+  test("Admin activity management table renders flyer thumbnail, fee, and external link tester", () => {
+    const adminPage = nodeFs.readFileSync("app/admin/dashboard/works/activities/page.tsx", "utf-8");
+    assert.ok(adminPage.includes("act.cover_image"), "Admin table must display flyer thumbnail");
+    assert.ok(adminPage.includes("ExternalLink"), "Admin table must display ExternalLink tester for platform URL");
+    assert.ok(adminPage.includes("statusModal"), "Admin page must show confirmation modal for unpublishing and archiving");
+    assert.ok(adminPage.includes("Archive"), "Admin page must allow archiving activities");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

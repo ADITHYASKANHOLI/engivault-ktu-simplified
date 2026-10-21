@@ -100,7 +100,16 @@ export default async function AdminWorksPreviewPage({ params }: PreviewPageProps
       {/* Render the Exact Student Activity Detail View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-6">
-          <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4">
+          <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4 overflow-hidden">
+            {activity.cover_image && (
+              <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-2xl overflow-hidden bg-slate-950 -mt-2 mb-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <img
+                  src={activity.cover_image}
+                  alt={`${activity.title} flyer poster`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider font-mono bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                 {activity.category}
