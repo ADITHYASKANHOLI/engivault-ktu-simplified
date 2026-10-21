@@ -19,7 +19,9 @@ import {
   Briefcase,
   Calendar,
   PlusCircle,
+  Users,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 interface AdminSidebarProps {
@@ -90,11 +92,13 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
     {
       group: "SYSTEM & PIPELINE",
       items: [
+        { label: "Students", href: "/admin/dashboard/students", icon: Users },
         { label: "Upload Wizard", href: "/admin/dashboard/uploads", icon: UploadCloud },
         { label: "Activity Logs", href: "/admin/dashboard/activity", icon: Activity },
         { label: "Site Settings", href: "/admin/dashboard/settings", icon: Settings },
       ],
     },
+
   ];
 
   const sidebarContent = (
