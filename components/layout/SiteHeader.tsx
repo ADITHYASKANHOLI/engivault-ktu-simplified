@@ -7,7 +7,6 @@ import {
   Compass,
   BookOpen,
   FileText,
-  ShieldCheck,
   Search,
   Menu,
   X,
@@ -19,11 +18,42 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
+import { AuthMenu, AuthState } from "@/components/auth/AuthMenu";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
-export function SiteHeader() {
+export interface SiteHeaderProps {
+  initialAuth?: AuthState | null;
+  isOffline?: boolean;
+}
+
+export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [auth, setAuth] = useState<AuthState>(initialAuth || { role: null });
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [loginDialogTab, setLoginDialogTab] = useState<"student" | "admin">("student");
   const pathname = usePathname();
+
+  // Sync auth state if initialAuth prop changes
+  useEffect(() => {
+    if (initialAuth) {
+      setAuth(initialAuth);
+    }
+  }, [initialAuth]);
+
+  // Open login dialog if URL query param ?auth=login is detected
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("auth") === "login") {
+        setLoginDialogOpen(true);
+        const tab = params.get("tab");
+        if (tab === "admin" || tab === "student") {
+          setLoginDialogTab(tab);
+        }
+      }
+    }
+  }, [pathname]);
 
   // Scroll detection for header backdrop
   useEffect(() => {
@@ -76,6 +106,11 @@ export function SiteHeader() {
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
+  const handleOpenLogin = (tab: "student" | "admin" = "student") => {
+    setLoginDialogTab(tab);
+    setLoginDialogOpen(true);
+  };
+
   return (
     <header
       className={cn(
@@ -115,7 +150,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Desktop Right Actions: Search & Admin Link */}
+        {/* Desktop Right Actions: Materials link & Unified Auth Menu */}
         <div className="hidden md:flex items-center gap-2.5">
           <Link
             href="/materials"
@@ -126,13 +161,11 @@ export function SiteHeader() {
             <span>Materials</span>
           </Link>
 
-          <Link
-            href="/admin/login"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-emerald-700 text-white dark:bg-slate-800 dark:hover:bg-emerald-600 transition-colors shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Admin</span>
-          </Link>
+          <AuthMenu
+            initialAuth={auth}
+            onOpenLogin={handleOpenLogin}
+            variant="desktop"
+          />
         </div>
 
         {/* Mobile Action Controls: Touch target compliant (>= 44px) */}
@@ -146,14 +179,11 @@ export function SiteHeader() {
             <FileText className="w-5 h-5 text-emerald-600" />
           </Link>
 
-          <Link
-            href="/admin/login"
-            className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            aria-label="Administrator Portal"
-            title="Admin Login"
-          >
-            <ShieldCheck className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-          </Link>
+          <AuthMenu
+            initialAuth={auth}
+            onOpenLogin={handleOpenLogin}
+            variant="mobile-icon"
+          />
 
           <button
             type="button"
@@ -225,23 +255,25 @@ export function SiteHeader() {
               })}
             </nav>
 
-            {/* Admin Portal Bottom Shortcut */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Link
-                href="/admin/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors min-h-[44px]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Admin Access Portal</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-            </div>
+            {/* Bottom Unified Auth Action */}
+            <AuthMenu
+              initialAuth={auth}
+              onOpenLogin={handleOpenLogin}
+              variant="mobile-drawer"
+              onCloseDrawer={() => setMobileMenuOpen(false)}
+            />
           </div>
         </div>
       )}
+
+      {/* Accessible Login & Registration Dialog */}
+      <LoginDialog
+        isOpen={loginDialogOpen}
+        onClose={() => setLoginDialogOpen(false)}
+        initialTab={loginDialogTab}
+        isOffline={isOffline}
+        onAuthSuccess={(newAuth) => setAuth(newAuth)}
+      />
     </header>
   );
 }
