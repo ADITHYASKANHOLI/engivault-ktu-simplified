@@ -7,7 +7,9 @@ export const verifyCodeSchema = z.object({
     .min(1, "Access code is required")
     .max(100, "Access code is too long")
     .trim(),
+  redirect: z.string().max(256).optional(),
 });
+
 
 export const subjectSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters").max(150),
@@ -352,7 +354,10 @@ export function validateActivityPublicationReadiness(activity: {
   return { isReady: missing.length === 0, missing };
 }
 
+export * from "./student";
 export * from "./contact";
+
+
 
 
 
