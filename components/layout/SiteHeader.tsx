@@ -15,6 +15,7 @@ import {
   Info,
   MessageSquare,
   Briefcase,
+  DoorOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
@@ -32,6 +33,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   const [auth, setAuth] = useState<AuthState>(initialAuth || { role: null });
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [loginDialogTab, setLoginDialogTab] = useState<"student" | "admin">("student");
+  const [loginReturnTo, setLoginReturnTo] = useState<string | undefined>(undefined);
   const pathname = usePathname();
 
   // Sync auth state if initialAuth prop changes
@@ -51,9 +53,27 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         if (tab === "admin" || tab === "student") {
           setLoginDialogTab(tab);
         }
+        const returnTo = params.get("returnTo") || params.get("redirect");
+        if (returnTo) setLoginReturnTo(returnTo);
       }
     }
   }, [pathname]);
+
+  // Support programmatic login opening from FOLE SPACE actions
+  useEffect(() => {
+    const handleCustomOpenLogin = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tab?: "student" | "admin"; returnTo?: string }>;
+      if (customEvent.detail?.tab) {
+        setLoginDialogTab(customEvent.detail.tab);
+      }
+      if (customEvent.detail?.returnTo) {
+        setLoginReturnTo(customEvent.detail.returnTo);
+      }
+      setLoginDialogOpen(true);
+    };
+    window.addEventListener("fole:open-login", handleCustomOpenLogin);
+    return () => window.removeEventListener("fole:open-login", handleCustomOpenLogin);
+  }, []);
 
   // Scroll detection for header backdrop
   useEffect(() => {
@@ -96,6 +116,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
     { label: "Lectures", href: "/lectures", icon: BookOpen },
     { label: "Subjects", href: "/subjects", icon: Compass },
     { label: "Materials", href: "/materials", icon: FileText },
+    { label: "FOLE SPACE", href: "/fole-space", icon: DoorOpen },
     { label: "FOLE WORKS", href: "/fole-works", icon: Briefcase },
     { label: "About", href: "/about", icon: Info },
     { label: "Contact", href: "/contact", icon: MessageSquare },
@@ -272,6 +293,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         onClose={() => setLoginDialogOpen(false)}
         initialTab={loginDialogTab}
         isOffline={isOffline}
+        redirectUrl={loginReturnTo}
         onAuthSuccess={(newAuth) => setAuth(newAuth)}
       />
     </header>

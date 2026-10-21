@@ -23,6 +23,7 @@ export interface LoginDialogProps {
   onAuthSuccess?: (auth: { role: "admin" | "student"; username: string }) => void;
   initialTab?: "student" | "admin";
   isOffline?: boolean;
+  redirectUrl?: string;
 }
 
 export function LoginDialog({
@@ -31,6 +32,7 @@ export function LoginDialog({
   onAuthSuccess,
   initialTab = "student",
   isOffline = false,
+  redirectUrl,
 }: LoginDialogProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -140,7 +142,13 @@ export function LoginDialog({
         if (onAuthSuccess) {
           onAuthSuccess({ role: "student", username: cleanUsername });
         }
-        router.refresh();
+        const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const targetUrl = redirectUrl || searchParams?.get("returnTo") || searchParams?.get("redirect");
+        if (targetUrl && targetUrl.startsWith("/") && !targetUrl.startsWith("//")) {
+          window.location.href = targetUrl;
+        } else {
+          router.refresh();
+        }
       }, 500);
     } catch {
       setError("An unexpected network error occurred. Please try again.");
