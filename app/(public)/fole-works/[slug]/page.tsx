@@ -28,32 +28,89 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+function getCanonicalOrigin(): string {
+  let raw = (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000"
+  ).trim();
+
+  if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+    raw = `https://${raw}`;
+  }
+
+  if (process.env.NODE_ENV === "production" && raw.startsWith("http://") && !raw.includes("localhost")) {
+    raw = raw.replace("http://", "https://");
+  }
+
+  return raw.replace(/\/+$/, "");
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   try {
     const activity = await getWorksActivityBySlug(slug, true);
 
-    if (!activity) {
+    if (!activity || activity.status !== "published" || activity.deleted_at) {
       return {
         title: "Activity Not Found | FOLE WORKS",
+        description: "The requested FOLE WORKS activity could not be found or is not currently published.",
+        robots: {
+          index: false,
+          follow: false,
+        },
       };
     }
 
-    const desc = activity.short_description || (activity.description ? activity.description.slice(0, 160) : "") || "FOLE WORKS activity details";
+    const origin = getCanonicalOrigin();
+    const canonicalUrl = `${origin}/fole-works/${encodeURIComponent(activity.slug)}`;
+    const desc =
+      activity.short_description ||
+      (activity.description ? activity.description.slice(0, 160) : "") ||
+      "FOLE WORKS engineering activity details, workshop syllabus, and registration.";
+
+    let flyerImageUrl = "";
+    if (activity.cover_image) {
+      if (activity.cover_image.startsWith("https://") || activity.cover_image.startsWith("http://")) {
+        flyerImageUrl = activity.cover_image;
+      } else {
+        flyerImageUrl = `${origin}/api/works/${encodeURIComponent(activity.slug)}/flyer`;
+      }
+    } else {
+      flyerImageUrl = `${origin}/branding/fole-works-logo.png`;
+    }
 
     return {
       title: `${activity.title || "Activity"} — FOLE WORKS | FOLE CEV`,
       description: desc,
+      alternates: {
+        canonical: canonicalUrl,
+      },
       openGraph: {
-        title: `${activity.title || "Activity"} | FOLE WORKS`,
+        title: `${activity.title} — FOLE WORKS`,
         description: desc,
-        images: [{ url: activity.cover_image || "/branding/fole-works-logo.png" }],
+        url: canonicalUrl,
+        siteName: "FOLE WORKS — FOLE CEV",
+        type: "website",
+        images: [
+          {
+            url: flyerImageUrl,
+            alt: `${activity.title} original activity flyer`,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `${activity.title} — FOLE WORKS`,
+        description: desc,
+        images: [flyerImageUrl],
       },
     };
   } catch (err) {
     console.error("[FOLE WORKS] Metadata error for slug:", slug, err);
     return {
       title: "FOLE WORKS Activity | FOLE CEV",
+      description: "Explore engineering workshops, training and activities by FOLE CEV.",
     };
   }
 }
@@ -189,11 +246,12 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
             {/* Header / Hero Card */}
             <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4 overflow-hidden">
               {activity.cover_image && (
-                <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-2xl overflow-hidden bg-slate-950 -mt-2 mb-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-200/80 dark:border-slate-800 -mt-2 mb-6 flex items-center justify-center p-2 sm:p-4 shadow-sm">
                   <img
                     src={activity.cover_image}
-                    alt={`${activity.title} flyer poster`}
-                    className="w-full h-full object-cover"
+                    alt={`${activity.title} original activity flyer`}
+                    className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-md"
+                    loading="eager"
                   />
                 </div>
               )}

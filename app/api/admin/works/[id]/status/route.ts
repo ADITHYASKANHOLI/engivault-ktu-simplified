@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/auth/session";
 import { getWorksActivityById, updateWorksActivityStatus } from "@/lib/queries";
 import { validateActivityPublicationReadiness } from "@/lib/validation/schemas";
 import { WorksActivityStatus } from "@/types";
+import { revalidateWorksActivity } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await updateWorksActivityStatus(id, status);
+    revalidateWorksActivity(updated?.slug);
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error("POST /api/admin/works/[id]/status error:", error);

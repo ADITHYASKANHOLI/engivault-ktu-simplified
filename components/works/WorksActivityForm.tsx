@@ -643,7 +643,7 @@ export function WorksActivityForm({
                 {flyerPreview ? "Click to Replace Flyer Image" : "Click or Drag & Drop Activity Flyer"}
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                JPEG, PNG, or WebP • Max size 10MB
+                Any aspect ratio (portrait, landscape, square) • JPEG, PNG, or WebP • Max 10MB
               </p>
             </div>
             {flyerFile && (
@@ -660,21 +660,39 @@ export function WorksActivityForm({
                 <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Flyer Preview</span>
               </span>
-              <span>16:9 / 16:10 Ratio</span>
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                Original Aspect Ratio
+              </span>
             </div>
 
             {flyerPreview ? (
-              <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700/80">
+              <div className="relative w-full rounded-xl overflow-hidden bg-slate-950/90 border border-slate-200 dark:border-slate-700/80 p-2 flex items-center justify-center min-h-[240px] max-h-[500px]">
                 <img
                   src={flyerPreview}
                   alt="Activity flyer preview"
-                  className="w-full h-full object-cover"
+                  className="max-w-full max-h-[480px] w-auto h-auto object-contain rounded-lg shadow-sm"
                 />
               </div>
             ) : (
-              <div className="w-full aspect-[16/10] rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 gap-2">
+              <div className="w-full min-h-[220px] rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 gap-2 p-6">
                 <ImageIcon className="w-8 h-8 stroke-1" />
                 <span className="text-xs font-medium">No flyer selected yet</span>
+                <span className="text-[10px] text-slate-500 font-mono">Supports portrait, square, or landscape flyers</span>
+              </div>
+            )}
+
+            {flyerPreview && (
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                  Full flyer preserved without cropping
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveFlyer}
+                  className="text-[11px] text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                >
+                  Remove flyer
+                </button>
               </div>
             )}
 

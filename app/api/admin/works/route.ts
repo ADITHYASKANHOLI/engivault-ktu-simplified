@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
 import { worksActivitySchema } from "@/lib/validation/schemas";
 import { getAllWorksActivitiesForAdmin, createWorksActivity } from "@/lib/queries";
+import { revalidateWorksActivity } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await createWorksActivity(result.data);
+    revalidateWorksActivity(created?.slug);
     return NextResponse.json(created, { status: 201 });
   } catch (error: any) {
     console.error("POST /api/admin/works error:", error);

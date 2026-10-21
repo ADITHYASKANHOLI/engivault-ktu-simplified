@@ -121,7 +121,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
       <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
 
       {/* Activity Flyer Poster (Opens configured platform destination) */}
-      <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80">
+      <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center p-1">
         <a
           href={destinationUrl}
           target={hasPlatformLink ? "_blank" : undefined}
@@ -135,7 +135,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
               src={activity.cover_image}
               alt={`${activity.title || "Activity"} flyer`}
               onError={() => setImgError(true)}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-[#07111F] to-slate-950 text-slate-400 group-hover:text-emerald-400 transition-colors">

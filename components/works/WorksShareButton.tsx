@@ -11,6 +11,7 @@ export interface WorksShareActivityInfo {
   short_description?: string | null;
   description?: string | null;
   category?: string | null;
+  cover_image?: string | null;
 }
 
 export interface WorksShareButtonProps {
@@ -82,6 +83,43 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   return false;
 }
 
+/**
+ * Fetches original flyer image as a File object for native Web Share API file attachment.
+ */
+async function getFlyerShareFile(activity: WorksShareActivityInfo): Promise<File | null> {
+  if (typeof window === "undefined" || !activity.cover_image) return null;
+  try {
+    const cleanSlug = (activity.slug || activity.id).trim();
+    // Prefer the same-origin flyer route to avoid cross-origin canvas/blob restrictions
+    let fetchUrl = `/api/works/${encodeURIComponent(cleanSlug)}/flyer`;
+
+    if (activity.cover_image.startsWith("data:image/")) {
+      fetchUrl = activity.cover_image;
+    }
+
+    const res = await fetch(fetchUrl);
+    if (!res.ok) {
+      if (activity.cover_image.startsWith("http://") || activity.cover_image.startsWith("https://")) {
+        const directRes = await fetch(activity.cover_image);
+        if (!directRes.ok) return null;
+        const blob = await directRes.blob();
+        const mimeType = blob.type || "image/jpeg";
+        const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+        return new File([blob], `${cleanSlug}-flyer.${ext}`, { type: mimeType });
+      }
+      return null;
+    }
+
+    const blob = await res.blob();
+    const mimeType = blob.type || "image/jpeg";
+    const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+    return new File([blob], `${cleanSlug}-flyer.${ext}`, { type: mimeType });
+  } catch (err) {
+    console.warn("[WorksShare] Could not construct flyer file:", err);
+    return null;
+  }
+}
+
 export function WorksShareButton({
   activity,
   variant = "card",
@@ -104,12 +142,16 @@ export function WorksShareButton({
   }, []);
 
   const shareTitle = activity.title ? `${activity.title} — FOLE WORKS` : "FOLE WORKS Activity";
-  const shareText = (
+  const cleanDesc = (
     activity.short_description ||
-    (activity.description ? activity.description.slice(0, 140) : "") ||
+    (activity.description ? activity.description.slice(0, 160) : "") ||
     `Join ${activity.title || "this activity"} on FOLE WORKS (CE Vadakara)`
   ).trim();
   const shareUrl = getActivityShareUrl(activity.slug || activity.id);
+
+  // Structured caption including direct activity link
+  const shareCaption = `${activity.title || "FOLE WORKS Activity"}\n${cleanDesc}\n\nView activity: ${shareUrl}`;
+  const shareText = shareCaption;
 
   const triggerCopiedFeedback = () => {
     if (timerRef.current) {
@@ -128,17 +170,37 @@ export function WorksShareButton({
     }
 
     if (canShare && typeof navigator.share === "function") {
+      // 1. Primary: Try native file-and-link sharing if flyer exists and browser can share files
+      if (activity.cover_image && typeof navigator.canShare === "function") {
+        try {
+          const flyerFile = await getFlyerShareFile(activity);
+          if (flyerFile && navigator.canShare({ files: [flyerFile] })) {
+            await navigator.share({
+              title: shareTitle,
+              text: shareCaption,
+              files: [flyerFile],
+            });
+            return;
+          }
+        } catch (err: any) {
+          if (err?.name === "AbortError") {
+            return; // User cancelled share sheet
+          }
+          console.warn("[WorksShare] Native file share failed, falling back to link share:", err);
+        }
+      }
+
+      // 2. Fallback: Native text + URL sharing
       try {
         await navigator.share({
           title: shareTitle,
-          text: shareText,
+          text: `${activity.title}\n${cleanDesc}`,
           url: shareUrl,
         });
         return;
       } catch (err: any) {
-        // AbortError indicates user dismissed the native share sheet - harmless
         if (err?.name === "AbortError") {
-          return;
+          return; // User dismissed native share sheet
         }
         console.warn("[WorksShare] Native share failed, falling back to copy link:", err);
         await handleCopyLink();
@@ -146,7 +208,7 @@ export function WorksShareButton({
       }
     }
 
-    // Fallback when Web Share API is unavailable
+    // 3. Fallback when Web Share API is unavailable
     await handleCopyLink();
   };
 
@@ -318,7 +380,7 @@ export function WorksShareButton({
         </div>
       )}
 
-      {/* Floating Success Toast (renders globally on screen when link is copied) */}
+      {/* Floating Success Toast */}
       {copied && (
         <div
           role="status"

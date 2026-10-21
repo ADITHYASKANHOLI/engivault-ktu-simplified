@@ -1761,6 +1761,71 @@ async function runTests() {
     assert.ok(detailCode.includes('variant="detail-cta"'), "Must render share button in sticky sidebar CTA card");
   });
 
+  // 16. FOLE WORKS Original Flyer Preservation & Rich Previews Suite
+  console.log("--- 16. FOLE WORKS ORIGINAL FLYER PRESERVATION & RICH PREVIEWS SUITE ---");
+
+  test("WorksActivityForm supports any flyer aspect ratio without forced 16:9/16:10 cropping", () => {
+    const formCode = nodeFs.readFileSync("components/works/WorksActivityForm.tsx", "utf-8");
+    assert.ok(formCode.includes("Any aspect ratio (portrait, landscape, square)"), "Form must explain support for any aspect ratio");
+    assert.ok(formCode.includes("Original Aspect Ratio"), "Form must label preview with Original Aspect Ratio");
+    assert.ok(formCode.includes("object-contain"), "Form preview must use object-contain to avoid cropping");
+    assert.ok(!formCode.includes("16:9 / 16:10 Ratio"), "Form must not force 16:9 or 16:10 ratio");
+    assert.ok(formCode.includes("Full flyer preserved without cropping"), "Form must indicate uncropped preservation");
+  });
+
+  test("WorksActivityCard and public detail header display complete original flyer without cropping", () => {
+    const cardCode = nodeFs.readFileSync("components/works/WorksActivityCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("object-contain"), "Activity card flyer must use object-contain to preserve whole flyer");
+
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-works/[slug]/page.tsx", "utf-8");
+    assert.ok(detailCode.includes("object-contain"), "Detail page flyer header must use object-contain");
+    assert.ok(!detailCode.includes("aspect-[16/9] sm:aspect-[21/9]"), "Detail page must not crop flyer into a fixed 21:9 slice");
+    assert.ok(detailCode.includes("original activity flyer"), "Detail page must set descriptive alt text for original flyer");
+  });
+
+  test("Public flyer route streams original flyer bytes with CDN cache headers and protects draft activities", () => {
+    assert.ok(nodeFs.existsSync("app/api/works/[slug]/flyer/route.ts"), "Public flyer stream route must exist");
+    const routeCode = nodeFs.readFileSync("app/api/works/[slug]/flyer/route.ts", "utf-8");
+    assert.ok(routeCode.includes('activity.status !== "published"'), "Route must reject unpublished activities with 404");
+    assert.ok(routeCode.includes("activity.deleted_at"), "Route must reject soft-deleted activities with 404");
+    assert.ok(routeCode.includes("Cache-Control"), "Route must send public CDN cache headers");
+    assert.ok(routeCode.includes("Content-Type"), "Route must specify image Content-Type");
+  });
+
+  test("Detail page generateMetadata generates rich Open Graph and Twitter summary_large_image previews", () => {
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-works/[slug]/page.tsx", "utf-8");
+    assert.ok(detailCode.includes("openGraph:"), "Detail page must export openGraph metadata");
+    assert.ok(detailCode.includes("twitter:"), "Detail page must export twitter metadata");
+    assert.ok(detailCode.includes('card: "summary_large_image"'), "Must configure Twitter summary_large_image card");
+    assert.ok(detailCode.includes("flyerImageUrl"), "og:image must reference the original flyer image");
+    assert.ok(detailCode.includes("getCanonicalOrigin"), "Must compute canonical URL using trusted site origin");
+    assert.ok(detailCode.includes("alternates:"), "Must provide canonical URL link");
+    assert.ok(detailCode.includes("robots:"), "Must declare noindex for unpublished or missing activities");
+  });
+
+  test("WorksShareButton implements native file-and-link sharing with flyer attachment and link fallback", () => {
+    const shareCode = nodeFs.readFileSync("components/works/WorksShareButton.tsx", "utf-8");
+    assert.ok(shareCode.includes("cover_image?: string | null;"), "WorksShareActivityInfo must include cover_image");
+    assert.ok(shareCode.includes("getFlyerShareFile"), "Must implement flyer file constructor for native share");
+    assert.ok(shareCode.includes("navigator.canShare"), "Must test file share support using navigator.canShare");
+    assert.ok(shareCode.includes("files: [flyerFile]"), "Must attach original flyer File when supported");
+    assert.ok(shareCode.includes("View activity:"), "Share text must include direct FOLE WORKS activity link");
+    assert.ok(shareCode.includes("shareCaption"), "Must provide structured caption text with title, description, and link");
+  });
+
+  test("Cache revalidation helper revalidateWorksActivity exists and invalidates works paths on mutations", () => {
+    const cacheCode = nodeFs.readFileSync("lib/cache/revalidate.ts", "utf-8");
+    assert.ok(cacheCode.includes("revalidateWorksActivity"), "Must export revalidateWorksActivity helper");
+    assert.ok(cacheCode.includes("/fole-works"), "Must revalidate /fole-works");
+    assert.ok(cacheCode.includes("/api/works/${slug}/flyer"), "Must revalidate dynamic flyer route");
+
+    const worksAdminRoute = nodeFs.readFileSync("app/api/admin/works/route.ts", "utf-8");
+    assert.ok(worksAdminRoute.includes("revalidateWorksActivity"), "Works admin creation route must call revalidateWorksActivity");
+
+    const worksIdRoute = nodeFs.readFileSync("app/api/admin/works/[id]/route.ts", "utf-8");
+    assert.ok(worksIdRoute.includes("revalidateWorksActivity"), "Works admin update/delete route must call revalidateWorksActivity");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

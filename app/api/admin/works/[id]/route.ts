@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
 import { worksActivityUpdateSchema, validateActivityPublicationReadiness } from "@/lib/validation/schemas";
 import { getWorksActivityById, updateWorksActivity, deleteWorksActivity } from "@/lib/queries";
+import { revalidateWorksActivity } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +71,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await updateWorksActivity(id, result.data);
+    revalidateWorksActivity(updated?.slug || existing.slug);
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error("PUT /api/admin/works/[id] error:", error);
@@ -91,10 +93,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { searchParams } = new URL(request.url);
     const soft = searchParams.get("hard") !== "true";
 
+    const existing = await getWorksActivityById(id);
     const deleted = await deleteWorksActivity(id, soft);
     if (!deleted) {
       return NextResponse.json({ error: "Activity not found" }, { status: 404 });
     }
+    revalidateWorksActivity(existing?.slug);
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
     console.error("DELETE /api/admin/works/[id] error:", error);

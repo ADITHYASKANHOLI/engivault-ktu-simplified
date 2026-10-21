@@ -84,3 +84,19 @@ export function revalidateContentHierarchy(params: {
     console.warn("revalidateContentHierarchy failed:", err);
   }
 }
+
+export function revalidateWorksActivity(slug?: string) {
+  try {
+    revalidatePath("/fole-works");
+    if (slug) {
+      revalidatePath(`/fole-works/${slug}`);
+      revalidatePath(`/api/works/${slug}/flyer`);
+      revalidatePath(`/api/fole-works/${slug}/flyer`);
+    }
+    revalidatePath("/admin/dashboard/works");
+    revalidatePath("/admin/dashboard/works/activities");
+  } catch (err) {
+    console.warn("revalidateWorksActivity failed:", err);
+  }
+}
+
