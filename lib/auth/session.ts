@@ -4,12 +4,47 @@ import { scryptSync, timingSafeEqual, createHmac } from "node:crypto";
 const COOKIE_NAME = "engivault_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-function getSecretKey(): string {
-  return (
+/**
+ * Returns the HMAC signing secret for session tokens.
+ * Priority: ADMIN_SESSION_SECRET → ADMIN_ACCESS_CODE → ADMIN_ACCESS_CODE_HASH.
+ * Fails closed (returns null) if no secret is configured.
+ */
+function getSecretKey(): string | null {
+  const secret =
+    process.env.ADMIN_SESSION_SECRET ||
     process.env.ADMIN_ACCESS_CODE ||
-    process.env.ADMIN_ACCESS_CODE_HASH ||
-    "fallback-secret-key-engivault-2026"
-  );
+    process.env.ADMIN_ACCESS_CODE_HASH;
+
+  if (!secret || typeof secret !== "string" || secret.trim() === "") {
+    return null;
+  }
+  return secret.trim();
+}
+
+/**
+ * Validates a redirect target URL to ensure it is a safe relative same-origin path.
+ * Rejects external URLs, protocol-relative URLs (//evil.com), backslashes, and control characters.
+ */
+export function getSafeRedirectUrl(
+  target: string | null | undefined,
+  fallback: string = "/admin/dashboard"
+): string {
+  if (!target || typeof target !== "string") {
+    return fallback;
+  }
+  const trimmed = target.trim();
+  if (
+    trimmed.startsWith("/") &&
+    !trimmed.startsWith("//") &&
+    !trimmed.includes("\\") &&
+    !trimmed.includes(":")
+  ) {
+    if (!/^[a-zA-Z0-9\-_.~!$&'()*+,;=:@/?#]+$/.test(trimmed)) {
+      return fallback;
+    }
+    return trimmed;
+  }
+  return fallback;
 }
 
 /**
@@ -83,17 +118,20 @@ export function verifyAdminAccessCode(code: string, storedHash?: string): boolea
 }
 
 /**
- * Creates a signed session token
+ * Creates a signed session token. Fails closed if signing secret is missing.
  */
 export function createSignedToken(payload: { role: "admin"; createdAt: number }): string {
   const secret = getSecretKey();
+  if (!secret) {
+    throw new Error("Admin session signing secret is not configured on the server.");
+  }
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = createHmac("sha256", secret).update(data).digest("base64url");
   return `${data}.${signature}`;
 }
 
 /**
- * Verifies and decodes a signed session token
+ * Verifies and decodes a signed session token. Fails closed if secret is missing or invalid.
  */
 export function verifySignedToken(token: string): { role: "admin"; createdAt: number } | null {
   try {
@@ -101,6 +139,8 @@ export function verifySignedToken(token: string): { role: "admin"; createdAt: nu
     if (!data || !signature) return null;
 
     const secret = getSecretKey();
+    if (!secret) return null;
+
     const expectedSig = createHmac("sha256", secret).update(data).digest("base64url");
 
     const sigBuf = Buffer.from(signature);

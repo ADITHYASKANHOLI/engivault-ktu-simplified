@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyCodeSchema } from "@/lib/validation/schemas";
-import { verifyAdminAccessCode, setAdminSessionCookie } from "@/lib/auth/session";
+import { verifyAdminAccessCode, setAdminSessionCookie, getSafeRedirectUrl } from "@/lib/auth/session";
 import { logActivity } from "@/lib/queries";
 import {
   checkDbRateLimit,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { code } = result.data;
+    const { code, redirect: requestedRedirect } = result.data;
 
     // Check server administrator authentication configuration
     if (!process.env.ADMIN_ACCESS_CODE && !process.env.ADMIN_ACCESS_CODE_HASH) {
@@ -71,10 +71,12 @@ export async function POST(request: NextRequest) {
 
     await logActivity("Administrator Logged In", "auth", { ip });
 
+    const redirectUrl = getSafeRedirectUrl(requestedRedirect, "/admin/dashboard");
+
     return NextResponse.json({
       success: true,
       message: "Authorization successful",
-      redirectUrl: "/admin/dashboard",
+      redirectUrl,
     });
   } catch (error) {
     console.error("Authentication error:", error);
@@ -84,4 +86,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 
