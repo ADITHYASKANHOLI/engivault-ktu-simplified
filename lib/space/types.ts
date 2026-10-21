@@ -39,6 +39,10 @@ export interface SpaceSession {
   created_at: string;
   username?: string;
   display_name?: string;
+  user?: {
+    username?: string;
+    display_name?: string;
+  };
 }
 
 export interface SpaceOrganizer {
@@ -46,9 +50,13 @@ export interface SpaceOrganizer {
   added_by_label: string;
   added_at: string;
   active: boolean;
-  deactivated_at: string | null;
+  deactivated_at?: string | null;
   username?: string;
   display_name?: string;
+  student?: {
+    username?: string;
+    display_name?: string;
+  };
 }
 
 export type EventStatus = "draft" | "published" | "live" | "completed" | "cancelled";
@@ -84,6 +92,11 @@ export interface SpaceEvent {
   // Computed / joined fields
   organizer_username?: string;
   organizer_name?: string;
+  organizer?: {
+    username?: string;
+    display_name?: string;
+  };
+  attendee_count?: number;
   registered_count?: number;
   seats_remaining?: number;
   is_registered?: boolean;
@@ -103,6 +116,10 @@ export interface SpaceEventRegistration {
   checked_in?: boolean;
   checked_in_at?: string | null;
   checkin_method?: "qr" | "virtual" | "manual" | null;
+  checkin?: {
+    checked_in_at?: string | null;
+    method?: string | null;
+  } | null;
   event?: Partial<SpaceEvent>;
 }
 
@@ -127,14 +144,21 @@ export type SpaceAvailabilityState = "available" | "occupied" | "unavailable";
 
 export interface SpaceStatus {
   is_open: boolean;
+  isOpen?: boolean;
   state: SpaceAvailabilityState;
+  availabilityState?: SpaceAvailabilityState;
   capacity: number;
   occupancy: number;
   available_seats: number;
+  availableSeats?: number;
   session_minutes: number;
+  sessionMinutes?: number;
   allow_extension: boolean;
+  allowExtension?: boolean;
   extension_window_minutes: number;
+  extensionWindowMinutes?: number;
   opening_hours: OpeningHoursWeek;
+  openingHours?: OpeningHoursWeek;
   next_event: {
     id: string;
     title: string;
@@ -142,6 +166,75 @@ export interface SpaceStatus {
     ends_at: string;
     slug: string;
   } | null;
+  nextBlockingEvent?: {
+    id: string;
+    title: string;
+    starts_at: string;
+    ends_at: string;
+    slug: string;
+  } | null;
   active_session: SpaceSession | null;
+  activeSession?: SpaceSession | null;
   server_now: string;
+  serverNow?: string;
+}
+
+export type SpaceStatusResponse = SpaceStatus;
+
+export interface SpaceDailySessionMetric {
+  date: string;
+  count: number;
+  uniqueUsers: number;
+  avgDurationMinutes: number;
+}
+
+export interface SpacePeakHourMetric {
+  hour: number;
+  count: number;
+}
+
+export interface SpaceEventAttendanceMetric {
+  eventId: string;
+  title: string;
+  startsAt: string;
+  capacity: number;
+  registered: number;
+  checkedIn: number;
+  attendanceRate: number;
+}
+
+export interface SpaceUsageReport {
+  totalSessions: number;
+  avgDurationMinutes: number;
+  peakHour: string;
+  totalRegistrations: number;
+  totalCheckins: number;
+  turnoutRate: number;
+  dailySessions: SpaceDailySessionMetric[];
+  peakHours: SpacePeakHourMetric[];
+  eventAttendance: SpaceEventAttendanceMetric[];
+  dailyBreakdown?: Array<{ date: string; sessions: number; registrations: number }>;
+}
+
+export interface SpaceEventAttendee {
+  registrationId: string;
+  registration_id?: string;
+  userId: string;
+  user_id?: string;
+  username: string;
+  displayName: string;
+  display_name?: string;
+  ticketCode: string;
+  ticket_code?: string;
+  status: "registered" | "cancelled";
+  registeredAt: string;
+  registered_at?: string;
+  isCheckedIn: boolean;
+  checked_in?: boolean;
+  checkinId: string | null;
+  checkin_id?: string | null;
+  checkedInAt: string | null;
+  checked_in_at?: string | null;
+  checkinMethod: CheckinMethod | null;
+  method?: CheckinMethod | null;
 }

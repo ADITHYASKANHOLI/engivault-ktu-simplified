@@ -7,9 +7,6 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Users,
-  DoorOpen,
   ArrowRight,
 } from "lucide-react";
 

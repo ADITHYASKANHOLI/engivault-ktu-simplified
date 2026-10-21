@@ -213,3 +213,58 @@ When a FOLE WORKS activity is created or updated, `revalidateWorksActivity(slug)
 - All route handlers performing mutations, cryptographic hashing, or session verification declare `export const runtime = "nodejs"`.
 - Private credentials (`SUPABASE_SECRET_KEY`, `ADMIN_ACCESS_CODE`, `ADMIN_SESSION_SECRET`, `RESEND_API_KEY`) are kept strictly server-only.
 - Local filesystem persistence is strictly disabled in production (`NODE_ENV === "production"` or `VERCEL === "1"`).
+
+---
+
+## 5. FOLE SPACE System Design & Concurrency Architecture
+
+FOLE SPACE manages a physical collaborative learning space inspired by Thinkerspace Calicut, combining walk-in open study sessions with organized workshops and events.
+
+```text
+                                 ┌─────────────────────────────────┐
+                                 │       FOLE SPACE SYSTEM         │
+                                 └───────────────┬─────────────────┘
+                                                 │
+                   ┌─────────────────────────────┴─────────────────────────────┐
+                   ▼                                                           ▼
+     ┌───────────────────────────┐                               ┌───────────────────────────┐
+     │   OPEN SPACE (WALK-IN)    │                               │     EVENTS & CALENDAR     │
+     ├───────────────────────────┤                               ├───────────────────────────┤
+     │ • 30-minute study passes  │                               │ • Verified student hosts  │
+     │ • Live occupancy counter  │                               │ • Monthly space calendar  │
+     │ • Server offset countdown │                               │ • Free digital QR tickets │
+     │ • Early self check-out    │                               │ • Check-In Desk & scanner │
+     │ • Atomic FOR UPDATE locks │                               │ • Virtual QR-free check-in│
+     └───────────────────────────┘                               └───────────────────────────┘
+```
+
+### 5.1 Concurrency & Postgres Atomic Row Locking
+To eliminate race conditions across distributed Vercel serverless instances, all capacity assertions and state mutations execute inside PostgreSQL `SECURITY DEFINER` functions with row locks:
+- **Open-Space Walk-Ins:** `rpc_space_checkin` locks the singleton `space_settings` row (`SELECT ... FOR UPDATE`) before calculating active occupancy `(checked_out_at IS NULL AND expires_at > now())`. If 2 parallel requests attempt to claim the final remaining seat, exactly 1 succeeds while the other is rejected with a clean capacity error.
+- **Event Registrations:** `rpc_space_register_event` locks the target `space_events` row (`SELECT ... FOR UPDATE`), asserting current registered count < event capacity.
+- **Strict Database Uniqueness:** Enforced via constraints:
+  - Partial unique index on `space_sessions(user_id)` where `checked_out_at IS NULL AND status = 'active'` prevents duplicate active walk-in sessions.
+  - Unique constraint on `space_event_registrations(event_id, user_id)`.
+  - Unique constraint on `space_event_checkins(registration_id)`.
+
+### 5.2 Serverless Time and Expiry Management
+- Vercel functions cannot maintain background worker loops or polling daemons. Expiry is computed **lazily at read time** (`expires_at > now()`).
+- The public status API returns `server_now` (PostgreSQL `now()`). Client countdown timers compute the clock offset between device local time and server time, preventing client clock tampering from distorting countdown durations.
+- All timestamps store PostgreSQL `timestamptz` and format explicitly in `Asia/Kolkata` (IST, UTC+05:30).
+
+### 5.3 Event Tickets & Unguessable QR Verification
+- Each event registration generates a cryptographically random, unguessable 128-bit ticket code (`crypto.randomBytes(16).toString("base64url")`).
+- Ticket QR codes encode the canonical payload: `FS1.<ticket_code>`. No personal data, email, or event parameters are exposed in the QR code.
+- At the organizer desk, the camera scanner (using the native `BarcodeDetector` API with `qr-scanner` library fallback) streams the code to `POST /api/space/organizer/events/[id]/checkin/qr`.
+- Ticket verification is strictly server-side: checks registration status, verifies event ID match, checks that the event is currently set to `live`, verifies that current time is within `[starts_at - early_window, ends_at + grace_window]`, and prevents duplicate check-in.
+
+### 5.4 Virtual (QR-Free) Check-In
+- If a registered attendee is unable to scan their QR code, they can check in virtually from their event ticket page.
+- The virtual check-in action is enabled **only while the organizer has set the session to Live**.
+- The database records the method (`qr`, `virtual`, or `manual`). Organizers can toggle virtual check-ins on/off for any session or revoke/undo check-ins from the desk.
+
+### 5.5 Original Flyer Preservation Pipeline
+- Organizers upload event flyers in original byte-for-byte fidelity (up to 10MB) directly to the private `fole-space-flyers` bucket via signed upload URLs.
+- Server-side binary validation (`lib/space/flyer.ts`) inspects magic bytes (PNG `89 50 4E 47`, JPEG `FF D8 FF`, WebP `RIFF....WEBP`) and extracts natural image dimensions from binary headers (PNG IHDR, JPEG SOF, WebP VP8/VP8L/VP8X). SVG and non-raster files are strictly rejected to prevent script injection.
+- Public flyer routes (`/api/space/events/[slug]/flyer`) stream original bytes with `Content-Type`, `X-Content-Type-Options: nosniff`, and CDN cache headers. The UI renders the flyer preserving its natural aspect ratio without arbitrary cropping boxes.
+

@@ -48,7 +48,8 @@ export function AdminSpaceOverview({
 
   // Toggle master open/close switch
   const handleToggleMasterOpen = async () => {
-    const nextState = !status.isOpen;
+    const currentOpen = Boolean(status.is_open ?? status.isOpen);
+    const nextState = !currentOpen;
     setLoadingAction("toggle-open");
     setActionMessage(null);
 
@@ -147,10 +148,10 @@ export function AdminSpaceOverview({
             <div className="flex items-center gap-2">
               <span
                 className={`text-2xl font-black ${
-                  status.isOpen ? "text-emerald-600" : "text-slate-400"
+                  (status.is_open ?? status.isOpen) ? "text-emerald-600" : "text-slate-400"
                 }`}
               >
-                {status.isOpen ? "SPACE OPEN" : "CLOSED"}
+                {(status.is_open ?? status.isOpen) ? "SPACE OPEN" : "CLOSED"}
               </span>
             </div>
           </div>
@@ -160,13 +161,13 @@ export function AdminSpaceOverview({
             onClick={handleToggleMasterOpen}
             disabled={loadingAction === "toggle-open"}
             className={`mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
-              status.isOpen
+              (status.is_open ?? status.isOpen)
                 ? "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
             }`}
           >
             <Power className="w-4 h-4" />
-            <span>{status.isOpen ? "Close Space Now" : "Open Space"}</span>
+            <span>{(status.is_open ?? status.isOpen) ? "Close Space Now" : "Open Space"}</span>
           </button>
         </div>
 
@@ -196,11 +197,11 @@ export function AdminSpaceOverview({
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
             Availability State
           </span>
-          <SpaceStatusChip state={status.availabilityState} size="sm" />
+          <SpaceStatusChip state={status.state || status.availabilityState || "unavailable"} size="sm" />
           <p className="text-xs text-slate-500 mt-2">
-            {status.availabilityState === "available"
+            {(status.state || status.availabilityState) === "available"
               ? "Students can walk in and check in."
-              : status.availabilityState === "occupied"
+              : (status.state || status.availabilityState) === "occupied"
               ? "All seats taken."
               : "Walk-ins rejected."}
           </p>

@@ -190,7 +190,7 @@ export function OpenSpaceClientHub({
         </div>
 
         <SpaceStatusChip
-          state={status.availabilityState}
+          state={status.state || status.availabilityState || "unavailable"}
           occupancy={status.occupancy}
           capacity={status.capacity}
           size="md"
@@ -233,7 +233,7 @@ export function OpenSpaceClientHub({
 
             <OpenSpaceCountdown
               expiresAt={activeSession.expires_at}
-              serverNow={status.serverNow}
+              serverNow={status.server_now || status.serverNow || new Date().toISOString()}
               onExpire={() => {
                 refreshStatus();
               }}
@@ -295,7 +295,7 @@ export function OpenSpaceClientHub({
                   Guest visitors can view availability freely. An active account is required to check in.
                 </p>
               </div>
-            ) : status.availabilityState === "available" ? (
+            ) : (status.state === "available" || status.availabilityState === "available") ? (
               <button
                 type="button"
                 onClick={handleCheckin}
@@ -307,7 +307,7 @@ export function OpenSpaceClientHub({
                   {loadingAction === "checkin" ? "Checking in..." : "Check In for 30 Minutes"}
                 </span>
               </button>
-            ) : status.availabilityState === "occupied" ? (
+            ) : (status.state === "occupied" || status.availabilityState === "occupied") ? (
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 max-w-md mx-auto text-amber-900 dark:text-amber-200 text-sm">
                 <div className="font-bold flex items-center justify-center gap-1.5 mb-1">
                   <AlertCircle className="w-4 h-4 text-amber-600" />
@@ -333,15 +333,15 @@ export function OpenSpaceClientHub({
       </div>
 
       {/* Upcoming Event Conflict Notice */}
-      {status.nextBlockingEvent && (
+      {(status.next_event || status.nextBlockingEvent) && (
         <div className="mt-8 p-5 bg-cyan-50/80 dark:bg-cyan-950/40 rounded-2xl border border-cyan-200 dark:border-cyan-900 flex items-start gap-3">
           <Calendar className="w-5 h-5 text-cyan-700 dark:text-cyan-400 shrink-0 mt-0.5" />
           <div className="text-xs text-cyan-900 dark:text-cyan-200">
             <span className="font-bold block text-sm mb-0.5">
-              Scheduled Event Approaching: {status.nextBlockingEvent.title}
+              Scheduled Event Approaching: {(status.next_event || status.nextBlockingEvent)?.title}
             </span>
             <span>
-              Starts at {formatDateTimeIST(status.nextBlockingEvent.starts_at)}. Walk-in sessions automatically adjust so as not to overlap with reserved workshops.
+              Starts at {formatDateTimeIST((status.next_event || status.nextBlockingEvent)!.starts_at)}. Walk-in sessions automatically adjust so as not to overlap with reserved workshops.
             </span>
           </div>
         </div>

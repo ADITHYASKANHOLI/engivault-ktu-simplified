@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { SpaceUsageReport } from "@/lib/space/types";
+import {
+  SpaceUsageReport,
+  SpaceDailySessionMetric,
+  SpacePeakHourMetric,
+  SpaceEventAttendanceMetric,
+} from "@/lib/space/types";
 import { Calendar, Clock, Users, ArrowDownToLine } from "lucide-react";
 
 interface AdminReportsViewProps {
@@ -122,7 +127,7 @@ export function AdminReportsView({ initialReport }: AdminReportsViewProps) {
                   </td>
                 </tr>
               ) : (
-                report.dailySessions.map((d) => (
+                report.dailySessions.map((d: SpaceDailySessionMetric) => (
                   <tr key={d.date} className="hover:bg-slate-50/50">
                     <td className="py-3 px-4 font-mono font-medium text-slate-800">{d.date}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{d.count}</td>
@@ -144,7 +149,7 @@ export function AdminReportsView({ initialReport }: AdminReportsViewProps) {
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-          {report.peakHours.map((h) => (
+          {report.peakHours.map((h: SpacePeakHourMetric) => (
             <div
               key={h.hour}
               className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex flex-col items-center justify-center text-center"
@@ -186,7 +191,7 @@ export function AdminReportsView({ initialReport }: AdminReportsViewProps) {
                   </td>
                 </tr>
               ) : (
-                report.eventAttendance.map((e) => (
+                report.eventAttendance.map((e: SpaceEventAttendanceMetric) => (
                   <tr key={e.eventId} className="hover:bg-slate-50/50">
                     <td className="py-3 px-4 font-bold text-slate-900">{e.title}</td>
                     <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">{e.startsAt}</td>

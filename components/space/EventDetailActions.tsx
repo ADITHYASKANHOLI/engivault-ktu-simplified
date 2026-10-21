@@ -141,7 +141,7 @@ export function EventDetailActions({
 
   const isLive = event.status === "live";
   const isRegistered = !!registration && registration.status === "registered";
-  const isCheckedIn = !!registration?.checkin;
+  const isCheckedIn = Boolean(registration?.checked_in || registration?.checkin);
 
   return (
     <div className="space-y-6">
@@ -180,8 +180,8 @@ export function EventDetailActions({
             qrSvg={qrSvg}
             qrDataUrl={qrDataUrl || ""}
             status={isCheckedIn ? "checked_in" : "registered"}
-            checkinMethod={registration.checkin?.method}
-            checkedInAt={registration.checkin?.checked_in_at}
+            checkinMethod={(registration.checkin_method || registration.checkin?.method) as "qr" | "virtual" | "manual" | undefined}
+            checkedInAt={registration.checked_in_at || registration.checkin?.checked_in_at || undefined}
           />
 
           {/* Virtual Check-in Section */}

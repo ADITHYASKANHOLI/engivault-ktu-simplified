@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { spaceService } from "@/lib/space/service";
+import { formatDateTimeIST } from "@/lib/space/time";
 import { Calendar, Users, ArrowRight, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";

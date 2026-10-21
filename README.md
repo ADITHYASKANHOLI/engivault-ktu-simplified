@@ -98,16 +98,47 @@ ENGIVAULT implements a secure, three-mode access architecture with strict separa
 | `/materials` | Public Guest | Searchable PDF notes, derivation guides, and question papers |
 | `/fole-works` | Public Guest | FOLE community workshops, technical sessions, and flyers |
 | `/fole-works/[slug]` | Public Guest | Shareable activity details with registration link and flyer download |
+| `/fole-space` | Public Guest | FOLE SPACE landing hub with live availability status and upcoming events |
+| `/fole-space/open` | Public/Member | Open Space live occupancy, 30-min walk-in check-in, and synced countdown |
+| `/fole-space/calendar` | Public Guest | Monthly space calendar (desktop grid + mobile agenda) in Asia/Kolkata |
+| `/fole-space/events` | Public Guest | Catalogue of physical workshops, hack sprints, and learning sessions |
+| `/fole-space/events/[slug]` | Public Guest | Event detail, flyer in natural ratio, RSVP pass, and virtual check-in |
+| `/fole-space/my` | Member Only | My active study passes, upcoming QR tickets, and attendance history |
+| `/fole-space/organizer` | Organizer | Verified Organizer Hub: event management and live desk launch |
+| `/fole-space/organizer/events/new` | Organizer | Event creation with original-ratio flyer upload and conflict validation |
+| `/fole-space/organizer/events/[id]/edit` | Organizer | Edit event details, schedule, capacity, and flyer |
+| `/fole-space/organizer/events/[id]/desk` | Organizer | Live Check-In Desk: camera QR scanner, participant search, attendance metrics |
 | `/account` | Student Only | Student profile hub with password change form |
 | `/about` | Public Guest | Mission, CEV student leadership, and platform overview |
 | `/contact` | Public Guest | Contact form forwarding inquiries directly to `folecev@gmail.com` |
 | `/admin/login` | Public Admin | Standalone access-code login page |
 | `/admin/dashboard` | Admin Only | Platform overview, statistics, and recent activity logs |
 | `/admin/dashboard/students` | Admin Only | Student directory and admin-assisted password resets |
+| `/admin/dashboard/space` | Admin Only | Space operations overview, live occupancy, and force check-outs |
+| `/admin/dashboard/space/settings` | Admin Only | Configure capacity, opening hours JSON, session length, and policies |
+| `/admin/dashboard/space/organizers` | Admin Only | Verified organizer management by student username |
+| `/admin/dashboard/space/events` | Admin Only | Space event moderation (unpublish, cancel) |
+| `/admin/dashboard/space/reports` | Admin Only | Usage metrics, peak hours, event turnout, and CSV report export |
 | `/admin/dashboard/lessons` | Admin Only | Curriculum lecture management with YouTube link validation |
 | `/admin/dashboard/modules` | Admin Only | Module and unit management |
 | `/admin/dashboard/subjects` | Admin Only | Department and subject management |
 | `/admin/dashboard/works/activities` | Admin Only | FOLE WORKS activity management and publication workflow |
+| `GET /api/space/status` | Public | Live public space availability, occupancy, and opening hours |
+| `POST /api/space/checkin` | Member Only | Atomic walk-in open-space check-in (30 min) |
+| `POST /api/space/checkout` | Member Only | Early self check-out freeing space capacity |
+| `POST /api/space/extend` | Member Only | Policy-controlled session extension |
+| `GET/POST/DELETE /api/space/events/[id]/registration` | Member Only | Event RSVP, digital QR ticket issuance, and cancellation |
+| `POST /api/space/events/[id]/checkin/virtual` | Member Only | QR-free virtual check-in (allowed only while session is Live) |
+| `GET /api/space/events/[slug]/flyer` | Public | Streams original flyer bytes with natural aspect-ratio caching |
+| `POST /api/space/organizer/events/[id]/checkin/qr` | Organizer | Validates scanned ticket QR payload `FS1.<ticket_code>` |
+| `POST /api/space/organizer/events/[id]/checkin/manual` | Organizer | One-tap manual participant check-in |
+| `DELETE /api/space/organizer/events/[id]/checkin/[checkinId]` | Organizer | Revokes/undoes check-in from organizer desk |
+| `POST /api/space/organizer/events/[id]/{live,end}` | Organizer | Starts Live session or ends workshop session |
+| `POST /api/space/organizer/flyer/{sign,finalize}` | Organizer | Direct signed flyer upload and binary magic-byte verification |
+| `GET/POST /api/admin/space/settings` | Admin Only | Reads or updates space capacity and operating policies |
+| `GET/POST /api/admin/space/organizers` | Admin Only | Manages verified student organizers by username |
+| `POST /api/admin/space/sessions/[id]/force-checkout` | Admin Only | Force-terminates an open-space walk-in session |
+| `GET /api/admin/space/reports` | Admin Only | Aggregated usage metrics and multi-section CSV export |
 | `POST /api/auth/student/signup` | Public | Student account registration (rate limited) |
 | `POST /api/auth/student/login` | Public | Student login with username and password (rate limited) |
 | `POST /api/auth/student/logout` | Student | Destroys Supabase student session cookies |
@@ -117,6 +148,7 @@ ENGIVAULT implements a secure, three-mode access architecture with strict separa
 | `POST /api/admin/logout` | Admin | Clears admin session cookie and redirects |
 | `GET/POST /api/admin/students` | Admin | Lists students and executes admin password resets |
 | `GET /api/health` | Public | Serverless deployment health check probe |
+
 
 ---
 
@@ -198,6 +230,55 @@ ENGIVAULT adopts a high-performance, cost-effective YouTube-first video delivery
 └── scripts/
     └── test-engivault.mjs        # 17-section automated regression test suite
 ```
+
+---
+
+## 🚀 FOLE SPACE — Physical Collaborative Learning Space
+
+**FOLE SPACE** is an offline/physical collaborative learning facility operated by FOLE at College of Engineering Vadakara (CEV), modeled in the spirit of Thinkerspace Calicut. It unites open-space walk-in study desks with scheduled, hands-on student workshops, tech sessions, and project sprints.
+
+### 1. Two Operational Modes
+1. **Open Space (Walk-In):**
+   - Members drop in, view live occupancy vs capacity (e.g. 7/10 seats occupied), and check in for a 30-minute study session.
+   - Live client countdown syncs to PostgreSQL server clock offset (`server_now`), resilient to client device clock skew.
+   - Early check-out frees seats immediately for peers.
+   - Session extension is policy-controlled (allowed inside extension window, respecting daily session limits and capacity).
+   - Walk-in check-in is automatically paused if a blocking event is live or scheduled within `min_session_minutes`.
+2. **Events & Calendar:**
+   - Verified student organizers schedule workshops, hackathons, and learning sessions.
+   - Monthly space calendar (`/fole-space/calendar`) renders in `Asia/Kolkata` (IST) with desktop grid and mobile agenda.
+   - Students register for free digital access passes featuring unguessable 128-bit QR codes (`FS1.<ticket_code>`).
+
+### 2. Four Defined User Roles
+- **Public Visitor / Guest:** Can freely view space status, availability, opening hours, calendar, and published workshop details. When attempting to check in or register, they are prompted via the existing `LoginDialog` and returned safely to their page after signing in.
+- **Member (Authenticated Student):** Supabase student user (`profiles.role = 'student'`). Can check in/out of the open space, register for events, hold QR passes, and use virtual check-in.
+- **Verified Organizer (Faculty / Student Host):** A student member whose user ID is authorized by an administrator in `space_organizers`. Can create/edit events, upload original flyers, access the live **Check-In Desk**, scan attendee QR passes, mark manual attendance, and toggle session Live state.
+- **Space Administrator:** Authenticated via the existing signed admin cookie (`engivault_admin_session`). Configures space policies, manages the verified organizer list by student username, moderates events, views live occupancy, force-terminates sessions, and exports usage CSV reports.
+
+### 3. Concurrency & Integrity Invariants
+- All capacity assertions and state mutations execute inside atomic PostgreSQL `SECURITY DEFINER` functions using `SELECT ... FOR UPDATE` row locks:
+  - `rpc_space_checkin`: Locks the singleton `space_settings` row to prevent two parallel check-ins from exceeding capacity.
+  - `rpc_space_register_event`: Locks the target event row to guarantee registration capacity cannot be oversold.
+- Strict database constraints guarantee uniqueness:
+  - Partial unique index on `space_sessions(user_id)` where `checked_out_at IS NULL AND status = 'active'`.
+  - Unique constraint on `space_event_registrations(event_id, user_id)`.
+  - Unique constraint on `space_event_checkins(registration_id)`.
+
+### 4. Check-In Desk & Attendance Methods
+At the organizer desk (`/fole-space/organizer/events/[id]/desk`):
+- **Live Controller:** Host toggles event status from Published to Live. Check-in methods are active only while the session is Live.
+- **Camera QR Scanner:** Built with the high-performance browser `BarcodeDetector` API and small fallback (`qr-scanner`). Scans `FS1.<ticket_code>` tickets with audible/visual feedback for successful check-ins, duplicates, or invalid passes.
+- **Manual Attendance:** Fast search by student name, username, or ticket code with one-tap check-in.
+- **Virtual (QR-Free) Check-In:** Registered students can check in directly from their ticket page when Live, without physical QR scanning.
+- **Revocation / Undo:** Organizers can undo/revoke any check-in if marked erroneously.
+- Every check-in records its method (`qr`, `virtual`, or `manual`) and timestamp.
+
+### 5. Original Flyer Preservation & Natural Aspect Ratio
+- Flyers are preserved **byte-for-byte in their original upload resolution and format** (up to 10MB) without client-side canvas cropping, resizing, or lossy recompression.
+- Uploads stream directly to the private `fole-space-flyers` bucket via signed upload URLs.
+- Server-side binary validation (`lib/space/flyer.ts`) inspects raster magic bytes (PNG, JPEG, WebP) and extracts native dimensions (width/height). SVGs and scripts are rejected to protect against XSS.
+- The UI renders flyers at their natural aspect ratio using CSS `aspect-ratio` and `object-contain`, ensuring posters, landscape banners, and square graphics display completely on both mobile (320px) and desktop.
+- Served via `GET /api/space/events/[slug]/flyer` with `nosniff` and CDN cache headers.
 
 ---
 

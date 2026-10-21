@@ -1,4 +1,10 @@
-import { OpeningHoursWeek } from "./types";
+export interface OpeningHoursDay {
+  open: string;  // "09:00"
+  close: string; // "20:00"
+  closed?: boolean;
+}
+
+export type OpeningHoursWeek = Record<string, OpeningHoursDay>;
 
 export const DEFAULT_SPACE_TIMEZONE = "Asia/Kolkata";
 
@@ -13,6 +19,13 @@ export function formatKolkataDate(dateInput: string | Date | number): string {
     month: "short",
     year: "numeric",
   }).format(d);
+}
+
+/**
+ * Formats full date and time in Asia/Kolkata (IST)
+ */
+export function formatDateTimeIST(dateInput: string | Date | number): string {
+  return formatKolkataDateTime(dateInput);
 }
 
 /**

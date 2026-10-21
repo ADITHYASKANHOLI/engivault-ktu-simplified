@@ -35,7 +35,7 @@ export default async function FoleSpacePage() {
     spaceService.getPublicEvents({ limit: 3 }).catch(() => []),
   ]);
 
-  const availabilityState = status?.availabilityState || "unavailable";
+  const availabilityState = status?.state || status?.availabilityState || "unavailable";
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">

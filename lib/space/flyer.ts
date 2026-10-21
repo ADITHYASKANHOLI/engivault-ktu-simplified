@@ -189,3 +189,34 @@ export function parseWebpDimensions(buffer: Buffer): { width: number; height: nu
 
   return null;
 }
+
+/**
+ * Validates flyer buffer, extracts natural dimensions, and returns normalized result
+ */
+export function validateFlyerBuffer(buffer: Buffer): {
+  isValid: boolean;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  error?: string;
+} {
+  const res = validateFlyerMagicBytes(buffer);
+  return {
+    isValid: res.valid,
+    mimeType: res.mime,
+    width: res.width,
+    height: res.height,
+    bytes: res.bytes,
+    error: res.error,
+  };
+}
+
+/**
+ * Validates whether a given MIME type is an allowed raster image format
+ */
+export function isRasterImageMime(mime: string): boolean {
+  if (!mime || typeof mime !== "string") return false;
+  return ALLOWED_FLYER_MIME_TYPES.includes(mime.toLowerCase().trim() as any);
+}
+

@@ -3,9 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminSession } from "@/lib/auth/session";
 
 export interface StudentAuthContext {
+  id: string;
   userId: string;
   username: string;
   displayName?: string;
+  display_name?: string;
   isOrganizer: boolean;
 }
 
@@ -45,9 +47,11 @@ export async function getAuthenticatedStudent(): Promise<StudentAuthContext | nu
       .maybeSingle();
 
     return {
+      id: user.id,
       userId: user.id,
       username,
       displayName,
+      display_name: displayName,
       isOrganizer: Boolean(organizer?.active),
     };
   } catch {

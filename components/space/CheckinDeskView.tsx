@@ -253,10 +253,13 @@ export function CheckinDeskView({
   const filteredAttendees = attendees.filter((a) => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
+    const displayName = (a.displayName || a.display_name || "").toLowerCase();
+    const username = (a.username || "").toLowerCase();
+    const ticketCode = (a.ticketCode || a.ticket_code || "").toLowerCase();
     return (
-      a.display_name.toLowerCase().includes(query) ||
-      a.username.toLowerCase().includes(query) ||
-      a.ticket_code.toLowerCase().includes(query)
+      displayName.includes(query) ||
+      username.includes(query) ||
+      ticketCode.includes(query)
     );
   });
 

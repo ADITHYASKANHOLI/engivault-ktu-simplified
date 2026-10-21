@@ -53,8 +53,9 @@ export default async function MySpacePage() {
   const spaceData = await spaceService.getMySpaceData(student.id);
 
   // Generate QR svgs and data URLs for all upcoming registrations
+  const upcomingList = (spaceData as any).upcomingRegistrations || spaceData.upcomingTickets || [];
   const ticketsWithQr = await Promise.all(
-    spaceData.upcomingRegistrations.map(async (reg) => {
+    upcomingList.map(async (reg: any) => {
       let qrSvg = "";
       let qrDataUrl = "";
       if (reg.ticket_code) {
@@ -111,7 +112,7 @@ export default async function MySpacePage() {
 
             <OpenSpaceCountdown
               expiresAt={spaceData.activeSession.expires_at}
-              serverNow={spaceData.serverNow}
+              serverNow={(spaceData as any).serverNow || new Date().toISOString()}
             />
           </div>
         )}
@@ -138,20 +139,20 @@ export default async function MySpacePage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {ticketsWithQr.map((t) => (
+              {ticketsWithQr.map((t: any) => (
                 <TicketCard
                   key={t.id}
                   eventTitle={t.event?.title || "Event Pass"}
                   startsAt={t.event?.starts_at || ""}
                   endsAt={t.event?.ends_at || ""}
-                  attendeeName={student.display_name}
+                  attendeeName={student.display_name || student.username}
                   username={student.username}
                   ticketCode={t.ticket_code}
                   qrSvg={t.qrSvg}
                   qrDataUrl={t.qrDataUrl}
-                  status={t.checkin ? "checked_in" : "registered"}
-                  checkinMethod={t.checkin?.method}
-                  checkedInAt={t.checkin?.checked_in_at}
+                  status={t.checked_in || t.checkin ? "checked_in" : "registered"}
+                  checkinMethod={(t.checkin_method || t.checkin?.method) as "qr" | "virtual" | "manual" | undefined}
+                  checkedInAt={t.checked_in_at || t.checkin?.checked_in_at || undefined}
                 />
               ))}
             </div>
@@ -182,14 +183,14 @@ export default async function MySpacePage() {
               </div>
             ))}
 
-            {spaceData.attendedEvents.map((ae) => (
+            {spaceData.attendedEvents.map((ae: any) => (
               <div key={ae.id} className="p-4 flex items-center justify-between">
                 <div>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 block">
                     {ae.event?.title || "Event"}
                   </span>
                   <span className="text-slate-500">
-                    Checked in: {formatDateTimeIST(ae.checked_in_at)} ({ae.method?.toUpperCase()})
+                    Checked in: {ae.checked_in_at ? formatDateTimeIST(ae.checked_in_at) : "Confirmed"} ({((ae.checkin_method || ae.method || "attended") as string).toUpperCase()})
                   </span>
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono text-[10px] uppercase font-bold">

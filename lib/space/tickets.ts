@@ -30,13 +30,11 @@ export function decodeTicketQrPayload(rawInput: string): string | null {
     return code.length >= 10 ? code : null;
   }
 
-  // Also support entering the raw ticket code manually
-  if (/^[a-zA-Z0-9_-]{10,64}$/.test(trimmed)) {
-    return trimmed;
-  }
-
   return null;
 }
+
+export const encodeTicketPayload = encodeTicketQrPayload;
+export const decodeTicketPayload = decodeTicketQrPayload;
 
 /**
  * Generates a clean, scalable SVG string of the QR code for vector rendering
