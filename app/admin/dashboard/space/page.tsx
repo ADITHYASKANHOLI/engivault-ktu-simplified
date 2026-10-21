@@ -14,11 +14,45 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminSpacePage() {
-  const [status, sessions, todayEvents] = await Promise.all([
-    spaceService.getPublicSpaceStatus(),
-    spaceService.getAllSessions(),
-    spaceService.getPublicEvents({ limit: 10 }),
-  ]);
+  let status: any;
+  let sessions: any[] = [];
+  let todayEvents: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      spaceService.getPublicSpaceStatus(),
+      spaceService.getAllSessions(),
+      spaceService.getPublicEvents({ limit: 10 }),
+    ]);
+    status = results[0];
+    sessions = results[1];
+    todayEvents = results[2];
+  } catch (error) {
+    status = {
+      is_open: false,
+      isOpen: false,
+      state: "unavailable",
+      availabilityState: "unavailable",
+      capacity: 10,
+      occupancy: 0,
+      available_seats: 10,
+      availableSeats: 10,
+      session_minutes: 30,
+      sessionMinutes: 30,
+      allow_extension: false,
+      allowExtension: false,
+      extension_window_minutes: 10,
+      extensionWindowMinutes: 10,
+      opening_hours: {},
+      openingHours: {},
+      next_event: null,
+      active_session: null,
+      server_now: new Date().toISOString(),
+      serverNow: new Date().toISOString(),
+      configured: false,
+      error: "FOLE SPACE database is not set up. Run migration 011.",
+    };
+  }
 
   return (
     <div className="space-y-6">

@@ -177,6 +177,9 @@ export interface SpaceStatus {
   activeSession?: SpaceSession | null;
   server_now: string;
   serverNow?: string;
+  configured?: boolean;
+  error?: string;
+  code?: string;
 }
 
 export type SpaceStatusResponse = SpaceStatus;

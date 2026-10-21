@@ -36,7 +36,16 @@ export function AdminSpaceOverview({
         fetch("/api/space/status"),
         fetch("/api/admin/space/sessions"),
       ]);
-      if (statusRes.ok) setStatus(await statusRes.json());
+      if (statusRes.ok) {
+        setStatus(await statusRes.json());
+      } else if (statusRes.status === 503) {
+        const sErr = await statusRes.json().catch(() => null);
+        setStatus((prev) => ({
+          ...prev,
+          configured: false,
+          error: sErr?.error,
+        }));
+      }
       if (sessionsRes.ok) {
         const sData = await sessionsRes.json();
         setSessions(sData.sessions);
@@ -48,6 +57,14 @@ export function AdminSpaceOverview({
 
   // Toggle master open/close switch
   const handleToggleMasterOpen = async () => {
+    if (status.configured === false) {
+      setActionMessage({
+        type: "error",
+        text: "FOLE SPACE database is not set up. Run migration 011.",
+      });
+      return;
+    }
+
     const currentOpen = Boolean(status.is_open ?? status.isOpen);
     const nextState = !currentOpen;
     setLoadingAction("toggle-open");
@@ -63,6 +80,9 @@ export function AdminSpaceOverview({
       const data = await res.json();
       if (!res.ok) {
         setActionMessage({ type: "error", text: data.error || "Failed to update switch." });
+        if (res.status === 503 || data.code === "FOLE_SPACE_DATABASE_NOT_CONFIGURED") {
+          setStatus((prev) => ({ ...prev, configured: false }));
+        }
       } else {
         setActionMessage({
           type: "success",
@@ -79,6 +99,14 @@ export function AdminSpaceOverview({
 
   // Force check-out session
   const handleForceCheckout = async (sessionId: string) => {
+    if (status.configured === false) {
+      setActionMessage({
+        type: "error",
+        text: "FOLE SPACE database is not set up. Run migration 011.",
+      });
+      return;
+    }
+
     if (!window.confirm("Force check-out this student session immediately?")) return;
 
     setLoadingAction(`checkout-${sessionId}`);
@@ -109,6 +137,34 @@ export function AdminSpaceOverview({
 
   return (
     <div className="space-y-8">
+      {/* Missing Schema / Database Setup Required Banner */}
+      {status.configured === false && (
+        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-amber-900">
+                FOLE SPACE database is not set up. Run migration 011.
+              </h3>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Database tables and RPC functions for FOLE SPACE were not found in the PostgreSQL schema.
+                Run <code className="bg-amber-100/80 px-1.5 py-0.5 rounded font-mono font-bold text-amber-900">supabase/migrations/011_fole_space_setup.sql</code> in your Supabase SQL Editor.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={refreshData}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Action Notification */}
       {actionMessage && (
         <div
@@ -148,10 +204,10 @@ export function AdminSpaceOverview({
             <div className="flex items-center gap-2">
               <span
                 className={`text-2xl font-black ${
-                  (status.is_open ?? status.isOpen) ? "text-emerald-600" : "text-slate-400"
+                  (status.is_open ?? status.isOpen) && status.configured !== false ? "text-emerald-600" : "text-slate-400"
                 }`}
               >
-                {(status.is_open ?? status.isOpen) ? "SPACE OPEN" : "CLOSED"}
+                {(status.is_open ?? status.isOpen) && status.configured !== false ? "SPACE OPEN" : "CLOSED"}
               </span>
             </div>
           </div>
@@ -159,15 +215,18 @@ export function AdminSpaceOverview({
           <button
             type="button"
             onClick={handleToggleMasterOpen}
-            disabled={loadingAction === "toggle-open"}
+            disabled={loadingAction === "toggle-open" || status.configured === false}
+            title={status.configured === false ? "Database setup required before switching space on" : undefined}
             className={`mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
-              (status.is_open ?? status.isOpen)
+              status.configured === false
+                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                : (status.is_open ?? status.isOpen)
                 ? "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
             }`}
           >
             <Power className="w-4 h-4" />
-            <span>{(status.is_open ?? status.isOpen) ? "Close Space Now" : "Open Space"}</span>
+            <span>{(status.is_open ?? status.isOpen) && status.configured !== false ? "Close Space Now" : "Open Space"}</span>
           </button>
         </div>
 

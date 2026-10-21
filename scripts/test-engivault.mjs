@@ -2154,6 +2154,144 @@ async function runTests() {
     }
   });
 
+  // 19. FOLE SPACE Database Diagnosis, Migration 011 Setup & Error Handling
+  console.log("\n--- 19. FOLE SPACE DATABASE DIAGNOSIS, MIGRATION 011 SETUP & ERROR HANDLING ---");
+
+  await testAsync("isMissingSpaceSchemaError correctly classifies missing table and relation errors", async () => {
+    const { isMissingSpaceSchemaError, FOLE_SPACE_SETUP_REQUIRED_MESSAGE, FOLE_SPACE_NOT_CONFIGURED_CODE } = await import("../lib/space/errors.ts");
+
+    assert.strictEqual(FOLE_SPACE_SETUP_REQUIRED_MESSAGE, "FOLE SPACE database is not set up. Run migration 011.");
+    assert.strictEqual(FOLE_SPACE_NOT_CONFIGURED_CODE, "FOLE_SPACE_DATABASE_NOT_CONFIGURED");
+
+    // PGRST205 - Schema cache missing table
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "PGRST205", message: "Could not find the table 'public.space_settings' in the schema cache" }), true);
+
+    // 42P01 - Postgres relation does not exist
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "42P01", message: 'relation "space_settings" does not exist' }), true);
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "42P01", message: 'relation "public.space_sessions" does not exist' }), true);
+
+    // Text error from owner's issue report
+    assert.strictEqual(isMissingSpaceSchemaError(new Error("Could not find the table 'public.space_settings' in the schema cache")), true);
+    assert.strictEqual(isMissingSpaceSchemaError("Could not find the table 'public.space_settings' in the schema cache"), true);
+  });
+
+  await testAsync("isMissingSpaceSchemaError correctly classifies missing RPC/function errors", async () => {
+    const { isMissingSpaceSchemaError } = await import("../lib/space/errors.ts");
+
+    // PGRST202 - PostgREST function not found
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "PGRST202", message: "Could not find the function public.rpc_space_checkin in the schema cache" }), true);
+
+    // 42883 - Postgres undefined_function
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "42883", message: 'function public.rpc_space_checkin() does not exist' }), true);
+  });
+
+  await testAsync("isMissingSpaceSchemaError rejects unrelated database errors", async () => {
+    const { isMissingSpaceSchemaError } = await import("../lib/space/errors.ts");
+
+    // Unique constraint violation (23505)
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "23505", message: "duplicate key value violates unique constraint" }), false);
+
+    // Column not found on non-space table
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "42703", message: 'column "foo" does not exist' }), false);
+
+    // Generic network / timeout error
+    assert.strictEqual(isMissingSpaceSchemaError(new Error("Fetch failed: ECONNREFUSED")), false);
+
+    // Missing relation for non-space table
+    assert.strictEqual(isMissingSpaceSchemaError({ code: "42P01", message: 'relation "profiles" does not exist' }), false);
+
+    // Null/undefined/empty
+    assert.strictEqual(isMissingSpaceSchemaError(null), false);
+    assert.strictEqual(isMissingSpaceSchemaError(undefined), false);
+    assert.strictEqual(isMissingSpaceSchemaError({}), false);
+  });
+
+  await testAsync("Opening hours unrestricted logic treats empty hours as open 24/7", async () => {
+    const { isWithinOpeningHours } = await import("../lib/space/time.ts");
+
+    assert.deepStrictEqual(isWithinOpeningHours(null), { isOpen: true });
+    assert.deepStrictEqual(isWithinOpeningHours(undefined), { isOpen: true });
+    assert.deepStrictEqual(isWithinOpeningHours({}), { isOpen: true });
+  });
+
+  test("Database migration 011_fole_space_setup.sql is owner-executable, idempotent, and contains verification block", () => {
+    assert.ok(nodeFs.existsSync("supabase/migrations/011_fole_space_setup.sql"), "011_fole_space_setup.sql must exist");
+    const sql = nodeFs.readFileSync("supabase/migrations/011_fole_space_setup.sql", "utf-8");
+
+    // All 7 tables
+    assert.ok(sql.includes("create table if not exists public.space_settings"), "Must create space_settings");
+    assert.ok(sql.includes("create table if not exists public.space_sessions"), "Must create space_sessions");
+    assert.ok(sql.includes("create table if not exists public.space_organizers"), "Must create space_organizers");
+    assert.ok(sql.includes("create table if not exists public.space_events"), "Must create space_events");
+    assert.ok(sql.includes("create table if not exists public.space_event_registrations"), "Must create space_event_registrations");
+    assert.ok(sql.includes("create table if not exists public.space_event_checkins"), "Must create space_event_checkins");
+    assert.ok(sql.includes("create table if not exists public.space_audit_logs"), "Must create space_audit_logs");
+    assert.ok(sql.includes("create or replace view public.space_audit_log"), "Must create backward-compatible space_audit_log view");
+
+    // RLS enabled on all tables
+    assert.ok(sql.includes("alter table public.space_settings enable row level security;"), "Must enable RLS on space_settings");
+    assert.ok(sql.includes("alter table public.space_sessions enable row level security;"), "Must enable RLS on space_sessions");
+    assert.ok(sql.includes("alter table public.space_organizers enable row level security;"), "Must enable RLS on space_organizers");
+    assert.ok(sql.includes("alter table public.space_events enable row level security;"), "Must enable RLS on space_events");
+    assert.ok(sql.includes("alter table public.space_event_registrations enable row level security;"), "Must enable RLS on space_event_registrations");
+    assert.ok(sql.includes("alter table public.space_event_checkins enable row level security;"), "Must enable RLS on space_event_checkins");
+    assert.ok(sql.includes("alter table public.space_audit_logs enable row level security;"), "Must enable RLS on space_audit_logs");
+
+    // Idempotent conservative seed
+    assert.ok(sql.includes("insert into public.space_settings (id, is_open, capacity, session_minutes, opening_hours, timezone)"), "Must seed space_settings");
+    assert.ok(sql.includes("on conflict (id) do nothing"), "Must use ON CONFLICT (id) DO NOTHING for safe rerun");
+
+    // Storage bucket
+    assert.ok(sql.includes("'fole-space-flyers'"), "Must configure fole-space-flyers storage bucket");
+    assert.ok(sql.includes("public = false"), "Bucket must be private");
+
+    // All 8 atomic RPCs with row locking
+    const rpcs = [
+      "rpc_space_checkin",
+      "rpc_space_checkout",
+      "rpc_space_extend",
+      "rpc_space_register_event",
+      "rpc_space_cancel_registration",
+      "rpc_space_checkin_ticket",
+      "rpc_space_virtual_checkin",
+      "rpc_space_revoke_checkin",
+    ];
+    for (const rpc of rpcs) {
+      assert.ok(sql.includes(`function public.${rpc}`), `Must define ${rpc}`);
+      assert.ok(sql.includes(`revoke all on function public.${rpc}`), `Must revoke public execution on ${rpc}`);
+      assert.ok(sql.includes(`grant execute on function public.${rpc}`), `Must grant execute to service_role on ${rpc}`);
+    }
+
+    // Schema cache reload
+    assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema at the end");
+
+    // Verification block
+    assert.ok(sql.includes("VERIFICATION BLOCK"), "Must include prominent verification section");
+    assert.ok(sql.includes("ROLLBACK NOTES"), "Must include rollback notes");
+  });
+
+  test("API route handlers for /api/space/status and admin settings enforce 503 on unconfigured database", () => {
+    const statusRoute = nodeFs.readFileSync("app/api/space/status/route.ts", "utf-8");
+    assert.ok(statusRoute.includes("status: 503"), "Status route must return HTTP 503 on unconfigured schema");
+    assert.ok(statusRoute.includes("FOLE_SPACE_SETUP_REQUIRED_MESSAGE"), "Status route must return FOLE_SPACE_SETUP_REQUIRED_MESSAGE");
+    assert.ok(statusRoute.includes("FOLE_SPACE_NOT_CONFIGURED_CODE"), "Status route must return FOLE_SPACE_NOT_CONFIGURED_CODE");
+
+    const adminSettingsRoute = nodeFs.readFileSync("app/api/admin/space/settings/route.ts", "utf-8");
+    assert.ok(adminSettingsRoute.includes("status: 503"), "Admin settings route must return HTTP 503 when schema is missing");
+    assert.ok(adminSettingsRoute.includes("FOLE_SPACE_SETUP_REQUIRED_MESSAGE"), "Admin settings route must return setup required message");
+  });
+
+  test("Admin components handle unconfigured space schema gracefully without false success", () => {
+    const overviewComp = nodeFs.readFileSync("components/admin/space/AdminSpaceOverview.tsx", "utf-8");
+    assert.ok(overviewComp.includes("isMissingSpaceSchemaError") || overviewComp.includes("configured === false"), "Admin overview must check configured state");
+    assert.ok(overviewComp.includes("status.configured === false"), "Master switch must check status.configured === false");
+    assert.ok(overviewComp.includes("FOLE SPACE database is not set up. Run migration 011."), "Admin overview must render setup required message");
+
+    const settingsComp = nodeFs.readFileSync("components/admin/space/AdminSpaceSettingsForm.tsx", "utf-8");
+    assert.ok(settingsComp.includes("isMissingSpaceSchemaError") || settingsComp.includes("configured === false"), "Admin settings form must check configured state");
+    assert.ok(settingsComp.includes("disabled={saving || !isConfigured}"), "Save button must be disabled when unconfigured");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

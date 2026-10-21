@@ -10,6 +10,12 @@ import {
 } from "./types";
 import { isWithinOpeningHours } from "./time";
 import { generateTicketCode, decodeTicketQrPayload } from "./tickets";
+import {
+  isMissingSpaceSchemaError,
+  FOLE_SPACE_SETUP_REQUIRED_MESSAGE,
+  FOLE_SPACE_NOT_CONFIGURED_CODE,
+  createMissingSchemaError,
+} from "./errors";
 
 export const DEFAULT_SETTINGS: SpaceSettings = {
   id: 1,
@@ -62,11 +68,39 @@ export async function getSpaceStatus(currentUserId?: string): Promise<SpaceStatu
   const admin = createAdminClient();
 
   // 1. Fetch space settings
-  const { data: settingsData } = await admin
+  const { data: settingsData, error: settingsError } = await admin
     .from("space_settings")
     .select("*")
     .eq("id", 1)
     .maybeSingle();
+
+  if (settingsError && isMissingSpaceSchemaError(settingsError)) {
+    return {
+      is_open: false,
+      isOpen: false,
+      state: "unavailable",
+      availabilityState: "unavailable",
+      capacity: 10,
+      occupancy: 0,
+      available_seats: 10,
+      availableSeats: 10,
+      session_minutes: 30,
+      sessionMinutes: 30,
+      allow_extension: false,
+      allowExtension: false,
+      extension_window_minutes: 10,
+      extensionWindowMinutes: 10,
+      opening_hours: DEFAULT_SETTINGS.opening_hours,
+      openingHours: DEFAULT_SETTINGS.opening_hours,
+      next_event: null,
+      active_session: null,
+      server_now: serverNow,
+      serverNow,
+      configured: false,
+      error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE,
+      code: FOLE_SPACE_NOT_CONFIGURED_CODE,
+    };
+  }
 
   const settings: SpaceSettings = (settingsData as SpaceSettings) || DEFAULT_SETTINGS;
 
@@ -162,32 +196,102 @@ export async function getSpaceStatus(currentUserId?: string): Promise<SpaceStatu
     activeSession,
     server_now: serverNow,
     serverNow,
+    configured: true,
   };
+}
+
+export interface CheckInOpenSpaceResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  session?: SpaceSession;
+  idempotent?: boolean;
+  server_now?: string;
+  serverNow?: string;
+}
+
+export interface CheckOutOpenSpaceResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  session?: SpaceSession;
+}
+
+export interface ExtendOpenSpaceResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  session?: SpaceSession;
+  serverNow?: string;
+}
+
+export interface RegisterForEventResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  registration?: SpaceEventRegistration;
+  idempotent?: boolean;
+}
+
+export interface CancelEventRegistrationResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+}
+
+export interface CheckInTicketDeskResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  checkin?: SpaceEventCheckin;
+  attendee?: { id: string; username: string; display_name: string };
+}
+
+export interface VirtualCheckInResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  checkin?: SpaceEventCheckin;
+  already_checked_in?: boolean;
+}
+
+export interface RevokeCheckInResult {
+  success: boolean;
+  error?: string;
+  code?: string;
+  checkin?: SpaceEventCheckin;
 }
 
 /**
  * Initiates an open-space walk-in session via atomic PostgreSQL RPC
  */
-export async function checkInOpenSpace(userId: string) {
+export async function checkInOpenSpace(userId: string): Promise<CheckInOpenSpaceResult> {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_checkin", {
     p_user_id: userId,
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
   const res = data as any;
   return {
     ...res,
     serverNow: res?.server_now || new Date().toISOString(),
-  } as { success: boolean; error?: string; session?: SpaceSession; idempotent?: boolean; server_now?: string; serverNow?: string };
+  };
 }
 
 /**
  * Checks out of an open-space walk-in session via atomic PostgreSQL RPC
  */
-export async function checkOutOpenSpace(userId: string, sessionId?: string, source: "self" | "admin_forced" = "self") {
+export async function checkOutOpenSpace(
+  userId: string,
+  sessionId?: string,
+  source: "self" | "admin_forced" = "self"
+): Promise<CheckOutOpenSpaceResult> {
   const admin = createAdminClient();
   let targetSessionId = sessionId;
 
@@ -217,15 +321,18 @@ export async function checkOutOpenSpace(userId: string, sessionId?: string, sour
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string; session?: SpaceSession };
+  return data as CheckOutOpenSpaceResult;
 }
 
 /**
  * Extends an open-space walk-in session via atomic PostgreSQL RPC
  */
-export async function extendOpenSpace(userId: string, sessionId?: string) {
+export async function extendOpenSpace(userId: string, sessionId?: string): Promise<ExtendOpenSpaceResult> {
   const admin = createAdminClient();
   let targetSessionId = sessionId;
 
@@ -253,15 +360,18 @@ export async function extendOpenSpace(userId: string, sessionId?: string) {
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string; session?: SpaceSession };
+  return data as ExtendOpenSpaceResult;
 }
 
 /**
  * Registers an attendee for an event with an atomic capacity lock
  */
-export async function registerForEvent(eventId: string, userId: string) {
+export async function registerForEvent(eventId: string, userId: string): Promise<RegisterForEventResult> {
   const ticketCode = generateTicketCode();
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_register_event", {
@@ -271,15 +381,18 @@ export async function registerForEvent(eventId: string, userId: string) {
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string; registration?: SpaceEventRegistration; idempotent?: boolean };
+  return data as RegisterForEventResult;
 }
 
 /**
  * Cancels an attendee's event registration
  */
-export async function cancelEventRegistration(eventId: string, userId: string) {
+export async function cancelEventRegistration(eventId: string, userId: string): Promise<CancelEventRegistrationResult> {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_cancel_registration", {
     p_user_id: userId,
@@ -287,9 +400,12 @@ export async function cancelEventRegistration(eventId: string, userId: string) {
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string };
+  return data as CancelEventRegistrationResult;
 }
 
 /**
@@ -300,7 +416,7 @@ export async function checkInTicketDesk(
   expectedEventId: string,
   method: "qr" | "manual",
   scannerId: string
-) {
+): Promise<CheckInTicketDeskResult> {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_checkin_ticket", {
     p_ticket_code: ticketCode,
@@ -310,21 +426,18 @@ export async function checkInTicketDesk(
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as {
-    success: boolean;
-    error?: string;
-    code?: string;
-    checkin?: SpaceEventCheckin;
-    attendee?: { id: string; username: string; display_name: string };
-  };
+  return data as CheckInTicketDeskResult;
 }
 
 /**
  * Virtual check-in initiated by registered attendee
  */
-export async function virtualCheckIn(eventId: string, userId: string) {
+export async function virtualCheckIn(eventId: string, userId: string): Promise<VirtualCheckInResult> {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_virtual_checkin", {
     p_user_id: userId,
@@ -332,15 +445,22 @@ export async function virtualCheckIn(eventId: string, userId: string) {
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string; checkin?: SpaceEventCheckin; already_checked_in?: boolean };
+  return data as VirtualCheckInResult;
 }
 
 /**
  * Revokes an event check-in (undo action at desk)
  */
-export async function revokeCheckIn(eventId: string, checkinId: string, revokerId: string) {
+export async function revokeCheckIn(
+  eventId: string,
+  checkinId: string,
+  revokerId: string
+): Promise<RevokeCheckInResult> {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_revoke_checkin", {
     p_checkin_id: checkinId,
@@ -348,9 +468,12 @@ export async function revokeCheckIn(eventId: string, checkinId: string, revokerI
   });
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
-  return data as { success: boolean; error?: string; checkin?: SpaceEventCheckin };
+  return data as RevokeCheckInResult;
 }
 
 /**
@@ -1026,11 +1149,17 @@ export async function endEventSession(eventId: string, organizerUserId: string) 
 /**
  * Admin: Get Space Settings
  */
-export async function getSettings(): Promise<SpaceSettings> {
-  if (!isSupabaseAdminConfigured()) return DEFAULT_SETTINGS;
+export async function getSettings(): Promise<SpaceSettings & { configured?: boolean }> {
+  if (!isSupabaseAdminConfigured()) return { ...DEFAULT_SETTINGS, configured: false };
   const admin = createAdminClient();
-  const { data } = await admin.from("space_settings").select("*").eq("id", 1).maybeSingle();
-  return (data as SpaceSettings) || DEFAULT_SETTINGS;
+  const { data, error } = await admin.from("space_settings").select("*").eq("id", 1).maybeSingle();
+  if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      throw createMissingSchemaError();
+    }
+    console.error("Error fetching space settings:", error);
+  }
+  return ((data as SpaceSettings) || DEFAULT_SETTINGS);
 }
 
 /**
@@ -1049,6 +1178,9 @@ export async function updateSettings(data: Partial<SpaceSettings>): Promise<Spac
     .single();
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      throw createMissingSchemaError();
+    }
     throw new Error(error.message);
   }
   return updated as SpaceSettings;
@@ -1060,20 +1192,47 @@ export async function updateSettings(data: Partial<SpaceSettings>): Promise<Spac
 export async function getAllSessions(limit: number = 50) {
   if (!isSupabaseAdminConfigured()) return [];
   const admin = createAdminClient();
-  const { data: sessions } = await admin
+  const { data: sessions, error } = await admin
     .from("space_sessions")
-    .select(`
-      *,
-      user:profiles!space_sessions_user_id_fkey(username, display_name)
-    `)
+    .select("*")
     .order("started_at", { ascending: false })
     .limit(limit);
 
-  return (sessions || []).map((s: any) => ({
-    ...s,
-    username: s.user?.username || "student",
-    display_name: s.user?.display_name || s.user?.username || "Student",
-  }));
+  if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return [];
+    }
+    console.error("Error fetching space sessions:", error);
+    return [];
+  }
+
+  const sessionList = sessions || [];
+  if (sessionList.length === 0) return [];
+
+  const userIds = Array.from(new Set(sessionList.map((s: any) => s.user_id).filter(Boolean)));
+  const profileMap: Record<string, { username?: string; display_name?: string }> = {};
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds);
+
+    if (profiles) {
+      profiles.forEach((p: any) => {
+        profileMap[p.id] = p;
+      });
+    }
+  }
+
+  return sessionList.map((s: any) => {
+    const prof = profileMap[s.user_id];
+    return {
+      ...s,
+      username: prof?.username || "student",
+      display_name: prof?.display_name || prof?.username || "Student",
+    };
+  });
 }
 
 /**
@@ -1089,22 +1248,49 @@ export async function forceCheckoutSession(sessionId: string) {
 export async function getAllOrganizers() {
   if (!isSupabaseAdminConfigured()) return [];
   const admin = createAdminClient();
-  const { data: organizers } = await admin
+  const { data: organizers, error } = await admin
     .from("space_organizers")
-    .select(`
-      *,
-      profile:profiles!space_organizers_user_id_fkey(username, display_name)
-    `)
+    .select("*")
     .order("added_at", { ascending: false });
 
-  return (organizers || []).map((o: any) => ({
-    user_id: o.user_id,
-    username: o.profile?.username || "unknown",
-    display_name: o.profile?.display_name || o.profile?.username || "Organizer",
-    added_by_label: o.added_by_label,
-    added_at: o.added_at,
-    active: o.active,
-  }));
+  if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return [];
+    }
+    console.error("Error fetching organizers:", error);
+    return [];
+  }
+
+  const orgList = organizers || [];
+  if (orgList.length === 0) return [];
+
+  const userIds = Array.from(new Set(orgList.map((o: any) => o.user_id).filter(Boolean)));
+  const profileMap: Record<string, { username?: string; display_name?: string }> = {};
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds);
+
+    if (profiles) {
+      profiles.forEach((p: any) => {
+        profileMap[p.id] = p;
+      });
+    }
+  }
+
+  return orgList.map((o: any) => {
+    const prof = profileMap[o.user_id];
+    return {
+      user_id: o.user_id,
+      username: prof?.username || "unknown",
+      display_name: prof?.display_name || prof?.username || "Organizer",
+      added_by_label: o.added_by_label,
+      added_at: o.added_at,
+      active: o.active,
+    };
+  });
 }
 
 /**
@@ -1137,6 +1323,9 @@ export async function addOrganizerByUsername(username: string, addedByLabel: str
     .single();
 
   if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+    }
     return { success: false, error: error.message };
   }
 
@@ -1177,20 +1366,47 @@ export async function removeOrganizer(userId: string) {
 export async function getAllEventsForAdmin() {
   if (!isSupabaseAdminConfigured()) return [];
   const admin = createAdminClient();
-  const { data: events } = await admin
+  const { data: events, error } = await admin
     .from("space_events")
-    .select(`
-      *,
-      organizer:profiles!space_events_organizer_id_fkey(username, display_name)
-    `)
+    .select("*")
     .is("deleted_at", null)
     .order("starts_at", { ascending: false });
 
-  return (events || []).map((e: any) => ({
-    ...e,
-    organizer_username: e.organizer?.username || "organizer",
-    organizer_name: e.organizer?.display_name || e.organizer?.username || "Organizer",
-  }));
+  if (error) {
+    if (isMissingSpaceSchemaError(error)) {
+      return [];
+    }
+    console.error("Error fetching admin events:", error);
+    return [];
+  }
+
+  const eventList = events || [];
+  if (eventList.length === 0) return [];
+
+  const organizerIds = Array.from(new Set(eventList.map((e: any) => e.organizer_id).filter(Boolean)));
+  const profileMap: Record<string, { username?: string; display_name?: string }> = {};
+
+  if (organizerIds.length > 0) {
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", organizerIds);
+
+    if (profiles) {
+      profiles.forEach((p: any) => {
+        profileMap[p.id] = p;
+      });
+    }
+  }
+
+  return eventList.map((e: any) => {
+    const prof = profileMap[e.organizer_id];
+    return {
+      ...e,
+      organizer_username: prof?.username || "organizer",
+      organizer_name: prof?.display_name || prof?.username || "Organizer",
+    };
+  });
 }
 
 /**
@@ -1205,7 +1421,12 @@ export async function moderateEvent(eventId: string, action: "unpublish" | "canc
       .eq("id", eventId)
       .select("*")
       .single();
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      if (isMissingSpaceSchemaError(error)) {
+        return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE };
+      }
+      return { success: false, error: error.message };
+    }
     return { success: true, event };
   } else if (action === "cancel") {
     return cancelEvent(eventId);
@@ -1238,11 +1459,26 @@ export async function getReports(startDate?: string, endDate?: string) {
   const start = startDate || defaultStart;
   const end = endDate || now.toISOString();
 
-  const { data: sessions } = await admin
+  const { data: sessions, error: sessionsError } = await admin
     .from("space_sessions")
     .select("id, user_id, started_at, ended_at, status")
     .gte("started_at", start)
     .lte("started_at", end);
+
+  if (sessionsError && isMissingSpaceSchemaError(sessionsError)) {
+    return {
+      totalSessions: 0,
+      avgDurationMinutes: 30,
+      peakHour: "14:00 - 15:00",
+      totalRegistrations: 0,
+      totalCheckins: 0,
+      turnoutRate: 0,
+      dailySessions: [],
+      peakHours: Array.from({ length: 12 }, (_, i) => ({ hour: 8 + i, count: 0 })),
+      eventAttendance: [],
+      dailyBreakdown: [],
+    };
+  }
 
   const { data: registrations } = await admin
     .from("space_event_registrations")
@@ -1336,16 +1572,21 @@ export const spaceService = {
   getSpaceStatus,
   getActiveSessionForUser: async (userId: string) => {
     if (!isSupabaseAdminConfigured()) return null;
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("space_sessions")
-      .select("*")
-      .eq("user_id", userId)
-      .is("checked_out_at", null)
-      .eq("status", "active")
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-    return (data as SpaceSession) || null;
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin
+        .from("space_sessions")
+        .select("*")
+        .eq("user_id", userId)
+        .is("checked_out_at", null)
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (error && isMissingSpaceSchemaError(error)) return null;
+      return (data as SpaceSession) || null;
+    } catch {
+      return null;
+    }
   },
   checkinOpenSpace: checkInOpenSpace,
   checkoutOpenSpace: checkOutOpenSpace,

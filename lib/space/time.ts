@@ -107,6 +107,11 @@ export function isWithinOpeningHours(
   hours: OpeningHoursWeek,
   dateInput: string | Date | number = new Date()
 ): { isOpen: boolean; reason?: string } {
+  // If no opening hours are defined or empty configuration provided, space has no schedule restrictions (unrestricted)
+  if (!hours || Object.keys(hours).length === 0) {
+    return { isOpen: true };
+  }
+
   const day = getKolkataDayOfWeek(dateInput);
   const dayConfig = hours?.[day];
 

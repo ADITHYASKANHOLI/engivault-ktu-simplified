@@ -9,6 +9,7 @@ interface AdminSpaceSettingsFormProps {
 }
 
 export function AdminSpaceSettingsForm({ initialSettings }: AdminSpaceSettingsFormProps) {
+  const isConfigured = (initialSettings as any)?.configured !== false;
   const [capacity, setCapacity] = useState(initialSettings.capacity);
   const [sessionMinutes, setSessionMinutes] = useState(initialSettings.session_minutes);
   const [allowExtension, setAllowExtension] = useState(initialSettings.allow_extension);
@@ -32,6 +33,11 @@ export function AdminSpaceSettingsForm({ initialSettings }: AdminSpaceSettingsFo
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if ((initialSettings as any).configured === false) {
+      setStatusMessage({ type: "error", text: "FOLE SPACE database is not set up. Run migration 011." });
+      return;
+    }
+
     setSaving(true);
     setStatusMessage(null);
 
@@ -68,6 +74,19 @@ export function AdminSpaceSettingsForm({ initialSettings }: AdminSpaceSettingsFo
 
   return (
     <form onSubmit={handleSave} className="max-w-3xl space-y-8">
+      {(initialSettings as any).configured === false && (
+        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-xs flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-bold text-amber-900">
+              FOLE SPACE database is not set up. Run migration 011.
+            </h3>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Settings cannot be saved until the database migration has been executed in the Supabase SQL Editor.
+            </p>
+          </div>
+        </div>
+      )}
       {statusMessage && (
         <div
           className={`p-4 rounded-xl border text-sm font-semibold flex items-center justify-between ${
@@ -241,7 +260,8 @@ export function AdminSpaceSettingsForm({ initialSettings }: AdminSpaceSettingsFo
 
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || !isConfigured}
+        title={!isConfigured ? "Database setup required before saving" : undefined}
         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50 min-h-[44px]"
       >
         <Save className="w-4 h-4" />
