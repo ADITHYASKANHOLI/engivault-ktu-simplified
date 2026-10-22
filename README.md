@@ -346,12 +346,40 @@ CONTACT_EMAIL_FROM="FOLE Web <onboarding@resend.dev>"
 ```
 
 ### 4. Supabase Setup Steps
-1. **Execute Database Migrations:** Run migrations `001` through `010` in your Supabase SQL Editor. Migration `010_student_auth_and_rate_limits.sql` adds:
+1. **Execute Core Database Migrations:** Run migrations `001` through `010` in your Supabase SQL Editor. Migration `010_student_auth_and_rate_limits.sql` adds:
    - `profiles.username` column with unique `lower(username)` index.
    - Username format constraint (`chk_profiles_username_format`).
    - Trigger `handle_new_user()` on `auth.users` automatically inserting student profiles with `role = 'student'`.
    - `public.auth_rate_limits` table with atomic RPC `check_and_increment_rate_limit`.
-2. **Disable Public Sign-Up in Dashboard:**
+
+2. **Execute FOLE SPACE Setup (Migration 011):**
+   > [!IMPORTANT]
+   > If the Admin Space Overview displays `FOLE SPACE database is not set up. Run migration 011.`, the database tables and RPC functions have not yet been created in your Supabase project.
+
+   **Why `NOTIFY pgrst, 'reload schema';` does not fix missing tables:**
+   PostgREST cache reloads (`NOTIFY pgrst`) instruct the API engine to rebuild its internal schema cache from PostgreSQL's existing catalog. If the tables do not exist in the database, reloading the cache will report success but `SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'space_%'` will return 0 rows. You must run the SQL migration script to create the tables, functions, and storage bucket first.
+
+   **Step-by-Step Instructions for Applying Migration 011:**
+   1. Open the [Supabase Dashboard](https://supabase.com/dashboard).
+   2. **Verify Project Identity:** Ensure you select the exact project matching your production `NEXT_PUBLIC_SUPABASE_URL` (configured in Vercel Environment Variables). Check the project reference in the URL bar (e.g., `https://supabase.com/dashboard/project/<project-ref>`).
+   3. In the left navigation bar, click **SQL Editor**.
+   4. Click **New query** (or the `+` button in the query tab list).
+   5. Copy the complete contents of [`supabase/migrations/011_fole_space_setup.sql`](supabase/migrations/011_fole_space_setup.sql) and paste them into the SQL editor window.
+   6. Click **Run** (or press `Cmd/Ctrl + Enter`).
+   7. **Inspect Verification Output:** The migration concludes with an automated 5-part verification query:
+      - **Check 1 (Tables & RLS):** Confirms all 7 tables (`space_settings`, `space_sessions`, `space_organizers`, `space_events`, `space_event_registrations`, `space_event_checkins`, `space_audit_logs`) and view `space_audit_log` exist with `rowsecurity = true` (`PASS`).
+      - **Check 2 (Initial Settings):** Confirms singleton settings row `id = 1` exists with default conservative values (`is_open = false`, `capacity = 10`, `session_minutes = 30`, `opening_hours = {}` [unrestricted], `timezone = 'Asia/Kolkata'`) (`PASS`).
+      - **Check 3 (RPC Functions):** Confirms all 8 atomic `SECURITY DEFINER` functions (`rpc_space_checkin`, `rpc_space_checkout`, `rpc_space_extend`, `rpc_space_register_event`, `rpc_space_cancel_registration`, `rpc_space_checkin_ticket`, `rpc_space_virtual_checkin`, `rpc_space_revoke_checkin`) exist with service-role permissions (`PASS`).
+      - **Check 4 (Storage Bucket):** Confirms private storage bucket `fole-space-flyers` exists with `public = false` and 10MB limit (`PASS`).
+   8. If the script succeeds, the schema cache is reloaded automatically via `NOTIFY pgrst, 'reload schema';`. If needed, you can re-run `NOTIFY pgrst, 'reload schema';` as an individual query.
+   9. Navigate back to FOLE Web Admin (`/admin/dashboard/space`) and toggle the master space switch on.
+
+   **Critical Operational Notes:**
+   - **Git Push Does NOT Run Migrations:** Pushing code commits to GitHub triggers Vercel frontend deployments; it **never** runs SQL against your Supabase database. All database schema additions must be executed in Supabase SQL Editor.
+   - **Vercel Redeployment:** If you update or correct `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_SECRET_KEY` in Vercel project settings, you must manually trigger a **Redeploy** on Vercel for the build and server runtime to receive the updated variables.
+   - **Controlled Error Handling:** When the database schema is absent, FOLE Web catches PostgREST errors (`PGRST205`, `42P01`, `PGRST202`, `42883`) and displays a clear setup message instead of crashing or returning an unhandled 500 error. The status endpoint `/api/space/status` returns HTTP 503 Service Unavailable with `{ "error": "FOLE SPACE database is not set up. Run migration 011.", "code": "FOLE_SPACE_DATABASE_NOT_CONFIGURED" }`.
+
+3. **Disable Public Sign-Up in Dashboard:**
    - Navigate to **Authentication → Providers → Email** in your Supabase Dashboard.
    - Turn **OFF** the toggle: *"Allow new users to sign up"*.
    - *Why?* This prevents malicious actors from calling `supabase.auth.signUp()` with the public anon key to bypass username uniqueness, reserved word checks, and rate limits. ENGIVAULT creates student accounts server-side via `auth.admin.createUser()` using the service-role client, which continues to operate cleanly with this setting disabled.
@@ -382,7 +410,7 @@ npm run lint
 node scripts/verify-browser-routes.mjs
 ```
 
-### Automated Test Coverage (114 passing tests):
+### Automated Test Coverage (127 passing tests):
 - **1. Academic Hierarchy & Data Integrity:** Multi-discipline support (CSE, ECE, EEE, ME, CE, AI&DS, IT), Semester traversal (S1–S8), Subject, Module, Topic, and Lecture associations.
 - **2. YouTube Parsing & Security:** Canonical watch URLs, short URLs, shorts URLs, embed URLs, timestamp normalization, domain whitelist validation, rejection of non-YouTube URLs, and XSS injection neutralization.
 - **3. Add & Edit Lecture Validation:** Required lecture title, required YouTube video link, invalid URL rejection, and preview synchronization.
@@ -404,6 +432,19 @@ node scripts/verify-browser-routes.mjs
   - Database-backed sliding window rate limiting.
   - Migration 010 schema verification.
   - Node.js serverless runtime enforcement (`runtime = "nodejs"` on all auth routes).
+- **11. FOLE SPACE System & Invariants:**
+  - Unguessable ticket codes (>=128-bit entropy).
+  - Strict FS1 QR code payload encoding and tampering rejection.
+  - Expiry and countdown calculations handling server clock drift.
+  - Flyer magic-byte inspection (rejecting SVG scripts, HTML, and executables).
+  - Serverless runtime enforcement across all space routes.
+- **12. FOLE SPACE Database Diagnosis, Migration 011 Setup & Error Handling:**
+  - Missing-schema classification across PostgREST (`PGRST205`, `PGRST202`) and PostgreSQL (`42P01`, `42883`).
+  - Unrelated database error discrimination (unique constraints, query errors).
+  - HTTP 503 Service Unavailable controlled fallback for `/api/space/status`.
+  - Master open switch disabled state preventing false success indications when unconfigured.
+  - Unrestricted empty opening hours representation (`{}` -> 24/7 access).
+  - Migration `011_fole_space_setup.sql` verification: 7 tables, view, 8 atomic RPCs with row locking, private flyer bucket, schema reload, and verification queries.
 
 ---
 

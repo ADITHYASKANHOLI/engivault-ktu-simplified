@@ -43,6 +43,13 @@ export function OpenSpaceClientHub({
       if (res.ok) {
         const freshStatus = await res.json();
         setStatus(freshStatus);
+      } else if (res.status === 503) {
+        const errorData = await res.json().catch(() => null);
+        setStatus((prev) => ({
+          ...prev,
+          configured: false,
+          error: errorData?.error || "FOLE SPACE database is not set up. Run migration 011.",
+        }));
       }
     } catch (err) {
       console.warn("Status refresh failed:", err);
@@ -83,6 +90,11 @@ export function OpenSpaceClientHub({
 
   // Check in
   const handleCheckin = async () => {
+    if (status.configured === false) {
+      setActionError("FOLE SPACE database is not set up. Run migration 011.");
+      return;
+    }
+
     if (!isAuthenticated) {
       handleOpenLogin();
       return;
@@ -281,7 +293,17 @@ export function OpenSpaceClientHub({
             </p>
 
             {/* Checkin Action Buttons */}
-            {!isAuthenticated ? (
+            {status.configured === false ? (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 max-w-md mx-auto text-amber-900 dark:text-amber-200 text-sm">
+                <div className="font-bold flex items-center justify-center gap-1.5 mb-1">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span>Space Setup In Progress</span>
+                </div>
+                <span>
+                  {status.error || "FOLE SPACE database is not set up. Run migration 011."}
+                </span>
+              </div>
+            ) : !isAuthenticated ? (
               <div className="space-y-3">
                 <button
                   type="button"
