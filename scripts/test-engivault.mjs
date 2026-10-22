@@ -1970,6 +1970,7 @@ async function runTests() {
     assert.ok(helper.includes('httpOnly: true'), "Session correlation cookie must be HttpOnly");
     assert.ok(helper.includes('.from("profiles")'), "Login tracking must resolve a canonical student profile");
     assert.ok(helper.includes('.from("student_login_sessions")'), "Login tracking must write to the history table");
+    assert.ok(helper.includes('.eq("user_id", userId)'), "Previous-session closure must be scoped to the same student");
     assert.ok(loginCode.includes('recordStudentLoginSession(authData.user.id, "password")'), "Successful password logins must be recorded");
     assert.ok(signupCode.includes('recordStudentLoginSession(signInData.user.id, "signup")'), "Successful signup auto-logins must be recorded");
     assert.ok(logoutCode.includes('.eq("user_id", user.id)'), "Logout must close only the authenticated user's session record");
