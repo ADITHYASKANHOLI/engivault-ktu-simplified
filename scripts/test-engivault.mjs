@@ -1955,7 +1955,7 @@ async function runTests() {
     assert.ok(normalizedSql.includes("create table if not exists public.student_login_sessions"), "Migration must define login history");
     assert.ok(normalizedSql.includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
     assert.ok(normalizedSql.includes("alter table public.student_login_sessions enable row level security"), "Login history must have RLS enabled");
-    assert.ok(normalizedSql.includes("revoke all on table public.student_login_sessions from PUBLIC, anon, authenticated"), "Login history must not be readable by public API roles");
+    assert.ok(normalizedSql.includes("revoke all on table public.student_login_sessions from public, anon, authenticated"), "Login history must not be readable by public API roles");
     assert.ok(normalizedSql.includes("grant all on table public.student_login_sessions to service_role"), "Trusted server routes must be able to write login history");
     assert.ok(!normalizedSql.includes("insert into supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
   });
