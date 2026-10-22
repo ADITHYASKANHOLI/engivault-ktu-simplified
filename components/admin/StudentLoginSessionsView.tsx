@@ -54,7 +54,7 @@ export function StudentLoginSessionsView() {
   const [statusFilter, setStatusFilter] = useState<"all" | "not_ended" | "ended">("all");
   const [page, setPage] = useState(0);
 
-  const loadSessions = useCallback(async (requestedPage = page, asRefresh = false) => {
+  const loadSessions = useCallback(async (requestedPage = 0, asRefresh = false) => {
     if (asRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -77,7 +77,7 @@ export function StudentLoginSessionsView() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [page]);
+  }, []);
 
   useEffect(() => {
     void loadSessions(0);
