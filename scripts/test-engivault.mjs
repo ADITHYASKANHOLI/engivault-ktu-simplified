@@ -3146,6 +3146,182 @@ async function runTests() {
     );
   });
 
+  console.log("\n--- 22. FOLE SPACE OPEN SPACE HUB, EVENT DETAILS, REGISTRATION & CHECK-IN DESK SUITE ---");
+
+  test("1. OpenSpaceClientHub connects scheduled event indicator to event details page with accessible link", () => {
+    const hubCode = nodeFs.readFileSync("components/space/OpenSpaceClientHub.tsx", "utf-8");
+    assert.ok(
+      hubCode.includes("status.next_event || status.nextBlockingEvent"),
+      "Hub must inspect next_event and nextBlockingEvent"
+    );
+    assert.ok(
+      hubCode.includes("href={targetUrl}"),
+      "Hub must render clickable Link pointing to event details"
+    );
+    assert.ok(
+      hubCode.includes("/fole-space/events/${targetEvent"),
+      "Link destination must target /fole-space/events/${slug || id}"
+    );
+    assert.ok(
+      hubCode.includes("View Details & RSVP Pass"),
+      "Hub must render clear CTA label for event details"
+    );
+    assert.ok(
+      hubCode.includes("aria-label="),
+      "Link must include accessible aria-label"
+    );
+    assert.ok(
+      hubCode.includes('href="/fole-space/calendar"'),
+      "Hub must provide navigation link to full FOLE SPACE Event Calendar"
+    );
+  });
+
+  test("2. Event Details page provides clear routes back to Calendar and Open Space Hub", () => {
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-space/events/[slug]/page.tsx", "utf-8");
+    assert.ok(
+      detailCode.includes('href="/fole-space/calendar"'),
+      "Detail page must provide a route back to /fole-space/calendar"
+    );
+    assert.ok(
+      detailCode.includes('href="/fole-space/open"'),
+      "Detail page must provide a route back to /fole-space/open"
+    );
+    assert.ok(
+      detailCode.includes('href="/fole-space/events"'),
+      "Detail page must provide a route back to /fole-space/events"
+    );
+  });
+
+  test("3. Event Details page renders comprehensive logistics including IST start/end times and remaining seats", () => {
+    const detailCode = nodeFs.readFileSync("app/(public)/fole-space/events/[slug]/page.tsx", "utf-8");
+    assert.ok(
+      detailCode.includes("Date & Time (IST)"),
+      "Detail page must render Date & Time in IST"
+    );
+    assert.ok(
+      detailCode.includes("toLocaleTimeString"),
+      "Detail page must render both start and end times in IST"
+    );
+    assert.ok(
+      detailCode.includes("event.seats_remaining"),
+      "Detail page must display remaining seats"
+    );
+    assert.ok(
+      detailCode.includes("event.blocks_open_space"),
+      "Detail page must distinguish physical room vs virtual venue"
+    );
+    assert.ok(
+      detailCode.includes("event.registration_closes_at"),
+      "Detail page must display registration deadline when set"
+    );
+    assert.ok(
+      detailCode.includes("Eligibility & Entry Rules"),
+      "Detail page must display student account eligibility requirements"
+    );
+  });
+
+  test("4. getEventBySlug supports UUID ID fallback and getEventById computes seats_remaining", () => {
+    const serviceCode = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+    assert.ok(
+      serviceCode.includes("slug.eq.${slug},id.eq.${slug}"),
+      "getEventBySlug must support UUID fallback query"
+    );
+    assert.ok(
+      serviceCode.includes("seats_remaining: Math.max(0, event.capacity - (regCount ?? 0))"),
+      "getEventById must compute seats_remaining"
+    );
+  });
+
+  test("5. lib/space/permissions.ts exports canManageEvent to restrict check-in to designated event organizers", () => {
+    const permCode = nodeFs.readFileSync("lib/space/permissions.ts", "utf-8");
+    assert.ok(
+      permCode.includes("export async function canManageEvent"),
+      "permissions.ts must export canManageEvent"
+    );
+    assert.ok(
+      permCode.includes("event.organizer_id === userId"),
+      "canManageEvent must verify organizer ownership against space_events"
+    );
+    assert.ok(
+      permCode.includes("getAdminSession"),
+      "canManageEvent must allow administrator override"
+    );
+  });
+
+  test("6. Organizer desk check-in routes enforce canManageEvent authorization", () => {
+    const qrRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/checkin/qr/route.ts", "utf-8");
+    assert.ok(
+      qrRoute.includes("canManageEvent(eventId, student.id)"),
+      "QR check-in route must enforce canManageEvent"
+    );
+
+    const manualRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/checkin/manual/route.ts", "utf-8");
+    assert.ok(
+      manualRoute.includes("canManageEvent(eventId, student.id)"),
+      "Manual check-in route must enforce canManageEvent"
+    );
+
+    const deskRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/desk/route.ts", "utf-8");
+    assert.ok(
+      deskRoute.includes("canManageEvent(id, student.id)"),
+      "Desk data route must enforce canManageEvent"
+    );
+
+    const deskPage = nodeFs.readFileSync("app/(public)/fole-space/organizer/events/[id]/desk/page.tsx", "utf-8");
+    assert.ok(
+      deskPage.includes("canManageEvent(id, student.id)"),
+      "Desk page must verify canManageEvent before rendering"
+    );
+  });
+
+  test("7. Events API route resolves authenticated student and sets private cache-control header", () => {
+    const routeCode = nodeFs.readFileSync("app/api/space/events/route.ts", "utf-8");
+    assert.ok(
+      routeCode.includes("getAuthenticatedStudent"),
+      "Events API route must resolve authenticated student"
+    );
+    assert.ok(
+      routeCode.includes("student?.id"),
+      "Events API route must pass student ID for registration mapping"
+    );
+    assert.ok(
+      routeCode.includes("private, no-cache, no-store"),
+      "Events API route must set private cache header when authenticated"
+    );
+  });
+
+  test("8. Ticket generation produces canonical FS1.<ticket_code> format with 128-bit cryptographic entropy", () => {
+    const ticketsCode = nodeFs.readFileSync("lib/space/tickets.ts", "utf-8");
+    assert.ok(
+      ticketsCode.includes('randomBytes(16).toString("base64url")'),
+      "generateTicketCode must use 16 random bytes (128 bits) with base64url encoding"
+    );
+    assert.ok(
+      ticketsCode.includes('QR_PAYLOAD_PREFIX = "FS1."'),
+      "encodeTicketQrPayload must prepend canonical FS1. prefix"
+    );
+    assert.ok(
+      !ticketsCode.includes("password") && !ticketsCode.includes("email") && !ticketsCode.includes("phone"),
+      "QR ticket payload must never embed passwords, emails, or phone numbers"
+    );
+  });
+
+  test("9. Separation of concerns: room walk-in sessions and scheduled event attendance use distinct database tables", () => {
+    const serviceCode = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+    assert.ok(
+      serviceCode.includes('rpc("rpc_space_checkin"'),
+      "Room walk-in check-in must use rpc_space_checkin"
+    );
+    assert.ok(
+      serviceCode.includes('rpc("rpc_space_checkin_ticket"'),
+      "Event check-in must use rpc_space_checkin_ticket"
+    );
+    assert.ok(
+      serviceCode.includes("space_event_checkins"),
+      "Event check-ins must be stored in space_event_checkins, not space_sessions"
+    );
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

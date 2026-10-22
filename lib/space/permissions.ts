@@ -100,3 +100,28 @@ export async function requireOrganizerOrAdmin(): Promise<{
 
   return { authorized: false, isAdmin: false };
 }
+
+/**
+ * Verifies whether a given student/organizer user has authority to manage a specific event's desk and check-in.
+ * Allowed if the user is the assigned organizer of the event, or has administrative credentials.
+ */
+export async function canManageEvent(eventId: string, userId: string): Promise<boolean> {
+  if (!eventId || !userId) return false;
+  try {
+    const adminSession = await getAdminSession();
+    if (adminSession) return true;
+
+    const admin = createAdminClient();
+    const { data: event } = await admin
+      .from("space_events")
+      .select("organizer_id")
+      .eq("id", eventId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!event) return false;
+    return event.organizer_id === userId;
+  } catch {
+    return false;
+  }
+}

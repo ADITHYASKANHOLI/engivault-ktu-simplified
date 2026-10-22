@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
-import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
+import { getAuthenticatedStudent, isVerifiedOrganizer, canManageEvent } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 import { deskQrScanSchema } from "@/lib/space/validation";
 import {
@@ -33,6 +33,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Organizer access required." }, { status: 403 });
   }
 
+  const isAuthorized = await canManageEvent(eventId, student.id);
+  if (!isAuthorized) {
+    return NextResponse.json(
+      { error: "You are not authorized to manage check-in for this event." },
+      { status: 403 }
+    );
+  }
+
   const ip = getClientIp(request);
   const rateLimitKey = hashIdentifier(`desk-scan:${student.id}:${eventId}:${ip}`);
   const rateLimit = await checkDbRateLimit(rateLimitKey, {
@@ -51,12 +59,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const parsed = deskQrScanSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid QR code payload format." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid QR code payload format. Expected FS1.<ticket_code>" }, { status: 400 });
     }
 
     const result = await spaceService.checkinQr(eventId, student.id, parsed.data.qr_payload);
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+      return NextResponse.json({
+        error: result.error,
+        code: (result as any).code || "CHECKIN_FAILED",
+        checked_in_at: (result as any).checked_in_at,
+      }, { status: 400 });
     }
 
     return NextResponse.json({

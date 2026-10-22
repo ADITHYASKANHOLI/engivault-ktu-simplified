@@ -373,6 +373,9 @@ export async function extendOpenSpace(userId: string, sessionId?: string): Promi
  * Registers an attendee for an event with an atomic capacity lock
  */
 export async function registerForEvent(eventId: string, userId: string): Promise<RegisterForEventResult> {
+  if (!isSupabaseAdminConfigured()) {
+    return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+  }
   const ticketCode = generateTicketCode();
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_register_event", {
@@ -394,6 +397,9 @@ export async function registerForEvent(eventId: string, userId: string): Promise
  * Cancels an attendee's event registration
  */
 export async function cancelEventRegistration(eventId: string, userId: string): Promise<CancelEventRegistrationResult> {
+  if (!isSupabaseAdminConfigured()) {
+    return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_cancel_registration", {
     p_user_id: userId,
@@ -418,6 +424,9 @@ export async function checkInTicketDesk(
   method: "qr" | "manual",
   scannerId: string
 ): Promise<CheckInTicketDeskResult> {
+  if (!isSupabaseAdminConfigured()) {
+    return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_checkin_ticket", {
     p_ticket_code: ticketCode,
@@ -439,6 +448,9 @@ export async function checkInTicketDesk(
  * Virtual check-in initiated by registered attendee
  */
 export async function virtualCheckIn(eventId: string, userId: string): Promise<VirtualCheckInResult> {
+  if (!isSupabaseAdminConfigured()) {
+    return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_virtual_checkin", {
     p_user_id: userId,
@@ -462,6 +474,9 @@ export async function revokeCheckIn(
   checkinId: string,
   revokerId: string
 ): Promise<RevokeCheckInResult> {
+  if (!isSupabaseAdminConfigured()) {
+    return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("rpc_space_revoke_checkin", {
     p_checkin_id: checkinId,
@@ -610,12 +625,16 @@ export async function getEventBySlug(
 
   const currentUserId = typeof currentUserIdOrPublicOnly === "string" ? currentUserIdOrPublicOnly : undefined;
   const admin = createAdminClient();
-  const { data: event, error } = await admin
-    .from("space_events")
-    .select("*")
-    .eq("slug", slug)
-    .is("deleted_at", null)
-    .maybeSingle();
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+  let query = admin.from("space_events").select("*").is("deleted_at", null);
+  if (isUuid) {
+    query = query.or(`slug.eq.${slug},id.eq.${slug}`);
+  } else {
+    query = query.eq("slug", slug);
+  }
+
+  const { data: event, error } = await query.maybeSingle();
 
   if (error || !event) {
     if (error) console.error("Error fetching event by slug:", error);
@@ -695,6 +714,13 @@ export async function getEventById(id: string): Promise<SpaceEvent | null> {
     return null;
   }
 
+  // Registered count
+  const { count: regCount } = await admin
+    .from("space_event_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", event.id)
+    .eq("status", "registered");
+
   let org: { username?: string; display_name?: string } | null = null;
   if (event.organizer_id) {
     const profileMap = await getProfilesMap(admin, [event.organizer_id]);
@@ -706,6 +732,8 @@ export async function getEventById(id: string): Promise<SpaceEvent | null> {
     organizer: org ? { username: org.username, display_name: org.display_name } : undefined,
     organizer_username: org?.username || "organizer",
     organizer_name: org?.display_name || org?.username || "Organizer",
+    registered_count: regCount ?? 0,
+    seats_remaining: Math.max(0, event.capacity - (regCount ?? 0)),
   };
 }
 

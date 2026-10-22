@@ -5,6 +5,7 @@ import { SpaceStatusResponse, SpaceSession } from "@/lib/space/types";
 import { SpaceStatusChip } from "@/components/space/SpaceStatusChip";
 import { OpenSpaceCountdown } from "@/components/space/OpenSpaceCountdown";
 import { formatDateTimeIST } from "@/lib/space/time";
+import Link from "next/link";
 import {
   DoorOpen,
   LogOut,
@@ -14,6 +15,7 @@ import {
   Clock,
   Calendar,
   LogIn,
+  ArrowRight,
 } from "lucide-react";
 
 interface OpenSpaceClientHubProps {
@@ -348,26 +350,87 @@ export function OpenSpaceClientHub({
                 <span>
                   The space is either outside scheduled operating hours, reserved for a scheduled workshop, or closed by administrator.
                 </span>
+
+                {(status.next_event || status.nextBlockingEvent) && (
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <Link
+                      href={`/fole-space/events/${(status.next_event || status.nextBlockingEvent)!.slug || (status.next_event || status.nextBlockingEvent)!.id}`}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-xs transition-colors"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>View Workshop: {(status.next_event || status.nextBlockingEvent)?.title}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Upcoming Event Conflict Notice */}
-      {(status.next_event || status.nextBlockingEvent) && (
-        <div className="mt-8 p-5 bg-cyan-50/80 dark:bg-cyan-950/40 rounded-2xl border border-cyan-200 dark:border-cyan-900 flex items-start gap-3">
-          <Calendar className="w-5 h-5 text-cyan-700 dark:text-cyan-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-cyan-900 dark:text-cyan-200">
-            <span className="font-bold block text-sm mb-0.5">
-              Scheduled Event Approaching: {(status.next_event || status.nextBlockingEvent)?.title}
-            </span>
-            <span>
-              Starts at {formatDateTimeIST((status.next_event || status.nextBlockingEvent)!.starts_at)}. Walk-in sessions automatically adjust so as not to overlap with reserved workshops.
-            </span>
-          </div>
+      {/* Upcoming Scheduled Event Card & Direct Pass Link */}
+      {(status.next_event || status.nextBlockingEvent) && (() => {
+        const targetEvent = status.next_event || status.nextBlockingEvent;
+        const targetUrl = `/fole-space/events/${targetEvent?.slug || targetEvent?.id}`;
+        return (
+          <Link
+            href={targetUrl}
+            className="mt-8 block p-5 bg-gradient-to-r from-cyan-50 to-blue-50/60 dark:from-cyan-950/40 dark:to-blue-950/30 hover:from-cyan-100/80 hover:to-blue-100/70 dark:hover:from-cyan-950/60 dark:hover:to-blue-950/50 rounded-2xl border border-cyan-200 dark:border-cyan-800 hover:border-cyan-400 dark:hover:border-cyan-600 transition-all shadow-xs hover:shadow-md cursor-pointer group focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
+            aria-label={`View scheduled event details and RSVP: ${targetEvent?.title}`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform mt-0.5 sm:mt-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-900/40 px-2.5 py-0.5 rounded-full border border-cyan-200 dark:border-cyan-800">
+                      Scheduled Event Approaching
+                    </span>
+                    <span className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+                      Starts at {formatDateTimeIST(targetEvent!.starts_at)}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors">
+                    {targetEvent?.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    Walk-in study sessions adjust automatically to prevent overlapping. Click to view full session details, RSVP your seat, and access your QR ticket pass.
+                  </p>
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-700 dark:text-cyan-400 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                <span>View Details & RSVP Pass</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+          </Link>
+        );
+      })()}
+
+      {/* Navigation Footer */}
+      <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 border-t border-slate-200 dark:border-slate-800 pt-4">
+        <span>Looking for workshops, study jams, or scheduled engineering sessions?</span>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/fole-space/calendar"
+            className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Event Calendar &rarr;</span>
+          </Link>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <Link
+            href="/fole-space/events"
+            className="font-bold text-slate-600 dark:text-slate-400 hover:underline"
+          >
+            <span>All Events &rarr;</span>
+          </Link>
         </div>
-      )}
+      </div>
     </div>
   );
 }

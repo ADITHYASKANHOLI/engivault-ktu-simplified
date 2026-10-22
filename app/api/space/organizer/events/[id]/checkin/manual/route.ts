@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
-import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
+import { getAuthenticatedStudent, isVerifiedOrganizer, canManageEvent } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 import { deskManualCheckinSchema } from "@/lib/space/validation";
 
@@ -27,6 +27,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Organizer access required." }, { status: 403 });
   }
 
+  const isAuthorized = await canManageEvent(eventId, student.id);
+  if (!isAuthorized) {
+    return NextResponse.json(
+      { error: "You are not authorized to manage check-in for this event." },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
     const parsed = deskManualCheckinSchema.safeParse(body);
@@ -42,7 +50,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+      return NextResponse.json({
+        error: result.error,
+        code: (result as any).code || "CHECKIN_FAILED",
+        checked_in_at: (result as any).checked_in_at,
+      }, { status: 400 });
     }
 
     return NextResponse.json({

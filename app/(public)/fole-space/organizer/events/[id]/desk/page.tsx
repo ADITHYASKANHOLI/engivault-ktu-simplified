@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
+import { getAuthenticatedStudent, isVerifiedOrganizer, canManageEvent } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 import { CheckinDeskView } from "@/components/space/CheckinDeskView";
 import { ArrowLeft } from "lucide-react";
@@ -28,6 +28,11 @@ export default async function SpaceCheckinDeskPage({ params }: DeskPageProps) {
 
   const isOrganizer = await isVerifiedOrganizer(student.id);
   if (!isOrganizer) {
+    redirect("/fole-space/organizer");
+  }
+
+  const isAuthorized = await canManageEvent(id, student.id);
+  if (!isAuthorized) {
     redirect("/fole-space/organizer");
   }
 

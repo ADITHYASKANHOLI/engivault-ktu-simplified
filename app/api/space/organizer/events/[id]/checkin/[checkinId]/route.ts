@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
-import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
+import { getAuthenticatedStudent, isVerifiedOrganizer, canManageEvent } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 
 export const runtime = "nodejs";
@@ -24,6 +24,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const isOrganizer = await isVerifiedOrganizer(student.id);
   if (!isOrganizer) {
     return NextResponse.json({ error: "Organizer access required." }, { status: 403 });
+  }
+
+  const isAuthorized = await canManageEvent(eventId, student.id);
+  if (!isAuthorized) {
+    return NextResponse.json(
+      { error: "You are not authorized to revoke check-in for this event." },
+      { status: 403 }
+    );
   }
 
   try {
