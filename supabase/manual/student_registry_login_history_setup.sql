@@ -62,7 +62,6 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
-  raw_username text;
   clean_username text;
 BEGIN
   IF NEW.email IS NULL
@@ -71,12 +70,8 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  raw_username := NEW.raw_user_meta_data ->> 'username';
-  clean_username := pg_catalog.lower(
-    pg_catalog.btrim(
-      COALESCE(NULLIF(raw_username, ''), pg_catalog.split_part(NEW.email, '@', 1))
-    )
-  );
+  -- The internal email local-part is the canonical username; do not trust mutable metadata.
+  clean_username := pg_catalog.lower(pg_catalog.btrim(pg_catalog.split_part(NEW.email, '@', 1)));
 
   IF clean_username !~ '^[a-z0-9_]{3,20}$'
      OR clean_username IN (
@@ -119,7 +114,7 @@ WITH student_accounts AS (
     u.id,
     pg_catalog.lower(
       pg_catalog.btrim(
-        COALESCE(NULLIF(u.raw_user_meta_data ->> 'username', ''), pg_catalog.split_part(u.email, '@', 1))
+        pg_catalog.split_part(u.email, '@', 1)
       )
     ) AS username
   FROM auth.users u
@@ -183,7 +178,8 @@ DECLARE
   v_reset_in integer;
 BEGIN
   IF p_key IS NULL OR pg_catalog.length(p_key) = 0
-     OR p_window_seconds < 1 OR p_max_attempts < 1
+     OR p_window_seconds IS NULL OR p_window_seconds < 1
+     OR p_max_attempts IS NULL OR p_max_attempts < 1
   THEN
     RAISE EXCEPTION 'Invalid rate limit parameters';
   END IF;
@@ -196,7 +192,7 @@ BEGIN
   IF v_inserted_key IS NOT NULL THEN
     RETURN pg_catalog.jsonb_build_object(
       'allowed', true,
-      'remaining', pg_catalog.greatest(0, p_max_attempts - 1),
+      'remaining', GREATEST(0, p_max_attempts - 1),
       'reset_in_seconds', p_window_seconds
     );
   END IF;
@@ -226,7 +222,7 @@ BEGIN
 
   v_reset_in := pg_catalog.greatest(
     1,
-    pg_catalog.ceil(pg_catalog.extract(epoch FROM (v_window_end - v_now)))::integer
+    pg_catalog.ceil(EXTRACT(EPOCH FROM (v_window_end - v_now)))::integer
   );
 
   IF v_record.count >= p_max_attempts THEN
@@ -258,7 +254,7 @@ GRANT EXECUTE ON FUNCTION public.check_and_increment_rate_limit(text, integer, i
 -- Deliberately stores no passwords, access tokens, IP addresses, or refresh tokens.
 CREATE TABLE IF NOT EXISTS public.student_login_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   username text NOT NULL,
   login_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
   ended_at timestamptz,
