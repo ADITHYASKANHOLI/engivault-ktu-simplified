@@ -281,10 +281,11 @@ To eliminate race conditions across distributed Vercel serverless instances, all
   - Unrestricted direct SELECT policies (`space_flyers_read` on `storage.objects`) are eliminated.
   - All public flyer downloads are streamed through the authorized server-side route `/api/space/events/[slug]/flyer`, which validates event publication, non-deleted status, and organizer authorization before streaming.
 - **Migration Pipeline vs. Canonical Manual Setup:**
-  - **Canonical Manual Setup Script:** [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) is the consolidated, owner-copyable script for Supabase SQL Editor. It contains all tables, indexes, RLS policies, 8 atomic `SECURITY DEFINER` RPCs (with row locking and `set search_path = public, pg_temp`), storage configuration, and automated 5-point verification checks.
+  - **Canonical Manual Setup Script:** [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) is the consolidated, owner-copyable script for Supabase SQL Editor. It contains all tables, indexes, RLS policies, 8 atomic `SECURITY DEFINER` RPCs (with row locking and `set search_path = public, pg_temp`), storage configuration, migration tracking reconciliation, and automated 6-point verification checks.
   - **Tracked Migrations Chain:** For automated Supabase CLI or CI/CD deployments, migrations follow sequential, strictly unique version numbers:
     - `011_fole_space_system.sql`: Initial historical baseline FOLE SPACE schema.
     - `012_fole_space_security_hardening.sql`: Security hardening, reconciling audit log to singular table `space_audit_log`, dropping legacy storage policies, and enforcing secure `search_path` on RPCs.
+  - **CLI Migration Reconciliation:** If connecting the Supabase CLI to an existing database configured via `fole_space_setup.sql`, run `supabase migration repair --status applied 011` and `supabase migration repair --status applied 012` to prevent the CLI from re-executing historical migration 011 against the compatibility view.
 - **PostgREST Schema Cache Reloading (`NOTIFY pgrst`):**
   - Issuing `NOTIFY pgrst, 'reload schema';` only rebuilds the internal PostgREST cache from PostgreSQL's *existing* tables. It cannot create missing tables. If `supabase/manual/fole_space_setup.sql` has not been run, reloading the cache succeeds but queries against `information_schema.tables` return 0 rows.
   - Owners must execute `supabase/manual/fole_space_setup.sql` directly in Supabase SQL Editor to provision the tables, RLS policies, RPC functions, and storage bucket.
@@ -294,4 +295,4 @@ To eliminate race conditions across distributed Vercel serverless instances, all
   - The Admin Overview (`AdminSpaceOverview.tsx`) and Settings Form (`AdminSpaceSettingsForm.tsx`) display a prominent amber setup banner directing the owner to run `supabase/manual/fole_space_setup.sql` and disables the master switch to prevent false success states.
 - **Idempotency & Safe Verification:**
   - `supabase/manual/fole_space_setup.sql` is completely idempotent using `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and `INSERT ... ON CONFLICT (id) DO NOTHING` for seed settings, preventing accidental overwrites of administrator modifications.
-  - Concludes with a 5-step verification block outputting tabular `PASS`/`FAIL` metrics and provides explicit rollback notes without executing destructive commands.
+  - Concludes with an automated 6-step verification block that uses explicit `LEFT JOIN` checks to guarantee explicit `FAIL` rows for missing tables, settings, RPCs, privileges, buckets, or permissive storage policies, concluding with `ALL_CHECKS_PASSED` health confirmation.

@@ -352,20 +352,31 @@ CONTACT_EMAIL_FROM="FOLE Web <onboarding@resend.dev>"
    - Trigger `handle_new_user()` on `auth.users` automatically inserting student profiles with `role = 'student'`.
    - `public.auth_rate_limits` table with atomic RPC `check_and_increment_rate_limit`.
 
-2. **Execute FOLE SPACE Setup (Manual Setup Script vs. Migrations):**
+2. **Execute FOLE SPACE Setup (Recommended Deployment Path):**
    > [!IMPORTANT]
    > If the Admin Space Overview displays `FOLE SPACE database is not set up. Run migration 011.`, the database tables and RPC functions have not yet been created in your Supabase project.
 
    **Why `NOTIFY pgrst, 'reload schema';` does not fix missing tables:**
    PostgREST cache reloads (`NOTIFY pgrst`) instruct the API engine to rebuild its internal schema cache from PostgreSQL's existing catalog. If the tables do not exist in the database, reloading the cache will report success but `SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'space_%'` will return 0 rows. You must run the SQL setup script to create the tables, functions, and storage bucket first.
 
-   **Two Ways to Deploy FOLE SPACE Database:**
-   - **Method A (Recommended for Manual Supabase Dashboard Setup):**
-     Execute the consolidated standalone setup script [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) directly in Supabase SQL Editor. This script is idempotent, self-contained, enforces all security controls, and runs an automated 5-point verification check.
-   - **Method B (For Automated CLI Deployments / Tracked Migrations):**
-     Deploy the ordered migration chain under `supabase/migrations/`:
-     1. [`supabase/migrations/011_fole_space_system.sql`](supabase/migrations/011_fole_space_system.sql) — Initial baseline schema.
-     2. [`supabase/migrations/012_fole_space_security_hardening.sql`](supabase/migrations/012_fole_space_security_hardening.sql) — Security hardening, audit table reconciliation to physical table `public.space_audit_log`, private flyer bucket policy fix, and RPC `search_path` hardening.
+   **The Single Recommended Setup Path for Project Owners:**
+   Execute the canonical standalone setup script [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) directly in your Supabase Dashboard SQL Editor.
+   - **Why this path?** It is self-contained, completely idempotent, enforces all security controls, provisions the private storage bucket, configures singular audit table `public.space_audit_log` with view `public.space_audit_logs`, and runs an automated 6-point verification suite.
+   - **Re-runs are completely safe:** It uses `ON CONFLICT (id) DO NOTHING` on `space_settings`, preserving any capacity, hours, or open/closed state already configured by administrators.
+
+   **How Manual Setup Interacts with Supabase CLI Migration History:**
+   - When executed, `fole_space_setup.sql` automatically populates the `supabase_migrations.schema_migrations` tracking table (if it exists) with versions `'011'` and `'012'` to prevent automated migration tooling from attempting to replay legacy migration `011`.
+   - If you later connect the Supabase CLI (`supabase link`) to an existing project where `fole_space_setup.sql` was run manually, inform the CLI that migrations 011 and 012 are already satisfied by running:
+     ```bash
+     supabase migration repair --status applied 011
+     supabase migration repair --status applied 012
+     ```
+   - **DO NOT** manually execute `supabase/migrations/011_fole_space_system.sql` on a database that already ran `fole_space_setup.sql`. Migration 011 is a historical baseline that expects `space_audit_logs` to be an empty base table for index creation, whereas the modern schema uses the physical table `space_audit_log` with view `space_audit_logs`.
+
+   **Alternative Tracked CI/CD Pipeline (`supabase db push`):**
+   If you deploy entirely through automated Supabase CLI pipelines against a fresh database, apply the ordered migrations in sequence:
+   1. [`supabase/migrations/011_fole_space_system.sql`](supabase/migrations/011_fole_space_system.sql) — Establishes baseline schema.
+   2. [`supabase/migrations/012_fole_space_security_hardening.sql`](supabase/migrations/012_fole_space_security_hardening.sql) — Safely reconciles `space_audit_logs` to singular physical table `space_audit_log`, drops legacy direct storage read policies, and hardens RPC search paths.
 
    **Step-by-Step Instructions for Supabase Dashboard Execution:**
    1. Open the [Supabase Dashboard](https://supabase.com/dashboard).
@@ -374,12 +385,14 @@ CONTACT_EMAIL_FROM="FOLE Web <onboarding@resend.dev>"
    4. Click **New query** (or the `+` button in the query tab list).
    5. Copy the complete contents of [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) and paste them into the SQL editor window.
    6. Click **Run** (or press `Cmd/Ctrl + Enter`).
-   7. **Inspect Verification Output:** The setup concludes with an automated 5-part verification query:
-      - **Check 1 (Tables & RLS):** Confirms all 7 tables (`space_settings`, `space_sessions`, `space_organizers`, `space_events`, `space_event_registrations`, `space_event_checkins`, `space_audit_log`) and view `space_audit_logs` exist with `rowsecurity = true` (`PASS`).
-      - **Check 2 (Initial Settings):** Confirms singleton settings row `id = 1` exists with default conservative values (`is_open = false`, `capacity = 10`, `session_minutes = 30`, `opening_hours = {}` [unrestricted], `timezone = 'Asia/Kolkata'`) (`PASS`).
-      - **Check 3 (RPC Functions):** Confirms all 8 atomic `SECURITY DEFINER` functions (`rpc_space_checkin`, `rpc_space_checkout`, `rpc_space_extend`, `rpc_space_register_event`, `rpc_space_cancel_registration`, `rpc_space_checkin_ticket`, `rpc_space_virtual_checkin`, `rpc_space_revoke_checkin`) exist with service-role permissions and `set search_path = public, pg_temp` (`PASS`).
+   7. **Inspect Verification Output:** The setup concludes with an automated 6-part verification suite designed to fail explicitly if any object is missing:
+      - **Check 1 (7 Tables & RLS):** Evaluates `space_settings`, `space_sessions`, `space_organizers`, `space_events`, `space_event_registrations`, `space_event_checkins`, and `space_audit_log` via `LEFT JOIN` against `pg_class`. Confirms existence and `rowsecurity = true` (`PASS`).
+      - **Check 1b (Compatibility View):** Confirms `space_audit_logs` view exists for backward compatibility (`PASS`).
+      - **Check 2 (Initial Settings Row):** Confirms singleton settings row `id = 1` exists with valid configuration values (`PASS`).
+      - **Check 3 (8 Atomic RPCs):** Validates all 8 RPC functions against exact parameter types, `SECURITY DEFINER` flag, hardened `search_path = public, pg_temp`, `service_role` execute privilege, and `anon` execution revocation (`PASS`).
       - **Check 4 (Storage Bucket):** Confirms private storage bucket `fole-space-flyers` exists with `public = false` and 10MB limit (`PASS`).
-      - **Check 5 (Flyer Storage Policy):** Confirms NO unrestricted `space_flyers_read` direct SELECT policy exists on `storage.objects` (`PASS`).
+      - **Check 5 (Storage Policies):** Evaluates all policies on `storage.objects` affecting `fole-space-flyers` and confirms no permissive public/anon direct-read or direct-write policy exists (`PASS`).
+      - **Check 6 (Consolidated Health Summary):** Evaluates all checks across the entire installation and outputs `ALL_CHECKS_PASSED` or a descriptive failure message (`ALL_CHECKS_PASSED`).
    8. If the script succeeds, the schema cache is reloaded automatically via `NOTIFY pgrst, 'reload schema';`. If needed, you can re-run `NOTIFY pgrst, 'reload schema';` as an individual query.
    9. Navigate back to FOLE Web Admin (`/admin/dashboard/space`) and toggle the master space switch on.
 
@@ -419,7 +432,7 @@ npm run lint
 node scripts/verify-browser-routes.mjs
 ```
 
-### Automated Test Coverage (130 passing tests):
+### Automated Test Coverage (133 passing tests):
 - **1. Academic Hierarchy & Data Integrity:** Multi-discipline support (CSE, ECE, EEE, ME, CE, AI&DS, IT), Semester traversal (S1–S8), Subject, Module, Topic, and Lecture associations.
 - **2. YouTube Parsing & Security:** Canonical watch URLs, short URLs, shorts URLs, embed URLs, timestamp normalization, domain whitelist validation, rejection of non-YouTube URLs, and XSS injection neutralization.
 - **3. Add & Edit Lecture Validation:** Required lecture title, required YouTube video link, invalid URL rejection, and preview synchronization.

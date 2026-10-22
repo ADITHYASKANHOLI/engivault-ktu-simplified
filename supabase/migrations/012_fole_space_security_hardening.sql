@@ -46,7 +46,7 @@ begin
     from public.space_audit_logs
     on conflict (id) do nothing;
 
-    drop table public.space_audit_logs cascade;
+    drop table public.space_audit_logs;
   end if;
 end $$;
 
