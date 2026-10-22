@@ -82,13 +82,16 @@ export async function GET(request: NextRequest) {
       status: row.ended_at ? "ended" : "not_ended",
     }));
 
-    return NextResponse.json({
-      sessions,
-      totalCount: count ?? 0,
-      openRecordCount: openRecordCount ?? 0,
-      page,
-      pageSize: PAGE_SIZE,
-    });
+    return NextResponse.json(
+      {
+        sessions,
+        totalCount: count ?? 0,
+        openRecordCount: openRecordCount ?? 0,
+        page,
+        pageSize: PAGE_SIZE,
+      },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    );
   } catch (error) {
     console.error("[ADMIN STUDENT SESSIONS] Unexpected error:", error);
     return NextResponse.json({ error: "Unexpected error loading student login history." }, { status: 500 });
