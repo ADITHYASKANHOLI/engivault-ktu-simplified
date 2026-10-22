@@ -120,8 +120,7 @@ export async function POST(request: NextRequest) {
           signedIn: false,
           message: "Your account was created, but the student profile could not be synchronized. Please contact the administrator before retrying.",
           user: { id: authData.user.id, username: cleanUsername },
-        },
-        { status: 503 }
+        }
       );
     }
 
