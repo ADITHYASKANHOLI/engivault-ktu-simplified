@@ -1945,6 +1945,52 @@ async function runTests() {
     assert.ok(r3.resetInSeconds > 0, "Reset in seconds must be positive");
   });
 
+  test("Student registry and login history migration keeps student identities linked and private", () => {
+    const sql = nodeFs.readFileSync("supabase/migrations/013_student_login_history.sql", "utf-8");
+    assert.ok(sql.includes("add column if not exists username text"), "Migration must add canonical usernames to profiles");
+    assert.ok(sql.includes("idx_profiles_lower_username"), "Migration must enforce case-insensitive username uniqueness");
+    assert.ok(sql.includes("on_auth_user_created"), "Migration must keep new internal student profiles synchronized");
+    assert.ok(sql.includes("students.fole.invalid"), "Migration must restrict profile syncing to internal student accounts");
+    assert.ok(sql.includes("create table if not exists public.student_login_sessions"), "Migration must define login history");
+    assert.ok(sql.includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
+    assert.ok(sql.includes("alter table public.student_login_sessions enable row level security"), "Login history must have RLS enabled");
+    assert.ok(sql.includes("revoke all on table public.student_login_sessions from PUBLIC, anon, authenticated"), "Login history must not be readable by public API roles");
+    assert.ok(sql.includes("grant all on table public.student_login_sessions to service_role"), "Trusted server routes must be able to write login history");
+    assert.ok(!sql.includes("supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
+  });
+
+  test("Student login and logout routes write and close linked session records", () => {
+    const helper = nodeFs.readFileSync("lib/auth/student-session.ts", "utf-8");
+    const loginCode = nodeFs.readFileSync("app/api/auth/student/login/route.ts", "utf-8");
+    const signupCode = nodeFs.readFileSync("app/api/auth/student/signup/route.ts", "utf-8");
+    const logoutCode = nodeFs.readFileSync("app/api/auth/student/logout/route.ts", "utf-8");
+
+    assert.ok(helper.includes("randomUUID()"), "Session IDs must be generated server-side");
+    assert.ok(helper.includes('httpOnly: true'), "Session correlation cookie must be HttpOnly");
+    assert.ok(helper.includes('.from("profiles")'), "Login tracking must resolve a canonical student profile");
+    assert.ok(helper.includes('.from("student_login_sessions")'), "Login tracking must write to the history table");
+    assert.ok(loginCode.includes('recordStudentLoginSession(authData.user.id, "password")'), "Successful password logins must be recorded");
+    assert.ok(signupCode.includes('recordStudentLoginSession(signInData.user.id, "signup")'), "Successful signup auto-logins must be recorded");
+    assert.ok(logoutCode.includes('.eq("user_id", user.id)'), "Logout must close only the authenticated user's session record");
+    assert.ok(logoutCode.includes('end_reason: "logout"'), "Logout must record the end reason");
+  });
+
+  test("Student session administration is protected and linked to the shared registry", () => {
+    const adminApi = nodeFs.readFileSync("app/api/admin/student-sessions/route.ts", "utf-8");
+    const adminView = nodeFs.readFileSync("components/admin/StudentLoginSessionsView.tsx", "utf-8");
+    const sidebar = nodeFs.readFileSync("components/admin/AdminSidebar.tsx", "utf-8");
+    const organizerService = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+
+    assert.ok(adminApi.includes("getAdminSession"), "Session history API must require the signed admin session");
+    assert.ok(adminApi.includes("createAdminClient"), "Session history API must read through the trusted server client");
+    assert.ok(adminApi.includes('.from("student_login_sessions")'), "Admin API must read the database session history");
+    assert.ok(adminApi.includes(".range(from, to)"), "Admin API must paginate session history");
+    assert.ok(adminView.includes("Student Login History"), "Admin page must render login history");
+    assert.ok(sidebar.includes('href: "/admin/dashboard/student-sessions"'), "Admin navigation must link to Student Sessions");
+    assert.ok(organizerService.includes('.from("profiles")'), "Organizer verification must use the shared student registry");
+    assert.ok(organizerService.includes("addOrganizerByUsername"), "Student usernames must remain usable for organizer assignment");
+  });
+
   test("Database migration 010 defines username, unique index, format constraint, and auth_rate_limits", () => {
     const sql = nodeFs.readFileSync("supabase/migrations/010_student_auth_and_rate_limits.sql", "utf-8");
     assert.ok(sql.includes("add column if not exists username text;"), "Must add username column to profiles");
