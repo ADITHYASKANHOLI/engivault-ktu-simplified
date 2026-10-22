@@ -2248,7 +2248,7 @@ async function runTests() {
     );
   });
 
-  test("Canonical manual setup script supabase/manual/fole_space_setup.sql is owner-executable, idempotent, and contains verification block", () => {
+  test("Canonical manual setup script supabase/manual/fole_space_setup.sql is owner-executable, idempotent, and contains explicit failure verification block", () => {
     assert.ok(nodeFs.existsSync("supabase/manual/fole_space_setup.sql"), "fole_space_setup.sql must exist in supabase/manual/");
     const sql = nodeFs.readFileSync("supabase/manual/fole_space_setup.sql", "utf-8");
 
@@ -2261,6 +2261,14 @@ async function runTests() {
     assert.ok(sql.includes("create table if not exists public.space_event_checkins"), "Must create space_event_checkins");
     assert.ok(sql.includes("create table if not exists public.space_audit_log ("), "Must create physical singular space_audit_log table");
     assert.ok(sql.includes("create or replace view public.space_audit_logs"), "Must create backward-compatible space_audit_logs view");
+
+    // Safe migration from legacy plural table without destructive cascade
+    assert.ok(sql.includes("drop table public.space_audit_logs;"), "Must drop legacy table without cascade");
+    assert.strictEqual(sql.includes("drop table public.space_audit_logs cascade;"), false, "Must avoid cascade drop");
+    assert.ok(sql.includes("insert into public.space_audit_log"), "Must migrate existing audit logs");
+
+    // CLI migration tracking reconciliation
+    assert.ok(sql.includes("supabase_migrations.schema_migrations"), "Must reconcile supabase_migrations table if present");
 
     // RLS enabled on all 7 tables
     assert.ok(sql.includes("alter table public.space_settings enable row level security;"), "Must enable RLS on space_settings");
@@ -2312,8 +2320,23 @@ async function runTests() {
     // Schema cache reload
     assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema");
 
-    // Verification block & rollback notes
+    // Verification block: Explicit LEFT JOIN queries producing FAIL on missing objects
     assert.ok(sql.includes("AUTOMATED POST-SETUP VERIFICATION BLOCK"), "Must include prominent verification section");
+    assert.ok(sql.includes("with expected_tables as"), "Verification must use expected_tables CTE with LEFT JOIN");
+    assert.ok(sql.includes("FAIL (Table Missing)"), "Verification must output explicit FAIL on missing table");
+    assert.ok(sql.includes("with expected_views as"), "Verification must check compatibility view");
+    assert.ok(sql.includes("FAIL (Settings Row id=1 Missing)"), "Verification must output explicit FAIL on missing settings row");
+    assert.ok(sql.includes("with expected_rpcs as"), "Verification must check RPCs with expected_rpcs CTE");
+    assert.ok(sql.includes("FAIL (Function Missing)"), "Verification must output explicit FAIL on missing RPC function");
+    assert.ok(sql.includes("FAIL (Insecure search_path)"), "Verification must inspect function search_path");
+    assert.ok(sql.includes("FAIL (service_role denied)"), "Verification must inspect service_role execution privilege");
+    assert.ok(sql.includes("FAIL (anon granted execute)"), "Verification must inspect anon execution revocation");
+    assert.ok(sql.includes("with expected_bucket as"), "Verification must check storage bucket with expected_bucket CTE");
+    assert.ok(sql.includes("FAIL (Bucket Missing)"), "Verification must output explicit FAIL on missing bucket");
+    assert.ok(sql.includes("FAIL (Bucket is Public)"), "Verification must output explicit FAIL if bucket is public");
+    assert.ok(sql.includes("matching_policies as"), "Verification must comprehensively inspect policies on storage.objects");
+    assert.ok(sql.includes("PASS (No permissive policies on fole-space-flyers)"), "Verification must confirm no permissive policies on flyer bucket");
+    assert.ok(sql.includes("ALL_CHECKS_PASSED"), "Verification must include consolidated overall health summary");
     assert.ok(sql.includes("ROLLBACK NOTES"), "Must include rollback notes");
   });
 
@@ -2324,7 +2347,8 @@ async function runTests() {
     // Data-preserving reconciliation
     assert.ok(sql.includes("create table if not exists public.space_audit_log"), "Must create space_audit_log");
     assert.ok(sql.includes("insert into public.space_audit_log"), "Must migrate data from legacy space_audit_logs");
-    assert.ok(sql.includes("drop table public.space_audit_logs cascade;"), "Must drop legacy table after migration");
+    assert.ok(sql.includes("drop table public.space_audit_logs;"), "Must drop legacy table after migration without cascade");
+    assert.strictEqual(sql.includes("drop table public.space_audit_logs cascade;"), false, "Must avoid cascade drop");
     assert.ok(sql.includes("create or replace view public.space_audit_logs"), "Must create compatibility view");
 
     // Storage security
@@ -2338,6 +2362,70 @@ async function runTests() {
 
     // Schema cache reload
     assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema");
+  });
+
+  test("Safe rerun of manual installation preserves administrator settings and audit log records", () => {
+    const manualSql = nodeFs.readFileSync("supabase/manual/fole_space_setup.sql", "utf-8");
+
+    // Conflict-safe settings: Re-running must never overwrite admin changes
+    assert.ok(
+      manualSql.includes("insert into public.space_settings") && manualSql.includes("on conflict (id) do nothing;"),
+      "Must use ON CONFLICT (id) DO NOTHING for space_settings to prevent resetting admin values"
+    );
+
+    // Conflict-safe audit logs: Re-running must never duplicate or drop existing audit rows
+    assert.ok(
+      manualSql.includes("insert into public.space_audit_log") && manualSql.includes("on conflict (id) do nothing;"),
+      "Must use ON CONFLICT (id) DO NOTHING when migrating or seeding audit log records"
+    );
+
+    // Non-destructive idempotent structure modifications
+    assert.ok(manualSql.includes("create table if not exists"), "Tables must use CREATE TABLE IF NOT EXISTS");
+    assert.ok(manualSql.includes("add column if not exists"), "Columns must use ADD COLUMN IF NOT EXISTS");
+    assert.ok(manualSql.includes("create index if not exists"), "Indexes must use CREATE INDEX IF NOT EXISTS");
+  });
+
+  test("Manual installation and documented migration-history procedure prevent CLI conflicts", () => {
+    const manualSql = nodeFs.readFileSync("supabase/manual/fole_space_setup.sql", "utf-8");
+    const readme = nodeFs.readFileSync("README.md", "utf-8");
+    const archDocs = nodeFs.readFileSync("docs/architecture.md", "utf-8");
+
+    // Setup script populates schema_migrations if table exists
+    assert.ok(
+      manualSql.includes("supabase_migrations.schema_migrations"),
+      "Manual setup must auto-register applied versions in supabase_migrations if present"
+    );
+
+    // README documents migration repair command for CLI users
+    assert.ok(
+      readme.includes("supabase migration repair --status applied 011"),
+      "README must document 'supabase migration repair --status applied 011'"
+    );
+    assert.ok(
+      readme.includes("supabase migration repair --status applied 012"),
+      "README must document 'supabase migration repair --status applied 012'"
+    );
+
+    // Architecture docs specify CLI reconciliation
+    assert.ok(
+      archDocs.includes("supabase migration repair --status applied 011"),
+      "Architecture documentation must describe CLI migration repair"
+    );
+  });
+
+  test("Tracked deployment through migrations 011 and 012 executes sequentially without conflict", () => {
+    const sql011 = nodeFs.readFileSync("supabase/migrations/011_fole_space_system.sql", "utf-8");
+    const sql012 = nodeFs.readFileSync("supabase/migrations/012_fole_space_security_hardening.sql", "utf-8");
+
+    // 011 defines initial baseline tables
+    assert.ok(sql011.includes("create table if not exists public.space_audit_logs"), "011 establishes baseline space_audit_logs table");
+
+    // 012 reconciles baseline table to singular physical table public.space_audit_log
+    assert.ok(sql012.includes("create table if not exists public.space_audit_log"), "012 establishes physical table space_audit_log");
+    assert.ok(sql012.includes("from public.space_audit_logs"), "012 migrates data from legacy table");
+    assert.ok(sql012.includes("create or replace view public.space_audit_logs"), "012 replaces table with compatibility view");
+    assert.ok(sql012.includes("set search_path = public, pg_temp"), "012 hardens RPC search_path");
+    assert.ok(sql012.includes("drop policy if exists \"space_flyers_read\""), "012 drops unrestricted storage read policy");
   });
 
   test("Private flyer delivery route enforces event publication and deletion checks before streaming", () => {

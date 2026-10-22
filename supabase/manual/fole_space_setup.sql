@@ -255,13 +255,26 @@ begin
     select id, actor_id, action, target_type, target_id, metadata, created_at
     from public.space_audit_logs
     on conflict (id) do nothing;
-    drop table public.space_audit_logs cascade;
+    drop table public.space_audit_logs;
   end if;
 end $$;
 
 -- Plural compatibility view
 create or replace view public.space_audit_logs as
 select * from public.space_audit_log;
+
+-- Reconcile Supabase CLI migration tracking if supabase_migrations exists
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'supabase_migrations' and table_name = 'schema_migrations'
+  ) then
+    insert into supabase_migrations.schema_migrations (version)
+    values ('011'), ('012'), ('011_fole_space_system'), ('012_fole_space_security_hardening')
+    on conflict do nothing;
+  end if;
+end $$;
 
 -- ==============================================================================
 -- 8. STORAGE BUCKET: fole-space-flyers (Private bucket, server-proxied delivery)
@@ -981,74 +994,203 @@ notify pgrst, 'reload schema';
 -- 12. AUTOMATED POST-SETUP VERIFICATION BLOCK
 -- ==============================================================================
 
--- Check 1: Verify all 7 core tables exist with Row Level Security enabled
+-- Check 1: Verify all 7 core tables exist with Row Level Security enabled (Explicit row per table)
+with expected_tables as (
+  select * from (values
+    ('space_settings'),
+    ('space_sessions'),
+    ('space_organizers'),
+    ('space_events'),
+    ('space_event_registrations'),
+    ('space_event_checkins'),
+    ('space_audit_log')
+  ) as t(table_name)
+)
 select
-    c.relname as table_name,
-    c.relrowsecurity as rls_enabled,
-    case when c.relrowsecurity = true then 'PASS' else 'FAIL' end as verification
-from pg_catalog.pg_class c
-join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-where n.nspname = 'public'
-  and c.relname in (
-    'space_settings',
-    'space_sessions',
-    'space_organizers',
-    'space_events',
-    'space_event_registrations',
-    'space_event_checkins',
-    'space_audit_log'
+    e.table_name,
+    case when c.relname is not null then true else false end as table_exists,
+    coalesce(c.relrowsecurity, false) as rls_enabled,
+    case
+        when c.relname is null then 'FAIL (Table Missing)'
+        when c.relrowsecurity = false then 'FAIL (RLS Disabled)'
+        else 'PASS'
+    end as verification
+from expected_tables e
+left join pg_catalog.pg_class c on c.relname = e.table_name
+left join pg_catalog.pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+order by e.table_name;
+
+-- Check 1b: Verify backward-compatibility view space_audit_logs exists
+with expected_views as (
+  select 'space_audit_logs' as view_name
+)
+select
+    e.view_name,
+    case when v.table_name is not null then true else false end as view_exists,
+    case
+        when v.table_name is null then 'FAIL (Compatibility View Missing)'
+        else 'PASS'
+    end as verification
+from expected_views e
+left join information_schema.views v
+  on v.table_schema = 'public' and v.table_name = e.view_name;
+
+-- Check 2: Verify singleton settings row id = 1 exists with expected defaults (Guaranteed row output)
+select
+    1 as expected_id,
+    s.id as found_id,
+    s.is_open,
+    s.capacity,
+    s.session_minutes,
+    s.timezone,
+    s.opening_hours,
+    case
+        when s.id is null then 'FAIL (Settings Row id=1 Missing)'
+        when s.id = 1 and s.timezone = 'Asia/Kolkata' and s.capacity > 0 and s.session_minutes > 0 then 'PASS'
+        else 'FAIL (Invalid Settings Values)'
+    end as verification
+from (select 1 as dummy_id) d
+left join public.space_settings s on s.id = 1;
+
+-- Check 3: Verify all 8 atomic RPC functions (Exact signature, SECURITY DEFINER, search_path, grants)
+with expected_rpcs as (
+  select * from (values
+    ('rpc_space_checkin', 'uuid'),
+    ('rpc_space_checkout', 'uuid, uuid, text'),
+    ('rpc_space_extend', 'uuid, uuid'),
+    ('rpc_space_register_event', 'uuid, uuid, text'),
+    ('rpc_space_cancel_registration', 'uuid, uuid'),
+    ('rpc_space_checkin_ticket', 'text, uuid, text, uuid'),
+    ('rpc_space_virtual_checkin', 'uuid, uuid'),
+    ('rpc_space_revoke_checkin', 'uuid, uuid')
+  ) as r(proname, expected_args)
+)
+select
+    e.proname as routine_name,
+    e.expected_args,
+    case when p.oid is not null then true else false end as function_exists,
+    coalesce(p.prosecdef, false) as is_security_definer,
+    coalesce(p.proconfig::text like '%search_path=public, pg_temp%', false) as search_path_hardened,
+    coalesce(has_function_privilege('service_role', p.oid, 'EXECUTE'), false) as service_role_can_execute,
+    coalesce(has_function_privilege('anon', p.oid, 'EXECUTE'), true) as anon_can_execute,
+    case
+        when p.oid is null then 'FAIL (Function Missing)'
+        when p.prosecdef = false then 'FAIL (Not SECURITY DEFINER)'
+        when not (p.proconfig::text like '%search_path=public, pg_temp%') then 'FAIL (Insecure search_path)'
+        when not has_function_privilege('service_role', p.oid, 'EXECUTE') then 'FAIL (service_role denied)'
+        when has_function_privilege('anon', p.oid, 'EXECUTE') then 'FAIL (anon granted execute)'
+        else 'PASS'
+    end as verification
+from expected_rpcs e
+left join pg_catalog.pg_proc p
+  on p.proname = e.proname
+  and pg_catalog.pg_get_function_identity_arguments(p.oid) = e.expected_args
+left join pg_catalog.pg_namespace n
+  on n.oid = p.pronamespace and n.nspname = 'public'
+order by e.proname;
+
+-- Check 4: Verify fole-space-flyers private storage bucket exists and is private (Guaranteed row output)
+with expected_bucket as (
+  select 'fole-space-flyers' as bucket_id
+)
+select
+    e.bucket_id,
+    case when b.id is not null then true else false end as bucket_exists,
+    coalesce(b.public, true) as is_public,
+    b.file_size_limit,
+    case
+        when b.id is null then 'FAIL (Bucket Missing)'
+        when b.public = true then 'FAIL (Bucket is Public)'
+        else 'PASS'
+    end as verification
+from expected_bucket e
+left join storage.buckets b on b.id = e.bucket_id;
+
+-- Check 5: Comprehensive evaluation of Storage policies on storage.objects for fole-space-flyers
+with matching_policies as (
+  select
+    policyname,
+    cmd,
+    roles::text as target_roles,
+    qual
+  from pg_catalog.pg_policies
+  where schemaname = 'storage'
+    and tablename = 'objects'
+    and (
+      policyname = 'space_flyers_read'
+      or qual ilike '%fole-space-flyers%'
+      or with_check ilike '%fole-space-flyers%'
+    )
+)
+select
+    coalesce(m.policyname, 'NONE') as policy_name,
+    coalesce(m.cmd, 'NONE') as command,
+    coalesce(m.target_roles, 'NONE') as roles,
+    case
+        when count(m.policyname) over () = 0 then 'PASS (No permissive policies on fole-space-flyers)'
+        else 'FAIL (Unintended policy exists: ' || m.policyname || ')'
+    end as verification
+from (select 1 as dummy) d
+left join matching_policies m on true;
+
+-- Check 6: Consolidated FOLE SPACE Setup Health Summary
+with
+  table_failures as (
+    select count(*) as cnt from (values
+      ('space_settings'), ('space_sessions'), ('space_organizers'),
+      ('space_events'), ('space_event_registrations'), ('space_event_checkins'),
+      ('space_audit_log')
+    ) as t(tbl)
+    left join pg_catalog.pg_class c on c.relname = t.tbl
+    left join pg_catalog.pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+    where c.relname is null or c.relrowsecurity = false
+  ),
+  settings_failures as (
+    select count(*) as cnt from (select 1 as dummy) d
+    left join public.space_settings s on s.id = 1
+    where s.id is null or s.timezone != 'Asia/Kolkata' or s.capacity <= 0 or s.session_minutes <= 0
+  ),
+  rpc_failures as (
+    select count(*) as cnt from (values
+      ('rpc_space_checkin', 'uuid'),
+      ('rpc_space_checkout', 'uuid, uuid, text'),
+      ('rpc_space_extend', 'uuid, uuid'),
+      ('rpc_space_register_event', 'uuid, uuid, text'),
+      ('rpc_space_cancel_registration', 'uuid, uuid'),
+      ('rpc_space_checkin_ticket', 'text, uuid, text, uuid'),
+      ('rpc_space_virtual_checkin', 'uuid, uuid'),
+      ('rpc_space_revoke_checkin', 'uuid, uuid')
+    ) as r(proname, expected_args)
+    left join pg_catalog.pg_proc p
+      on p.proname = r.proname and pg_catalog.pg_get_function_identity_arguments(p.oid) = r.expected_args
+    left join pg_catalog.pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+    where p.oid is null
+       or p.prosecdef = false
+       or not (p.proconfig::text like '%search_path=public, pg_temp%')
+       or not has_function_privilege('service_role', p.oid, 'EXECUTE')
+       or has_function_privilege('anon', p.oid, 'EXECUTE')
+  ),
+  bucket_failures as (
+    select count(*) as cnt from storage.buckets
+    where id = 'fole-space-flyers' and public = true
+    union all
+    select case when count(*) = 0 then 1 else 0 end from storage.buckets where id = 'fole-space-flyers'
+  ),
+  policy_failures as (
+    select count(*) as cnt from pg_catalog.pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and (policyname = 'space_flyers_read' or qual ilike '%fole-space-flyers%')
   )
-order by c.relname;
-
--- Check 2: Verify singleton settings row exists with conservative defaults
 select
-    id,
-    is_open,
-    capacity,
-    session_minutes,
-    opening_hours,
-    timezone,
-    case when id = 1 then 'PASS' else 'FAIL' end as verification
-from public.space_settings
-where id = 1;
-
--- Check 3: Verify all 8 atomic RPC functions exist with SECURITY DEFINER
-select
-    p.proname as routine_name,
-    case when p.prosecdef then 'DEFINER' else 'INVOKER' end as security_type,
-    case when p.prosecdef = true then 'PASS' else 'FAIL' end as verification
-from pg_catalog.pg_proc p
-join pg_catalog.pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public'
-  and p.proname in (
-    'rpc_space_checkin',
-    'rpc_space_checkout',
-    'rpc_space_extend',
-    'rpc_space_register_event',
-    'rpc_space_cancel_registration',
-    'rpc_space_checkin_ticket',
-    'rpc_space_virtual_checkin',
-    'rpc_space_revoke_checkin'
-  )
-order by p.proname;
-
--- Check 4: Verify fole-space-flyers private storage bucket exists and is private
-select
-    id as bucket_name,
-    public as is_public,
-    file_size_limit,
-    case when id = 'fole-space-flyers' and public = false then 'PASS' else 'FAIL' end as verification
-from storage.buckets
-where id = 'fole-space-flyers';
-
--- Check 5: Confirm NO unrestricted space_flyers_read storage policy exists
-select
-    'space_flyers_read' as policy_name,
-    case when count(*) = 0 then 'PASS' else 'FAIL' end as verification
-from pg_catalog.pg_policies
-where schemaname = 'storage'
-  and tablename = 'objects'
-  and policyname = 'space_flyers_read';
+    case
+        when (select cnt from table_failures) > 0 then 'FAIL: One or more tables missing or RLS disabled'
+        when (select cnt from settings_failures) > 0 then 'FAIL: Space settings row 1 missing or invalid'
+        when (select cnt from rpc_failures) > 0 then 'FAIL: One or more RPCs missing, not definer, unhardened search_path, or invalid privileges'
+        when (select sum(cnt) from bucket_failures) > 0 then 'FAIL: Flyer bucket missing or public'
+        when (select cnt from policy_failures) > 0 then 'FAIL: Permissive flyer storage policy exists'
+        else 'ALL_CHECKS_PASSED'
+    end as overall_status,
+    now() as verified_at;
 
 -- Final reload schema notification
 notify pgrst, 'reload schema';
