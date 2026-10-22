@@ -148,7 +148,7 @@ export function AdminSpaceOverview({
               </h3>
               <p className="text-xs text-amber-700 mt-0.5">
                 Database tables and RPC functions for FOLE SPACE were not found in the PostgreSQL schema.
-                Run <code className="bg-amber-100/80 px-1.5 py-0.5 rounded font-mono font-bold text-amber-900">supabase/migrations/011_fole_space_setup.sql</code> in your Supabase SQL Editor.
+                Run <code className="bg-amber-100/80 px-1.5 py-0.5 rounded font-mono font-bold text-amber-900">supabase/manual/fole_space_setup.sql</code> in your Supabase SQL Editor.
               </p>
             </div>
           </div>
