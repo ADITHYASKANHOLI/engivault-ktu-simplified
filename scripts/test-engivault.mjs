@@ -1947,16 +1947,17 @@ async function runTests() {
 
   test("Student registry and login history migration keeps student identities linked and private", () => {
     const sql = nodeFs.readFileSync("supabase/migrations/013_student_login_history.sql", "utf-8");
-    assert.ok(sql.includes("add column if not exists username text"), "Migration must add canonical usernames to profiles");
-    assert.ok(sql.includes("idx_profiles_lower_username"), "Migration must enforce case-insensitive username uniqueness");
-    assert.ok(sql.includes("on_auth_user_created"), "Migration must keep new internal student profiles synchronized");
-    assert.ok(sql.includes("students.fole.invalid"), "Migration must restrict profile syncing to internal student accounts");
-    assert.ok(sql.includes("create table if not exists public.student_login_sessions"), "Migration must define login history");
-    assert.ok(sql.toLowerCase().includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
-    assert.ok(sql.includes("alter table public.student_login_sessions enable row level security"), "Login history must have RLS enabled");
-    assert.ok(sql.includes("revoke all on table public.student_login_sessions from PUBLIC, anon, authenticated"), "Login history must not be readable by public API roles");
-    assert.ok(sql.includes("grant all on table public.student_login_sessions to service_role"), "Trusted server routes must be able to write login history");
-    assert.ok(!sql.toLowerCase().includes("insert into supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
+    const normalizedSql = sql.toLowerCase();
+    assert.ok(normalizedSql.includes("add column if not exists username text"), "Migration must add canonical usernames to profiles");
+    assert.ok(normalizedSql.includes("idx_profiles_lower_username"), "Migration must enforce case-insensitive username uniqueness");
+    assert.ok(normalizedSql.includes("on_auth_user_created"), "Migration must keep new internal student profiles synchronized");
+    assert.ok(normalizedSql.includes("students.fole.invalid"), "Migration must restrict profile syncing to internal student accounts");
+    assert.ok(normalizedSql.includes("create table if not exists public.student_login_sessions"), "Migration must define login history");
+    assert.ok(normalizedSql.includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
+    assert.ok(normalizedSql.includes("alter table public.student_login_sessions enable row level security"), "Login history must have RLS enabled");
+    assert.ok(normalizedSql.includes("revoke all on table public.student_login_sessions from PUBLIC, anon, authenticated"), "Login history must not be readable by public API roles");
+    assert.ok(normalizedSql.includes("grant all on table public.student_login_sessions to service_role"), "Trusted server routes must be able to write login history");
+    assert.ok(!normalizedSql.includes("insert into supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
   });
 
   test("Student login and logout routes write and close linked session records", () => {
