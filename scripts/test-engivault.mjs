@@ -2267,8 +2267,12 @@ async function runTests() {
     assert.strictEqual(sql.includes("drop table public.space_audit_logs cascade;"), false, "Must avoid cascade drop");
     assert.ok(sql.includes("insert into public.space_audit_log"), "Must migrate existing audit logs");
 
-    // CLI migration tracking reconciliation
-    assert.ok(sql.includes("supabase_migrations.schema_migrations"), "Must reconcile supabase_migrations table if present");
+    // Standalone manual installer must not directly alter internal Supabase CLI migration tracking
+    assert.strictEqual(
+      sql.includes("insert into supabase_migrations.schema_migrations"),
+      false,
+      "Manual installer must NOT write to supabase_migrations.schema_migrations"
+    );
 
     // RLS enabled on all 7 tables
     assert.ok(sql.includes("alter table public.space_settings enable row level security;"), "Must enable RLS on space_settings");
@@ -2334,8 +2338,9 @@ async function runTests() {
     assert.ok(sql.includes("with expected_bucket as"), "Verification must check storage bucket with expected_bucket CTE");
     assert.ok(sql.includes("FAIL (Bucket Missing)"), "Verification must output explicit FAIL on missing bucket");
     assert.ok(sql.includes("FAIL (Bucket is Public)"), "Verification must output explicit FAIL if bucket is public");
-    assert.ok(sql.includes("matching_policies as"), "Verification must comprehensively inspect policies on storage.objects");
-    assert.ok(sql.includes("PASS (No permissive policies on fole-space-flyers)"), "Verification must confirm no permissive policies on flyer bucket");
+    assert.ok(sql.includes("evaluated_storage_policies as"), "Verification must evaluate storage policies for fole-space-flyers");
+    assert.ok(sql.includes("qual not ilike '%bucket_id%'"), "Verification must detect broad permissive policies lacking bucket isolation");
+    assert.ok(sql.includes("PASS (No permissive or broad read policies expose fole-space-flyers)"), "Verification must confirm no permissive policies on flyer bucket");
     assert.ok(sql.includes("ALL_CHECKS_PASSED"), "Verification must include consolidated overall health summary");
     assert.ok(sql.includes("ROLLBACK NOTES"), "Must include rollback notes");
   });
@@ -2390,10 +2395,29 @@ async function runTests() {
     const readme = nodeFs.readFileSync("README.md", "utf-8");
     const archDocs = nodeFs.readFileSync("docs/architecture.md", "utf-8");
 
-    // Setup script populates schema_migrations if table exists
+    // Standalone manual setup must not write to schema_migrations directly
+    assert.strictEqual(
+      manualSql.includes("insert into supabase_migrations.schema_migrations"),
+      false,
+      "Manual setup must NOT directly write to supabase_migrations"
+    );
+
+    // README documents that manual installer creates database objects but does not mark CLI migrations as applied
     assert.ok(
-      manualSql.includes("supabase_migrations.schema_migrations"),
-      "Manual setup must auto-register applied versions in supabase_migrations if present"
+      readme.includes("does not mark CLI migrations as applied"),
+      "README must document that manual setup does not mark CLI migrations as applied"
+    );
+    assert.ok(
+      readme.includes("Do not run `supabase db push`"),
+      "README must warn against running supabase db push before reconciliation"
+    );
+    assert.ok(
+      readme.includes("supabase migration list"),
+      "README must instruct checking migration status with supabase migration list"
+    );
+    assert.ok(
+      readme.includes("do not invent additional version entries"),
+      "README must warn against inventing additional version entries"
     );
 
     // README documents migration repair command for CLI users
@@ -2410,6 +2434,48 @@ async function runTests() {
     assert.ok(
       archDocs.includes("supabase migration repair --status applied 011"),
       "Architecture documentation must describe CLI migration repair"
+    );
+  });
+
+  test("Verification queries in fole_space_setup.sql strictly enforce public schema scoping and catch broad storage policies", () => {
+    const sql = nodeFs.readFileSync("supabase/manual/fole_space_setup.sql", "utf-8");
+
+    // 1. Table verification scoping
+    assert.ok(
+      sql.includes("left join pg_catalog.pg_namespace n on n.nspname = 'public'"),
+      "Tables must be matched against public schema namespace"
+    );
+    assert.ok(
+      sql.includes("c.relnamespace = n.oid") && sql.includes("c.relname = e.table_name"),
+      "pg_class lookup must match both public namespace and expected relation name"
+    );
+    assert.ok(
+      sql.includes("c.relkind in ('r', 'p')"),
+      "pg_class lookup must verify relation kind"
+    );
+
+    // 2. RPC verification scoping & signature check
+    assert.ok(
+      sql.includes("p.pronamespace = n.oid") && sql.includes("p.proname = e.proname"),
+      "pg_proc lookup must match both public namespace and expected function name"
+    );
+    assert.ok(
+      sql.includes("pg_catalog.pg_get_function_identity_arguments(p.oid) = e.expected_args"),
+      "pg_proc lookup must match exact expected argument types"
+    );
+
+    // 3. Storage policy auditing for flyer bucket
+    assert.ok(
+      sql.includes("qual ilike '%fole-space-flyers%'") && sql.includes("with_check ilike '%fole-space-flyers%'"),
+      "Storage policy audit must catch policies explicitly referencing fole-space-flyers"
+    );
+    assert.ok(
+      sql.includes("qual not ilike '%bucket_id%'"),
+      "Storage policy audit must catch broad permissive policies lacking bucket isolation"
+    );
+    assert.ok(
+      sql.includes("FAIL: Permissive or broad storage policy exposes flyer bucket"),
+      "Health summary must fail if permissive or broad storage policy exists"
     );
   });
 
