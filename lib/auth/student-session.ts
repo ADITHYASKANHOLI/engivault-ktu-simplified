@@ -42,6 +42,7 @@ export async function recordStudentLoginSession(
         end_reason: "new_login",
       })
       .eq("id", previousSessionId)
+      .eq("user_id", userId)
       .is("ended_at", null);
 
     if (error) {
