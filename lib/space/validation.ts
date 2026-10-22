@@ -53,7 +53,18 @@ export const spaceEventCreateSchema = spaceEventBaseSchema.refine(
   }
 );
 
-export const spaceEventUpdateSchema = spaceEventBaseSchema.partial();
+export const spaceEventUpdateSchema = spaceEventBaseSchema.partial().refine(
+  (data) => {
+    if (data.starts_at && data.ends_at) {
+      return new Date(data.ends_at) > new Date(data.starts_at);
+    }
+    return true;
+  },
+  {
+    message: "Event end time must be after the start time",
+    path: ["ends_at"],
+  }
+);
 
 export const spaceSettingsSchema = spaceSettingsUpdateSchema;
 export const spaceEventSchema = spaceEventCreateSchema;

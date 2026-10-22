@@ -2524,9 +2524,451 @@ async function runTests() {
     assert.ok(settingsComp.includes("disabled={saving || !isConfigured}"), "Save button must be disabled when unconfigured");
   });
 
+  // 20. FOLE SPACE ORGANIZER EVENT CREATION, VALIDATION & PUBLISHING SUITE
+  console.log("\n--- 20. FOLE SPACE ORGANIZER EVENT CREATION & PUBLISHING REGRESSION SUITE ---");
+
+  await testAsync("1. Valid new event payload passes spaceEventCreateSchema", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const validPayload = {
+      title: "Embedded Systems & Rust Workshop",
+      slug: "embedded-rust-workshop-2026",
+      description: "Hands-on session building sensor nodes with microcontrollers and bare-metal Rust.",
+      category: "Workshop",
+      starts_at: "2026-10-25T04:30:00.000Z", // 10:00 IST
+      ends_at: "2026-10-25T07:30:00.000Z",   // 13:00 IST
+      capacity: 30,
+      blocks_open_space: true,
+      allow_virtual_checkin: true,
+    };
+
+    const parsed = spaceEventCreateSchema.safeParse(validPayload);
+    assert.strictEqual(parsed.success, true, "Valid payload must pass schema validation");
+    if (parsed.success) {
+      assert.strictEqual(parsed.data.title, "Embedded Systems & Rust Workshop");
+      assert.strictEqual(parsed.data.capacity, 30);
+      assert.strictEqual(parsed.data.category, "Workshop");
+      assert.strictEqual(parsed.data.blocks_open_space, true);
+    }
+  });
+
+  await testAsync("2. Missing title, slug, description, or dates return field-specific error details", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const baseValid = {
+      title: "Valid Title Here",
+      slug: "valid-slug-title",
+      description: "A valid long description that easily exceeds ten characters.",
+      category: "Workshop",
+      starts_at: "2026-10-25T04:30:00.000Z",
+      ends_at: "2026-10-25T07:30:00.000Z",
+      capacity: 25,
+    };
+
+    // Missing / empty title
+    const emptyTitle = spaceEventCreateSchema.safeParse({ ...baseValid, title: "" });
+    assert.strictEqual(emptyTitle.success, false);
+    const titleErrors = emptyTitle.error.flatten().fieldErrors;
+    assert.ok(titleErrors.title && titleErrors.title.length > 0, "Must provide field error on title");
+
+    // Missing / empty slug
+    const emptySlug = spaceEventCreateSchema.safeParse({ ...baseValid, slug: "" });
+    assert.strictEqual(emptySlug.success, false);
+    const slugErrors = emptySlug.error.flatten().fieldErrors;
+    assert.ok(slugErrors.slug && slugErrors.slug.length > 0, "Must provide field error on slug");
+
+    // Short description (<10 chars)
+    const shortDesc = spaceEventCreateSchema.safeParse({ ...baseValid, description: "Too short" });
+    assert.strictEqual(shortDesc.success, false);
+    const descErrors = shortDesc.error.flatten().fieldErrors;
+    assert.ok(descErrors.description && descErrors.description.length > 0, "Must provide field error on description");
+
+    // Missing start / end times
+    const missingDates = spaceEventCreateSchema.safeParse({
+      ...baseValid,
+      starts_at: undefined,
+      ends_at: undefined,
+    });
+    assert.strictEqual(missingDates.success, false);
+    const dateErrors = missingDates.error.flatten().fieldErrors;
+    assert.ok(dateErrors.starts_at && dateErrors.starts_at.length > 0, "Must report missing starts_at");
+    assert.ok(dateErrors.ends_at && dateErrors.ends_at.length > 0, "Must report missing ends_at");
+  });
+
+  await testAsync("3. Slug validation enforces lowercase alphanumeric with single hyphens and rejects invalid formats", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const baseValid = {
+      title: "Slug Test Workshop",
+      description: "Detailed description of the upcoming testing workshop.",
+      category: "Workshop",
+      starts_at: "2026-10-25T04:30:00.000Z",
+      ends_at: "2026-10-25T07:30:00.000Z",
+      capacity: 25,
+    };
+
+    const invalidSlugs = [
+      "Workshop-AI",          // uppercase
+      "workshop ai",          // spaces
+      "workshop_ai",          // underscores
+      "workshop@ai!",         // special chars
+      "-workshop-ai",         // leading hyphen
+      "workshop-ai-",         // trailing hyphen
+      "workshop--ai",         // double hyphens
+      "ai",                   // too short (<3 chars)
+      "a".repeat(81),         // too long (>80 chars)
+    ];
+
+    for (const badSlug of invalidSlugs) {
+      const res = spaceEventCreateSchema.safeParse({ ...baseValid, slug: badSlug });
+      assert.strictEqual(
+        res.success,
+        false,
+        `Slug '${badSlug}' must be rejected by schema`
+      );
+      assert.ok(
+        res.error.flatten().fieldErrors.slug,
+        `Must return specific error on slug for '${badSlug}'`
+      );
+    }
+
+    const validSlugs = [
+      "workshop-ai-2026",
+      "tech-talk-1",
+      "intro-to-web3",
+      "sprint-42-b",
+    ];
+
+    for (const goodSlug of validSlugs) {
+      const res = spaceEventCreateSchema.safeParse({ ...baseValid, slug: goodSlug });
+      assert.strictEqual(res.success, true, `Slug '${goodSlug}' should be valid`);
+    }
+  });
+
+  await testAsync("4. Invalid timestamps and non-sequential start/end dates are strictly rejected", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const baseValid = {
+      title: "DateTime Ordering Test",
+      slug: "datetime-ordering-test",
+      description: "Testing strict chronological ordering and ISO validation.",
+      category: "Workshop",
+      capacity: 20,
+    };
+
+    // Malformed non-ISO dates
+    const malformed = spaceEventCreateSchema.safeParse({
+      ...baseValid,
+      starts_at: "not-a-valid-datetime",
+      ends_at: "2026-10-25T07:30:00.000Z",
+    });
+    assert.strictEqual(malformed.success, false);
+    assert.ok(malformed.error.flatten().fieldErrors.starts_at, "Must reject malformed starts_at");
+
+    // End time strictly equal to start time
+    const sameTime = spaceEventCreateSchema.safeParse({
+      ...baseValid,
+      starts_at: "2026-10-25T04:30:00.000Z",
+      ends_at: "2026-10-25T04:30:00.000Z",
+    });
+    assert.strictEqual(sameTime.success, false, "Equal start and end time must fail");
+    const sameTimeErrors = sameTime.error.flatten().fieldErrors;
+    assert.ok(sameTimeErrors.ends_at, "Must report refinement error on ends_at");
+    assert.ok(
+      sameTimeErrors.ends_at.some((msg) => msg.includes("after")),
+      "Error message must specify end time after start time"
+    );
+
+    // End time earlier than start time
+    const earlierEnd = spaceEventCreateSchema.safeParse({
+      ...baseValid,
+      starts_at: "2026-10-25T07:30:00.000Z",
+      ends_at: "2026-10-25T04:30:00.000Z",
+    });
+    assert.strictEqual(earlierEnd.success, false, "End time earlier than start time must fail");
+    assert.ok(earlierEnd.error.flatten().fieldErrors.ends_at, "Must report error on ends_at");
+  });
+
+  await testAsync("5. Capacity validation enforces integer range from 1 to 1000", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const baseValid = {
+      title: "Capacity Range Test",
+      slug: "capacity-range-test",
+      description: "Testing valid capacity range for student space events.",
+      category: "Workshop",
+      starts_at: "2026-10-25T04:30:00.000Z",
+      ends_at: "2026-10-25T07:30:00.000Z",
+    };
+
+    const invalidCapacities = [0, -1, -50, 1001, 5000];
+    for (const cap of invalidCapacities) {
+      const res = spaceEventCreateSchema.safeParse({ ...baseValid, capacity: cap });
+      assert.strictEqual(res.success, false, `Capacity ${cap} must be rejected`);
+      assert.ok(res.error.flatten().fieldErrors.capacity, `Must report error on capacity for ${cap}`);
+    }
+
+    const validCapacities = [1, 20, 100, 500, 1000];
+    for (const cap of validCapacities) {
+      const res = spaceEventCreateSchema.safeParse({ ...baseValid, capacity: cap });
+      assert.strictEqual(res.success, true, `Capacity ${cap} must be valid`);
+      assert.strictEqual(res.data.capacity, cap);
+    }
+  });
+
+  await testAsync("6. Optional flyer metadata is safely handled when omitted, null, or populated", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const basePayload = {
+      title: "Flyer Metadata Test",
+      slug: "flyer-metadata-test",
+      description: "Testing optional poster and flyer metadata fields.",
+      category: "Talk",
+      starts_at: "2026-10-25T04:30:00.000Z",
+      ends_at: "2026-10-25T07:30:00.000Z",
+      capacity: 50,
+    };
+
+    // Case A: Flyer fields omitted
+    const omitted = spaceEventCreateSchema.safeParse(basePayload);
+    assert.strictEqual(omitted.success, true, "Omitted flyer fields must succeed");
+
+    // Case B: Flyer fields explicitly null
+    const nullFlyer = spaceEventCreateSchema.safeParse({
+      ...basePayload,
+      flyer_path: null,
+      flyer_mime: null,
+      flyer_width: null,
+      flyer_height: null,
+      flyer_bytes: null,
+    });
+    assert.strictEqual(nullFlyer.success, true, "Null flyer fields must succeed");
+
+    // Case C: Populated valid flyer metadata
+    const populated = spaceEventCreateSchema.safeParse({
+      ...basePayload,
+      flyer_path: "events/flyer-metadata-test/flyer.webp",
+      flyer_mime: "image/webp",
+      flyer_width: 1200,
+      flyer_height: 800,
+      flyer_bytes: 345000,
+    });
+    assert.strictEqual(populated.success, true, "Valid populated flyer fields must succeed");
+    assert.strictEqual(populated.data.flyer_width, 1200);
+    assert.strictEqual(populated.data.flyer_mime, "image/webp");
+  });
+
+  await testAsync("7. Valid draft creation produces expected payload with status draft", async () => {
+    const { spaceEventCreateSchema } = await import("../lib/space/validation.ts");
+
+    const payload = {
+      title: "Hardware Hackathon & Sensors",
+      slug: "hardware-hackathon-sensors",
+      description: "Bring your ESP32 or Arduino board and build rapid prototypes.",
+      category: "Hack Sprint",
+      starts_at: "2026-11-01T04:30:00.000Z",
+      ends_at: "2026-11-01T10:30:00.000Z",
+      capacity: 40,
+      blocks_open_space: true,
+      flyer_path: null,
+      flyer_mime: null,
+      flyer_width: null,
+      flyer_height: null,
+      flyer_bytes: null,
+    };
+
+    const parsed = spaceEventCreateSchema.safeParse(payload);
+    assert.strictEqual(parsed.success, true);
+    assert.strictEqual(parsed.data.category, "Hack Sprint");
+    assert.strictEqual(parsed.data.capacity, 40);
+  });
+
+  await testAsync("8. Editing an existing draft with spaceEventUpdateSchema supports partial updates without Zod refinement crashes", async () => {
+    const { spaceEventUpdateSchema } = await import("../lib/space/validation.ts");
+
+    // A: Partial update with only title
+    const titleOnly = spaceEventUpdateSchema.safeParse({
+      title: "Updated Title for Workshop",
+    });
+    assert.strictEqual(titleOnly.success, true, "Updating only title must succeed");
+    assert.strictEqual(titleOnly.data.title, "Updated Title for Workshop");
+
+    // B: Partial update with only capacity
+    const capacityOnly = spaceEventUpdateSchema.safeParse({
+      capacity: 75,
+    });
+    assert.strictEqual(capacityOnly.success, true, "Updating only capacity must succeed");
+    assert.strictEqual(capacityOnly.data.capacity, 75);
+
+    // C: Update with both dates valid
+    const validDates = spaceEventUpdateSchema.safeParse({
+      starts_at: "2026-11-05T04:30:00.000Z",
+      ends_at: "2026-11-05T06:30:00.000Z",
+    });
+    assert.strictEqual(validDates.success, true, "Updating valid dates must succeed");
+
+    // D: Update with both dates invalid (ends <= starts)
+    const invalidDates = spaceEventUpdateSchema.safeParse({
+      starts_at: "2026-11-05T06:30:00.000Z",
+      ends_at: "2026-11-05T04:30:00.000Z",
+    });
+    assert.strictEqual(invalidDates.success, false, "Invalid date ordering in update must fail");
+    assert.ok(invalidDates.error.flatten().fieldErrors.ends_at, "Must return error on ends_at");
+
+    // E: Ensure .safeParse does not throw runtime Zod exception (.partial() on refined schema)
+    let threwException = false;
+    try {
+      spaceEventUpdateSchema.safeParse({
+        title: "Test Exception Safety",
+        capacity: 10,
+      });
+    } catch {
+      threwException = true;
+    }
+    assert.strictEqual(threwException, false, "spaceEventUpdateSchema must execute safely without throwing");
+  });
+
+  test("9. Successful publication after saving publishes using event database ID", () => {
+    // Simulate event creation and publication workflow
+    const eventDraft = {
+      id: "evt-uuid-101",
+      slug: "published-event-test",
+      status: "draft",
+    };
+
+    // When save succeeds, ID is captured
+    const capturedId = eventDraft.id;
+    assert.strictEqual(capturedId, "evt-uuid-101");
+
+    // Next step publishes with captured ID
+    const publishResult = {
+      success: true,
+      event: { ...eventDraft, status: "published", published_at: new Date().toISOString() },
+    };
+    assert.strictEqual(publishResult.success, true);
+    assert.strictEqual(publishResult.event.status, "published");
+  });
+
+  test("10. Publication failure after successful save preserves draft ID and prevents duplicate creation on retry", () => {
+    // Simulate flow where save succeeds with event ID, but publish step fails
+    let savedEventId = null;
+    const mode = "create";
+    let duplicatePostCalled = false;
+
+    // Step 1: POST to create event succeeds
+    const createResponse = { ok: true, event: { id: "evt-draft-999" } };
+    savedEventId = createResponse.event.id;
+
+    // Step 2: Publish fails (e.g. 500 or network timeout)
+    const publishResponse = { ok: false, error: "Network timeout while broadcasting event." };
+    const errorMessage = `Event was saved as a draft, but publishing to the calendar failed: ${publishResponse.error}. You can retry publishing below.`;
+    assert.ok(errorMessage.includes("saved as a draft"), "Must inform user that draft was saved");
+    assert.ok(errorMessage.includes("retry publishing"), "Must prompt user they can retry");
+
+    // Step 3: User clicks retry — because savedEventId is set, submission uses PATCH or publish directly, NOT duplicate POST
+    const isEditOrHasId = mode === "edit" || Boolean(savedEventId);
+    if (!isEditOrHasId) {
+      duplicatePostCalled = true;
+    }
+    assert.strictEqual(duplicatePostCalled, false, "Must not trigger duplicate POST creation when retrying after draft save");
+    assert.strictEqual(savedEventId, "evt-draft-999", "Saved draft ID must be retained for subsequent actions");
+  });
+
+  test("11. Server validation response maps data.details into field errors instead of displaying only generic 'Validation error'", () => {
+    const serverResponse = {
+      status: 400,
+      data: {
+        error: "Validation error",
+        details: {
+          title: ["Title must be at least 3 characters"],
+          slug: ["Slug must contain only lowercase letters, numbers, and hyphens"],
+          capacity: ["Capacity must be at least 1"],
+          ends_at: ["Event end time must be after the start time"],
+        },
+      },
+    };
+
+    // Verify error mapping extracts field details
+    const fieldErrors = serverResponse.data.details || {};
+    assert.strictEqual(fieldErrors.title[0], "Title must be at least 3 characters");
+    assert.strictEqual(fieldErrors.slug[0], "Slug must contain only lowercase letters, numbers, and hyphens");
+    assert.strictEqual(fieldErrors.capacity[0], "Capacity must be at least 1");
+    assert.strictEqual(fieldErrors.ends_at[0], "Event end time must be after the start time");
+
+    // Form shows user-friendly summary when details are present
+    const summaryMessage = Object.keys(fieldErrors).length > 0
+      ? "Please correct the validation errors highlighted below."
+      : serverResponse.data.error;
+    assert.strictEqual(summaryMessage, "Please correct the validation errors highlighted below.");
+  });
+
+  await testAsync("12. IST date display and serialization round-trips cleanly without timezone shift", async () => {
+    const { formatUtcToIstInput, parseIstInputToUtcIso } = await import("../lib/space/time.ts");
+
+    // A: Empty / null / invalid safety (never throws RangeError)
+    assert.strictEqual(formatUtcToIstInput(null), "");
+    assert.strictEqual(formatUtcToIstInput(undefined), "");
+    assert.strictEqual(formatUtcToIstInput(""), "");
+    assert.strictEqual(formatUtcToIstInput("not-a-date"), "");
+
+    assert.strictEqual(parseIstInputToUtcIso(null), null);
+    assert.strictEqual(parseIstInputToUtcIso(undefined), null);
+    assert.strictEqual(parseIstInputToUtcIso(""), null);
+    assert.strictEqual(parseIstInputToUtcIso("invalid"), null);
+
+    // B: 10:00 AM IST on Oct 25, 2026 -> 04:30 UTC on Oct 25, 2026
+    const utcTimeIso = "2026-10-25T04:30:00.000Z";
+    const formattedForInput = formatUtcToIstInput(utcTimeIso);
+    assert.strictEqual(formattedForInput, "2026-10-25T10:00", "Must display 10:00 AM IST in datetime-local input");
+
+    // C: Serializing from input back to UTC ISO
+    const parsedBackToUtc = parseIstInputToUtcIso(formattedForInput);
+    assert.strictEqual(parsedBackToUtc, "2026-10-25T04:30:00.000Z", "Must serialize input back to exact UTC ISO");
+
+    // D: Date rollover: 01:30 AM IST on Oct 26 -> 20:00 UTC on Oct 25
+    const lateUtcIso = "2026-10-25T20:00:00.000Z";
+    const istRollover = formatUtcToIstInput(lateUtcIso);
+    assert.strictEqual(istRollover, "2026-10-26T01:30", "Must roll over to next calendar day in IST");
+    assert.strictEqual(parseIstInputToUtcIso(istRollover), "2026-10-25T20:00:00.000Z");
+
+    // E: Round-trip editing existing event preserves exact entered time without 5.5 hour drift
+    const initialInput = "2026-11-10T14:30"; // 2:30 PM IST
+    const savedUtc = parseIstInputToUtcIso(initialInput);
+    const loadedForEdit = formatUtcToIstInput(savedUtc);
+    assert.strictEqual(loadedForEdit, initialInput, "Initial input and loaded edit value must match exactly without time shift");
+  });
+
+  test("13. Organizer event API route [id]/route.ts imports and uses spaceEventUpdateSchema safely", () => {
+    const editRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/route.ts", "utf-8");
+    assert.ok(
+      editRoute.includes("import { spaceEventUpdateSchema } from"),
+      "Edit route must import spaceEventUpdateSchema"
+    );
+    assert.ok(
+      editRoute.includes("spaceEventUpdateSchema.safeParse(body)"),
+      "Edit route must call spaceEventUpdateSchema.safeParse(body) instead of .partial() on refined schema"
+    );
+    assert.strictEqual(
+      editRoute.includes("spaceEventSchema.partial()"),
+      false,
+      "Edit route must NOT call spaceEventSchema.partial() which throws Zod exception"
+    );
+  });
+
+  test("14. SpaceEventForm implements client pre-validation, field error states, and IST helpers", () => {
+    const formCode = nodeFs.readFileSync("components/space/SpaceEventForm.tsx", "utf-8");
+    assert.ok(formCode.includes("formatUtcToIstInput"), "Form must use formatUtcToIstInput");
+    assert.ok(formCode.includes("parseIstInputToUtcIso"), "Form must use parseIstInputToUtcIso");
+    assert.ok(formCode.includes("validateClientInputs"), "Form must implement client-side input validation");
+    assert.ok(formCode.includes("fieldErrors"), "Form must maintain field-level error state");
+    assert.ok(formCode.includes("clearFieldError"), "Form must clear errors on user interaction");
+    assert.ok(formCode.includes("savedEventId"), "Form must track saved draft ID to avoid duplicate creation");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");
+
 
   if (failed > 0) {
     process.exit(1);

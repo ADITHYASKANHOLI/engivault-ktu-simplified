@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SpaceEvent } from "@/lib/space/types";
 import { FlyerDisplay } from "@/components/space/FlyerDisplay";
+import { formatUtcToIstInput, parseIstInputToUtcIso } from "@/lib/space/time";
 import {
   UploadCloud,
   CheckCircle2,
@@ -19,16 +20,15 @@ interface SpaceEventFormProps {
 export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
   const router = useRouter();
 
+  // If initialEvent has an id or an event was successfully created during this session, track it here
+  const [savedEventId, setSavedEventId] = useState<string | null>(initialEvent?.id || null);
+
   const [title, setTitle] = useState(initialEvent?.title || "");
   const [slug, setSlug] = useState(initialEvent?.slug || "");
   const [description, setDescription] = useState(initialEvent?.description || "");
   const [category, setCategory] = useState(initialEvent?.category || "Workshop");
-  const [startsAt, setStartsAt] = useState(
-    initialEvent?.starts_at ? new Date(initialEvent.starts_at).toISOString().slice(0, 16) : ""
-  );
-  const [endsAt, setEndsAt] = useState(
-    initialEvent?.ends_at ? new Date(initialEvent.ends_at).toISOString().slice(0, 16) : ""
-  );
+  const [startsAt, setStartsAt] = useState(formatUtcToIstInput(initialEvent?.starts_at));
+  const [endsAt, setEndsAt] = useState(formatUtcToIstInput(initialEvent?.ends_at));
   const [capacity, setCapacity] = useState(initialEvent?.capacity || 20);
   const [blocksOpenSpace, setBlocksOpenSpace] = useState(
     initialEvent?.blocks_open_space ?? true
@@ -49,12 +49,25 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
   const [uploadingFlyer, setUploadingFlyer] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  // Helper to clear specific field error on user interaction
+  const clearFieldError = (fieldName: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[fieldName]) return prev;
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+  };
 
   // Auto-generate slug when title changes in create mode
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    if (mode === "create" && (!slug || slug === autoSlugify(title))) {
+    clearFieldError("title");
+    if (mode === "create" && !savedEventId && (!slug || slug === autoSlugify(title))) {
       setSlug(autoSlugify(val));
+      clearFieldError("slug");
     }
   };
 
@@ -89,6 +102,8 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
     setErrorMessage(null);
 
     try {
+      const activeEventId = savedEventId || initialEvent?.id;
+
       // 1. Request Signed Upload URL
       const signRes = await fetch("/api/space/organizer/flyer/sign", {
         method: "POST",
@@ -97,7 +112,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
           filename: file.name,
           file_size: file.size,
           mime_type: file.type,
-          event_id: initialEvent?.id,
+          event_id: activeEventId,
         }),
       });
 
@@ -123,7 +138,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storage_path: signData.storagePath,
-          event_id: initialEvent?.id,
+          event_id: activeEventId,
         }),
       });
 
@@ -139,72 +154,212 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
       setFlyerHeight(verified.flyer_height);
       setFlyerBytes(verified.flyer_bytes);
 
+      // Clear any previous flyer validation errors
+      clearFieldError("flyer_path");
+      clearFieldError("flyer_mime");
+
       // Local preview from file for instantaneous display
       setFlyerPreviewUrl(URL.createObjectURL(file));
     } catch (err: any) {
-      console.error("Flyer upload error:", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[SpaceEventForm] Flyer upload error:", err);
+      }
       setErrorMessage(err?.message || "Failed to upload flyer.");
     } finally {
       setUploadingFlyer(false);
     }
   };
 
+  const validateClientInputs = (): { isValid: boolean; payload?: any } => {
+    const errors: Record<string, string[]> = {};
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      errors.title = ["Title is required."];
+    } else if (trimmedTitle.length < 3) {
+      errors.title = ["Title must be at least 3 characters."];
+    } else if (trimmedTitle.length > 100) {
+      errors.title = ["Title cannot exceed 100 characters."];
+    }
+
+    const trimmedSlug = slug.trim();
+    if (!trimmedSlug) {
+      errors.slug = ["Slug is required."];
+    } else if (trimmedSlug.length < 3) {
+      errors.slug = ["Slug must be at least 3 characters."];
+    } else if (trimmedSlug.length > 80) {
+      errors.slug = ["Slug cannot exceed 80 characters."];
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(trimmedSlug)) {
+      errors.slug = ["Slug must contain only lowercase letters, numbers, and hyphens."];
+    }
+
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription) {
+      errors.description = ["Description is required."];
+    } else if (trimmedDescription.length < 10) {
+      errors.description = ["Description must be at least 10 characters."];
+    } else if (trimmedDescription.length > 5000) {
+      errors.description = ["Description cannot exceed 5000 characters."];
+    }
+
+    const trimmedCategory = category.trim();
+    if (!trimmedCategory || trimmedCategory.length < 2) {
+      errors.category = ["Please select or enter a valid category."];
+    }
+
+    const capNum = Number(capacity);
+    if (isNaN(capNum) || !Number.isInteger(capNum) || capNum < 1) {
+      errors.capacity = ["Capacity must be at least 1."];
+    } else if (capNum > 1000) {
+      errors.capacity = ["Capacity cannot exceed 1000."];
+    }
+
+    const startsAtUtcIso = parseIstInputToUtcIso(startsAt);
+    if (!startsAt || !startsAtUtcIso) {
+      errors.starts_at = ["Please select a valid start date and time (IST)."];
+    }
+
+    const endsAtUtcIso = parseIstInputToUtcIso(endsAt);
+    if (!endsAt || !endsAtUtcIso) {
+      errors.ends_at = ["Please select a valid end date and time (IST)."];
+    }
+
+    if (startsAtUtcIso && endsAtUtcIso) {
+      if (new Date(endsAtUtcIso).getTime() <= new Date(startsAtUtcIso).getTime()) {
+        errors.ends_at = ["Event end time must be after the start time."];
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setErrorMessage("Please correct the highlighted fields before submitting.");
+      return { isValid: false };
+    }
+
+    setFieldErrors({});
+
+    const payload = {
+      title: trimmedTitle,
+      slug: trimmedSlug,
+      description: trimmedDescription,
+      category: trimmedCategory,
+      starts_at: startsAtUtcIso!,
+      ends_at: endsAtUtcIso!,
+      capacity: capNum,
+      blocks_open_space: blocksOpenSpace,
+      flyer_path: flyerPath ? flyerPath : null,
+      flyer_mime: flyerMime ? flyerMime : null,
+      flyer_width: flyerWidth ?? null,
+      flyer_height: flyerHeight ?? null,
+      flyer_bytes: flyerBytes ?? null,
+    };
+
+    return { isValid: true, payload };
+  };
+
   const handleSubmit = async (publishImmediate = false) => {
+    if (saving || uploadingFlyer) return;
+
     setSaving(true);
     setErrorMessage(null);
 
-    const payload = {
-      title,
-      slug,
-      description,
-      category,
-      starts_at: new Date(startsAt).toISOString(),
-      ends_at: new Date(endsAt).toISOString(),
-      capacity: Number(capacity),
-      blocks_open_space: blocksOpenSpace,
-      flyer_path: flyerPath || undefined,
-      flyer_mime: flyerMime || undefined,
-      flyer_width: flyerWidth || undefined,
-      flyer_height: flyerHeight || undefined,
-      flyer_bytes: flyerBytes || undefined,
-    };
+    // 1. Client-side pre-validation
+    const validation = validateClientInputs();
+    if (!validation.isValid || !validation.payload) {
+      setSaving(false);
+      return;
+    }
+
+    const payload = validation.payload;
 
     try {
-      let eventId = initialEvent?.id;
+      const activeEventId = savedEventId || initialEvent?.id;
+      const isEdit = mode === "edit" || Boolean(activeEventId);
 
-      if (mode === "create") {
-        const res = await fetch("/api/space/organizer/events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const endpoint = isEdit
+        ? `/api/space/organizer/events/${activeEventId}`
+        : `/api/space/organizer/events`;
+      const method = isEdit ? "PATCH" : "POST";
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to create event.");
-        eventId = data.event.id;
-      } else {
-        const res = await fetch(`/api/space/organizer/events/${initialEvent?.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to update event.");
+      let data: any = null;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
       }
 
-      if (publishImmediate && eventId) {
-        const pubRes = await fetch(`/api/space/organizer/events/${eventId}/publish`, {
-          method: "POST",
-        });
-        const pubData = await pubRes.json();
-        if (!pubRes.ok) throw new Error(pubData.error || "Failed to publish event.");
+      if (!res.ok) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("[SpaceEventForm] Server validation / update error:", {
+            status: res.status,
+            error: data?.error,
+            details: data?.details,
+          });
+        }
+
+        if (data?.details && typeof data.details === "object" && Object.keys(data.details).length > 0) {
+          setFieldErrors(data.details);
+          setErrorMessage("Please correct the validation errors highlighted below.");
+        } else {
+          setErrorMessage(data?.error || `Failed to save event (HTTP ${res.status}).`);
+        }
+        return;
       }
 
+      // Event was saved successfully
+      const createdOrUpdatedId = data?.event?.id || activeEventId;
+      if (createdOrUpdatedId) {
+        setSavedEventId(createdOrUpdatedId);
+      }
+
+      // 2. Publish step if "Save & Publish" was clicked
+      if (publishImmediate && createdOrUpdatedId) {
+        const pubRes = await fetch(`/api/space/organizer/events/${createdOrUpdatedId}/publish`, {
+          method: "POST",
+        });
+
+        let pubData: any = null;
+        if (pubRes.headers.get("content-type")?.includes("application/json")) {
+          try {
+            pubData = await pubRes.json();
+          } catch {
+            pubData = null;
+          }
+        }
+
+        if (!pubRes.ok) {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[SpaceEventForm] Publish error:", {
+              status: pubRes.status,
+              error: pubData?.error,
+            });
+          }
+          setErrorMessage(
+            `Event was saved as a draft, but publishing to the calendar failed: ${
+              pubData?.error || pubRes.statusText || "Server error"
+            }. You can retry publishing below.`
+          );
+          return;
+        }
+      }
+
+      // Successful operation — redirect to organizer dashboard
       router.push("/fole-space/organizer");
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err?.message || "Submission failed.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[SpaceEventForm] Unexpected submission error:", err);
+      }
+      setErrorMessage(err?.message || "An unexpected error occurred while saving the event.");
     } finally {
       setSaving(false);
     }
@@ -213,9 +368,12 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm flex items-start gap-3">
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm flex items-start gap-3"
+        >
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div className="flex-1">
+          <div className="flex-1 space-y-1">
             <span className="font-bold">Error: </span>
             <span>{errorMessage}</span>
           </div>
@@ -242,8 +400,18 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="e.g. Embedded Rust Workshop & Sensors"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className={`w-full px-4 py-2.5 rounded-xl border ${
+                fieldErrors.title
+                  ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                  : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
             />
+            {fieldErrors.title && (
+              <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{fieldErrors.title.join(", ")}</span>
+              </p>
+            )}
           </div>
 
           <div>
@@ -254,21 +422,41 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               type="text"
               required
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                clearFieldError("slug");
+              }}
               placeholder="embedded-rust-workshop"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className={`w-full px-4 py-2.5 rounded-xl border ${
+                fieldErrors.slug
+                  ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                  : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-mono focus:outline-hidden focus:ring-2`}
             />
+            {fieldErrors.slug && (
+              <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{fieldErrors.slug.join(", ")}</span>
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Category
+                Category *
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  clearFieldError("category");
+                }}
+                className={`w-full px-4 py-2.5 rounded-xl border ${
+                  fieldErrors.category
+                    ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                    : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
               >
                 <option value="Workshop">Workshop</option>
                 <option value="Study Jam">Study Jam</option>
@@ -276,6 +464,12 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 <option value="Discussion">Discussion</option>
                 <option value="Talk">Talk</option>
               </select>
+              {fieldErrors.category && (
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.category.join(", ")}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -285,13 +479,25 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               <input
                 type="number"
                 min="1"
-                max="100"
+                max="1000"
                 required
                 value={capacity}
-                onChange={(e) => setCapacity(Number(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              >
-              </input>
+                onChange={(e) => {
+                  setCapacity(Number(e.target.value));
+                  clearFieldError("capacity");
+                }}
+                className={`w-full px-4 py-2.5 rounded-xl border ${
+                  fieldErrors.capacity
+                    ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                    : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
+              />
+              {fieldErrors.capacity && (
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.capacity.join(", ")}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -304,9 +510,22 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 type="datetime-local"
                 required
                 value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                onChange={(e) => {
+                  setStartsAt(e.target.value);
+                  clearFieldError("starts_at");
+                }}
+                className={`w-full px-4 py-2.5 rounded-xl border ${
+                  fieldErrors.starts_at
+                    ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                    : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2`}
               />
+              {fieldErrors.starts_at && (
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.starts_at.join(", ")}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -317,9 +536,22 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 type="datetime-local"
                 required
                 value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                onChange={(e) => {
+                  setEndsAt(e.target.value);
+                  clearFieldError("ends_at");
+                }}
+                className={`w-full px-4 py-2.5 rounded-xl border ${
+                  fieldErrors.ends_at
+                    ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                    : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2`}
               />
+              {fieldErrors.ends_at && (
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{fieldErrors.ends_at.join(", ")}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -331,10 +563,23 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               required
               rows={5}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                clearFieldError("description");
+              }}
               placeholder="Outline what participants will learn, what they should bring (laptops, microcontrollers), and the session flow."
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className={`w-full px-4 py-2.5 rounded-xl border ${
+                fieldErrors.description
+                  ? "border-red-500 dark:border-red-500 focus:ring-red-500"
+                  : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm leading-relaxed focus:outline-hidden focus:ring-2`}
             />
+            {fieldErrors.description && (
+              <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{fieldErrors.description.join(", ")}</span>
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3 pt-2">
@@ -392,12 +637,19 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  disabled={uploadingFlyer}
+                  disabled={uploadingFlyer || saving}
                   onChange={handleFlyerFileChange}
                   className="sr-only"
                 />
               </label>
             </div>
+
+            {(fieldErrors.flyer_path || fieldErrors.flyer_mime) && (
+              <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{(fieldErrors.flyer_path || fieldErrors.flyer_mime)?.join(", ")}</span>
+              </p>
+            )}
           </div>
 
           {/* Submission Action Buttons */}
@@ -418,7 +670,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               onClick={() => handleSubmit(false)}
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors disabled:opacity-50"
             >
-              <span>Save as Draft</span>
+              <span>{saving ? "Saving..." : "Save as Draft"}</span>
             </button>
           </div>
         </div>

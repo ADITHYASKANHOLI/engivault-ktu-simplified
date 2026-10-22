@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
 import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
-import { spaceEventSchema } from "@/lib/space/validation";
+import { spaceEventUpdateSchema } from "@/lib/space/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const parsed = spaceEventSchema.partial().safeParse(body);
+    const parsed = spaceEventUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(

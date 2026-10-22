@@ -165,3 +165,49 @@ export function formatCountdown(totalSeconds: number): string {
   }
   return `${mm}:${ss}`;
 }
+
+/**
+ * Converts a UTC ISO timestamp (or Date) to an HTML datetime-local input string
+ * representing Asia/Kolkata (IST) time ("YYYY-MM-DDTHH:mm").
+ * Never throws RangeError. Returns empty string on invalid/null input.
+ */
+export function formatUtcToIstInput(dateInput?: string | Date | number | null): string {
+  if (!dateInput) return "";
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "";
+    // IST is fixed UTC+05:30 (+330 minutes = 19,800,000 milliseconds)
+    const istMs = d.getTime() + 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(istMs);
+    return istDate.toISOString().slice(0, 16);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Converts an HTML datetime-local input string ("YYYY-MM-DDTHH:mm" or "YYYY-MM-DDTHH:mm:ss")
+ * selected in Asia/Kolkata (IST) to a UTC ISO string ("YYYY-MM-DDTHH:mm:ss.sssZ").
+ * Returns null if the input is empty or invalid. Never throws.
+ */
+export function parseIstInputToUtcIso(istInput?: string | null): string | null {
+  if (!istInput || typeof istInput !== "string") return null;
+  const trimmed = istInput.trim();
+  if (!trimmed) return null;
+
+  // Accept YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    return null;
+  }
+
+  try {
+    const withSeconds = trimmed.length === 16 ? `${trimmed}:00` : trimmed;
+    // Explicitly append +05:30 IST timezone offset so JS engines parse it deterministically
+    const isoWithOffset = `${withSeconds}+05:30`;
+    const d = new Date(isoWithOffset);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
