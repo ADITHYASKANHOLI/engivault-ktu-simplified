@@ -269,3 +269,5 @@ REVOKE ALL ON TABLE public.student_login_sessions FROM PUBLIC, anon, authenticat
 GRANT ALL ON TABLE public.student_login_sessions TO service_role;
 
 -- This installer deliberately does not write to supabase_migrations.schema_migrations.
+
+NOTIFY pgrst, 'reload schema';
