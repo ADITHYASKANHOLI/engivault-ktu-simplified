@@ -2214,38 +2214,84 @@ async function runTests() {
     assert.deepStrictEqual(isWithinOpeningHours({}), { isOpen: true });
   });
 
-  test("Database migration 011_fole_space_setup.sql is owner-executable, idempotent, and contains verification block", () => {
-    assert.ok(nodeFs.existsSync("supabase/migrations/011_fole_space_setup.sql"), "011_fole_space_setup.sql must exist");
-    const sql = nodeFs.readFileSync("supabase/migrations/011_fole_space_setup.sql", "utf-8");
+  test("Supabase migrations have strictly unique version numbers and no duplicate migration files", () => {
+    const migrationFiles = nodeFs.readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql"));
+    const versions = new Map();
 
-    // All 7 tables
+    for (const file of migrationFiles) {
+      const match = file.match(/^(\d{3,})/);
+      assert.ok(match, `Migration file ${file} must follow standard prefix convention (e.g. 001_...)`);
+      const version = match[1];
+      assert.strictEqual(
+        versions.has(version),
+        false,
+        `Duplicate migration version detected: version ${version} used by both ${versions.get(version)} and ${file}`
+      );
+      versions.set(version, file);
+    }
+
+    // Explicitly verify 011 and 012
+    assert.strictEqual(
+      nodeFs.existsSync("supabase/migrations/011_fole_space_system.sql"),
+      true,
+      "011_fole_space_system.sql must exist as canonical historical migration"
+    );
+    assert.strictEqual(
+      nodeFs.existsSync("supabase/migrations/011_fole_space_setup.sql"),
+      false,
+      "011_fole_space_setup.sql must be removed from supabase/migrations/ to prevent duplicate version conflict"
+    );
+    assert.strictEqual(
+      nodeFs.existsSync("supabase/migrations/012_fole_space_security_hardening.sql"),
+      true,
+      "012_fole_space_security_hardening.sql must exist as follow-up migration"
+    );
+  });
+
+  test("Canonical manual setup script supabase/manual/fole_space_setup.sql is owner-executable, idempotent, and contains verification block", () => {
+    assert.ok(nodeFs.existsSync("supabase/manual/fole_space_setup.sql"), "fole_space_setup.sql must exist in supabase/manual/");
+    const sql = nodeFs.readFileSync("supabase/manual/fole_space_setup.sql", "utf-8");
+
+    // All 7 tables - with physical singular space_audit_log and compatibility view space_audit_logs
     assert.ok(sql.includes("create table if not exists public.space_settings"), "Must create space_settings");
     assert.ok(sql.includes("create table if not exists public.space_sessions"), "Must create space_sessions");
     assert.ok(sql.includes("create table if not exists public.space_organizers"), "Must create space_organizers");
     assert.ok(sql.includes("create table if not exists public.space_events"), "Must create space_events");
     assert.ok(sql.includes("create table if not exists public.space_event_registrations"), "Must create space_event_registrations");
     assert.ok(sql.includes("create table if not exists public.space_event_checkins"), "Must create space_event_checkins");
-    assert.ok(sql.includes("create table if not exists public.space_audit_logs"), "Must create space_audit_logs");
-    assert.ok(sql.includes("create or replace view public.space_audit_log"), "Must create backward-compatible space_audit_log view");
+    assert.ok(sql.includes("create table if not exists public.space_audit_log ("), "Must create physical singular space_audit_log table");
+    assert.ok(sql.includes("create or replace view public.space_audit_logs"), "Must create backward-compatible space_audit_logs view");
 
-    // RLS enabled on all tables
+    // RLS enabled on all 7 tables
     assert.ok(sql.includes("alter table public.space_settings enable row level security;"), "Must enable RLS on space_settings");
     assert.ok(sql.includes("alter table public.space_sessions enable row level security;"), "Must enable RLS on space_sessions");
     assert.ok(sql.includes("alter table public.space_organizers enable row level security;"), "Must enable RLS on space_organizers");
     assert.ok(sql.includes("alter table public.space_events enable row level security;"), "Must enable RLS on space_events");
     assert.ok(sql.includes("alter table public.space_event_registrations enable row level security;"), "Must enable RLS on space_event_registrations");
     assert.ok(sql.includes("alter table public.space_event_checkins enable row level security;"), "Must enable RLS on space_event_checkins");
-    assert.ok(sql.includes("alter table public.space_audit_logs enable row level security;"), "Must enable RLS on space_audit_logs");
+    assert.ok(sql.includes("alter table public.space_audit_log enable row level security;"), "Must enable RLS on space_audit_log");
 
-    // Idempotent conservative seed
-    assert.ok(sql.includes("insert into public.space_settings (id, is_open, capacity, session_minutes, opening_hours, timezone)"), "Must seed space_settings");
+    // Strict access control on audit log
+    assert.ok(sql.includes("revoke all on public.space_audit_log from public, anon, authenticated;"), "Must revoke audit table access from public/anon/authenticated");
+    assert.ok(sql.includes("grant all on public.space_audit_log to service_role;"), "Must grant audit table access to service_role");
+    assert.ok(sql.includes("revoke all on public.space_audit_logs from public, anon, authenticated;"), "Must revoke audit view access from public/anon/authenticated");
+    assert.ok(sql.includes("grant select on public.space_audit_logs to service_role;"), "Must grant audit view select to service_role only");
+
+    // Idempotent conservative seed with ON CONFLICT DO NOTHING
+    assert.ok(sql.includes("insert into public.space_settings ("), "Must seed space_settings");
     assert.ok(sql.includes("on conflict (id) do nothing"), "Must use ON CONFLICT (id) DO NOTHING for safe rerun");
 
-    // Storage bucket
+    // Storage bucket: private and no unrestricted direct-read SELECT policy
     assert.ok(sql.includes("'fole-space-flyers'"), "Must configure fole-space-flyers storage bucket");
     assert.ok(sql.includes("public = false"), "Bucket must be private");
+    assert.ok(sql.includes('drop policy if exists "space_flyers_read" on storage.objects;'), "Must drop space_flyers_read policy");
+    assert.strictEqual(
+      sql.includes('create policy "space_flyers_read"'),
+      false,
+      "Regression: Must NOT recreate unrestricted direct SELECT policy on storage.objects for private flyer bucket"
+    );
 
-    // All 8 atomic RPCs with row locking
+    // All 8 atomic RPCs with row locking and hardened search_path
     const rpcs = [
       "rpc_space_checkin",
       "rpc_space_checkout",
@@ -2258,16 +2304,48 @@ async function runTests() {
     ];
     for (const rpc of rpcs) {
       assert.ok(sql.includes(`function public.${rpc}`), `Must define ${rpc}`);
+      assert.ok(sql.includes(`set search_path = public, pg_temp`), `Must enforce secure search_path on ${rpc}`);
       assert.ok(sql.includes(`revoke all on function public.${rpc}`), `Must revoke public execution on ${rpc}`);
       assert.ok(sql.includes(`grant execute on function public.${rpc}`), `Must grant execute to service_role on ${rpc}`);
     }
 
     // Schema cache reload
-    assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema at the end");
+    assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema");
 
-    // Verification block
-    assert.ok(sql.includes("VERIFICATION BLOCK"), "Must include prominent verification section");
+    // Verification block & rollback notes
+    assert.ok(sql.includes("AUTOMATED POST-SETUP VERIFICATION BLOCK"), "Must include prominent verification section");
     assert.ok(sql.includes("ROLLBACK NOTES"), "Must include rollback notes");
+  });
+
+  test("Follow-up migration 012_fole_space_security_hardening.sql reconciles audit table and removes unrestricted storage policy", () => {
+    assert.ok(nodeFs.existsSync("supabase/migrations/012_fole_space_security_hardening.sql"), "012 migration must exist");
+    const sql = nodeFs.readFileSync("supabase/migrations/012_fole_space_security_hardening.sql", "utf-8");
+
+    // Data-preserving reconciliation
+    assert.ok(sql.includes("create table if not exists public.space_audit_log"), "Must create space_audit_log");
+    assert.ok(sql.includes("insert into public.space_audit_log"), "Must migrate data from legacy space_audit_logs");
+    assert.ok(sql.includes("drop table public.space_audit_logs cascade;"), "Must drop legacy table after migration");
+    assert.ok(sql.includes("create or replace view public.space_audit_logs"), "Must create compatibility view");
+
+    // Storage security
+    assert.ok(sql.includes('drop policy if exists "space_flyers_read" on storage.objects;'), "Must drop space_flyers_read");
+    assert.strictEqual(sql.includes('create policy "space_flyers_read"'), false, "Must not create unrestricted storage read policy");
+    assert.ok(sql.includes("set public = false"), "Must ensure fole-space-flyers is marked private");
+
+    // Audit grants
+    assert.ok(sql.includes("revoke all on public.space_audit_log from public, anon, authenticated;"), "Must revoke audit permissions");
+    assert.ok(sql.includes("grant all on public.space_audit_log to service_role;"), "Must grant audit table to service_role");
+
+    // Schema cache reload
+    assert.ok(sql.includes("notify pgrst, 'reload schema';"), "Must notify pgrst to reload schema");
+  });
+
+  test("Private flyer delivery route enforces event publication and deletion checks before streaming", () => {
+    const flyerRoute = nodeFs.readFileSync("app/api/space/events/[slug]/flyer/route.ts", "utf-8");
+    assert.ok(flyerRoute.includes("event.deleted_at"), "Flyer route must reject deleted events");
+    assert.ok(flyerRoute.includes("isPublicStatus"), "Flyer route must verify event publication state");
+    assert.ok(flyerRoute.includes("createAdminClient"), "Flyer route must download via trusted server admin client");
+    assert.ok(flyerRoute.includes('.from("fole-space-flyers")'), "Flyer route must query fole-space-flyers bucket");
   });
 
   test("API route handlers for /api/space/status and admin settings enforce 503 on unconfigured database", () => {

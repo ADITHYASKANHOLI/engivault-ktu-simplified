@@ -266,7 +266,7 @@ To eliminate race conditions across distributed Vercel serverless instances, all
 ### 5.5 Original Flyer Preservation Pipeline
 - Organizers upload event flyers in original byte-for-byte fidelity (up to 10MB) directly to the private `fole-space-flyers` bucket via signed upload URLs.
 - Server-side binary validation (`lib/space/flyer.ts`) inspects magic bytes (PNG `89 50 4E 47`, JPEG `FF D8 FF`, WebP `RIFF....WEBP`) and extracts natural image dimensions from binary headers (PNG IHDR, JPEG SOF, WebP VP8/VP8L/VP8X). SVG and non-raster files are strictly rejected to prevent script injection.
-### 5.6 Database Schema, Migration 011 & Missing-Schema Fault Tolerance
+### 5.6 Database Schema, Migrations & Missing-Schema Fault Tolerance
 - **Core Entities:** FOLE SPACE is backed by seven relational tables and one view in the `public` PostgreSQL schema:
   - `space_settings`: Singleton configuration (`id = 1`) with capacity, session minutes, timezone (`Asia/Kolkata`), extension flags, check-in windows, and opening hours JSON. Unrestricted access is modeled by empty `{}` JSON.
   - `space_sessions`: Walk-in study records tracking `user_id`, `started_at`, `expires_at`, `checked_out_at`, `source`, and `status`. Partial unique index prevents concurrent active sessions per student.
@@ -274,17 +274,24 @@ To eliminate race conditions across distributed Vercel serverless instances, all
   - `space_events`: Workshops, study meetups, and technical sessions with title, description, flyer path, capacity, start/end dates, virtual check-in toggles, and status workflow (`draft` → `published` → `live` → `completed` / `cancelled`).
   - `space_event_registrations`: Attendee bookings with unguessable ticket codes and unique `(event_id, user_id)` constraint.
   - `space_event_checkins`: Attendance logs recording ticket verification timestamp, method (`qr`, `virtual`, `manual`), scanner profile ID, and unique `registration_id` constraint.
-  - `space_audit_logs`: Detailed audit trail tracking space master toggle events, forced checkouts, and organizer moderation.
-  - `space_audit_log`: Backward-compatible database view over `space_audit_logs`.
-- **Private Storage Bucket:** `fole-space-flyers` is a private bucket (`public = false`) limited to 10MB raster images (`image/png`, `image/jpeg`, `image/webp`).
+  - `space_audit_log`: Canonical physical audit table tracking space master toggle events, forced checkouts, and organizer moderation. Strictly restricted to `service_role`.
+  - `space_audit_logs`: Backward-compatible database view over `space_audit_log`, also restricted to `service_role`.
+- **Private Storage Bucket Security:**
+  - `fole-space-flyers` is a strictly private bucket (`public = false`) limited to 10MB raster images (`image/png`, `image/jpeg`, `image/webp`).
+  - Unrestricted direct SELECT policies (`space_flyers_read` on `storage.objects`) are eliminated.
+  - All public flyer downloads are streamed through the authorized server-side route `/api/space/events/[slug]/flyer`, which validates event publication, non-deleted status, and organizer authorization before streaming.
+- **Migration Pipeline vs. Canonical Manual Setup:**
+  - **Canonical Manual Setup Script:** [`supabase/manual/fole_space_setup.sql`](supabase/manual/fole_space_setup.sql) is the consolidated, owner-copyable script for Supabase SQL Editor. It contains all tables, indexes, RLS policies, 8 atomic `SECURITY DEFINER` RPCs (with row locking and `set search_path = public, pg_temp`), storage configuration, and automated 5-point verification checks.
+  - **Tracked Migrations Chain:** For automated Supabase CLI or CI/CD deployments, migrations follow sequential, strictly unique version numbers:
+    - `011_fole_space_system.sql`: Initial historical baseline FOLE SPACE schema.
+    - `012_fole_space_security_hardening.sql`: Security hardening, reconciling audit log to singular table `space_audit_log`, dropping legacy storage policies, and enforcing secure `search_path` on RPCs.
 - **PostgREST Schema Cache Reloading (`NOTIFY pgrst`):**
-  - Issuing `NOTIFY pgrst, 'reload schema';` only rebuilds the internal PostgREST cache from PostgreSQL's *existing* tables. It cannot create missing tables. If `011_fole_space_setup.sql` has not been run, reloading the cache succeeds but queries against `information_schema.tables` return 0 rows.
-  - Owners must execute `supabase/migrations/011_fole_space_setup.sql` directly in Supabase SQL Editor to provision the tables, RLS policies, RPC functions, and storage bucket.
+  - Issuing `NOTIFY pgrst, 'reload schema';` only rebuilds the internal PostgREST cache from PostgreSQL's *existing* tables. It cannot create missing tables. If `supabase/manual/fole_space_setup.sql` has not been run, reloading the cache succeeds but queries against `information_schema.tables` return 0 rows.
+  - Owners must execute `supabase/manual/fole_space_setup.sql` directly in Supabase SQL Editor to provision the tables, RLS policies, RPC functions, and storage bucket.
 - **Missing-Schema Detection & Controlled Fallbacks:**
   - Database queries and RPC calls are monitored by `isMissingSpaceSchemaError()` in `lib/space/errors.ts`, identifying structured codes (`PGRST205`, `42P01`, `PGRST202`, `42883`) and error messages referencing space relations.
   - When the database is unconfigured, public status route `GET /api/space/status` returns HTTP 503 with `{ "error": "FOLE SPACE database is not set up. Run migration 011.", "code": "FOLE_SPACE_DATABASE_NOT_CONFIGURED" }` instead of an unhandled 500 or misleading "space closed" state.
-  - The Admin Overview (`AdminSpaceOverview.tsx`) and Settings Form (`AdminSpaceSettingsForm.tsx`) display a prominent amber setup banner directing the owner to run `011_fole_space_setup.sql` and disables the master switch to prevent false success states.
+  - The Admin Overview (`AdminSpaceOverview.tsx`) and Settings Form (`AdminSpaceSettingsForm.tsx`) display a prominent amber setup banner directing the owner to run `supabase/manual/fole_space_setup.sql` and disables the master switch to prevent false success states.
 - **Idempotency & Safe Verification:**
-  - Migration `011_fole_space_setup.sql` is completely idempotent using `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and `INSERT ... ON CONFLICT (id) DO NOTHING` for seed settings, preventing accidental overwrites of administrator modifications.
+  - `supabase/manual/fole_space_setup.sql` is completely idempotent using `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and `INSERT ... ON CONFLICT (id) DO NOTHING` for seed settings, preventing accidental overwrites of administrator modifications.
   - Concludes with a 5-step verification block outputting tabular `PASS`/`FAIL` metrics and provides explicit rollback notes without executing destructive commands.
-
