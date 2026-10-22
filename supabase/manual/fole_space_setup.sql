@@ -263,18 +263,7 @@ end $$;
 create or replace view public.space_audit_logs as
 select * from public.space_audit_log;
 
--- Reconcile Supabase CLI migration tracking if supabase_migrations exists
-do $$
-begin
-  if exists (
-    select 1 from information_schema.tables
-    where table_schema = 'supabase_migrations' and table_name = 'schema_migrations'
-  ) then
-    insert into supabase_migrations.schema_migrations (version)
-    values ('011'), ('012'), ('011_fole_space_system'), ('012_fole_space_security_hardening')
-    on conflict do nothing;
-  end if;
-end $$;
+-- Note: Standalone installer creates database objects and does not alter Supabase CLI migration history.
 
 -- ==============================================================================
 -- 8. STORAGE BUCKET: fole-space-flyers (Private bucket, server-proxied delivery)
@@ -994,7 +983,7 @@ notify pgrst, 'reload schema';
 -- 12. AUTOMATED POST-SETUP VERIFICATION BLOCK
 -- ==============================================================================
 
--- Check 1: Verify all 7 core tables exist with Row Level Security enabled (Explicit row per table)
+-- Check 1: Verify all 7 core tables exist in schema 'public' with Row Level Security enabled (Explicit row per table)
 with expected_tables as (
   select * from (values
     ('space_settings'),
@@ -1008,32 +997,38 @@ with expected_tables as (
 )
 select
     e.table_name,
-    case when c.relname is not null then true else false end as table_exists,
+    case when c.oid is not null then true else false end as table_exists,
     coalesce(c.relrowsecurity, false) as rls_enabled,
     case
-        when c.relname is null then 'FAIL (Table Missing)'
+        when c.oid is null then 'FAIL (Table Missing)'
         when c.relrowsecurity = false then 'FAIL (RLS Disabled)'
         else 'PASS'
     end as verification
 from expected_tables e
-left join pg_catalog.pg_class c on c.relname = e.table_name
-left join pg_catalog.pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+left join pg_catalog.pg_namespace n on n.nspname = 'public'
+left join pg_catalog.pg_class c
+  on c.relnamespace = n.oid
+ and c.relname = e.table_name
+ and c.relkind in ('r', 'p')
 order by e.table_name;
 
--- Check 1b: Verify backward-compatibility view space_audit_logs exists
+-- Check 1b: Verify backward-compatibility view space_audit_logs exists in schema 'public'
 with expected_views as (
   select 'space_audit_logs' as view_name
 )
 select
     e.view_name,
-    case when v.table_name is not null then true else false end as view_exists,
+    case when c.oid is not null then true else false end as view_exists,
     case
-        when v.table_name is null then 'FAIL (Compatibility View Missing)'
+        when c.oid is null then 'FAIL (Compatibility View Missing)'
         else 'PASS'
     end as verification
 from expected_views e
-left join information_schema.views v
-  on v.table_schema = 'public' and v.table_name = e.view_name;
+left join pg_catalog.pg_namespace n on n.nspname = 'public'
+left join pg_catalog.pg_class c
+  on c.relnamespace = n.oid
+ and c.relname = e.view_name
+ and c.relkind = 'v';
 
 -- Check 2: Verify singleton settings row id = 1 exists with expected defaults (Guaranteed row output)
 select
@@ -1052,7 +1047,7 @@ select
 from (select 1 as dummy_id) d
 left join public.space_settings s on s.id = 1;
 
--- Check 3: Verify all 8 atomic RPC functions (Exact signature, SECURITY DEFINER, search_path, grants)
+-- Check 3: Verify all 8 atomic RPC functions in schema 'public' (Exact signature, SECURITY DEFINER, search_path, grants)
 with expected_rpcs as (
   select * from (values
     ('rpc_space_checkin', 'uuid'),
@@ -1082,11 +1077,11 @@ select
         else 'PASS'
     end as verification
 from expected_rpcs e
+left join pg_catalog.pg_namespace n on n.nspname = 'public'
 left join pg_catalog.pg_proc p
-  on p.proname = e.proname
-  and pg_catalog.pg_get_function_identity_arguments(p.oid) = e.expected_args
-left join pg_catalog.pg_namespace n
-  on n.oid = p.pronamespace and n.nspname = 'public'
+  on p.pronamespace = n.oid
+ and p.proname = e.proname
+ and pg_catalog.pg_get_function_identity_arguments(p.oid) = e.expected_args
 order by e.proname;
 
 -- Check 4: Verify fole-space-flyers private storage bucket exists and is private (Guaranteed row output)
@@ -1106,32 +1101,44 @@ select
 from expected_bucket e
 left join storage.buckets b on b.id = e.bucket_id;
 
--- Check 5: Comprehensive evaluation of Storage policies on storage.objects for fole-space-flyers
-with matching_policies as (
+-- Check 5: Comprehensive evaluation of storage policies on storage.objects for fole-space-flyers
+with evaluated_storage_policies as (
   select
     policyname,
     cmd,
     roles::text as target_roles,
-    qual
+    qual,
+    with_check,
+    case
+      -- 1. Direct policy targeting fole-space-flyers
+      when policyname = 'space_flyers_read'
+        or qual ilike '%fole-space-flyers%'
+        or with_check ilike '%fole-space-flyers%' then
+        'FAIL (Direct client policy references fole-space-flyers: ' || policyname || ')'
+      -- 2. Broad permissive policy allowing client reads on storage.objects without bucket restriction
+      when (cmd in ('SELECT', 'ALL') or cmd = '*')
+       and (roles::text like '%public%' or roles::text like '%anon%' or roles::text like '%authenticated%')
+       and (qual is null or qual = 'true' or qual not ilike '%bucket_id%') then
+        'FAIL (Broad permissive storage policy exposes all buckets without bucket isolation: ' || policyname || ')'
+      else null
+    end as failure_reason
   from pg_catalog.pg_policies
   where schemaname = 'storage'
     and tablename = 'objects'
-    and (
-      policyname = 'space_flyers_read'
-      or qual ilike '%fole-space-flyers%'
-      or with_check ilike '%fole-space-flyers%'
-    )
+),
+dangerous_policies as (
+  select * from evaluated_storage_policies where failure_reason is not null
 )
 select
-    coalesce(m.policyname, 'NONE') as policy_name,
-    coalesce(m.cmd, 'NONE') as command,
-    coalesce(m.target_roles, 'NONE') as roles,
+    coalesce(d.policyname, 'NONE') as policy_name,
+    coalesce(d.cmd, 'NONE') as command,
+    coalesce(d.target_roles, 'NONE') as roles,
     case
-        when count(m.policyname) over () = 0 then 'PASS (No permissive policies on fole-space-flyers)'
-        else 'FAIL (Unintended policy exists: ' || m.policyname || ')'
+        when count(d.policyname) over () = 0 then 'PASS (No permissive or broad read policies expose fole-space-flyers)'
+        else d.failure_reason
     end as verification
-from (select 1 as dummy) d
-left join matching_policies m on true;
+from (select 1 as dummy) dm
+left join dangerous_policies d on true;
 
 -- Check 6: Consolidated FOLE SPACE Setup Health Summary
 with
@@ -1141,9 +1148,21 @@ with
       ('space_events'), ('space_event_registrations'), ('space_event_checkins'),
       ('space_audit_log')
     ) as t(tbl)
-    left join pg_catalog.pg_class c on c.relname = t.tbl
-    left join pg_catalog.pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
-    where c.relname is null or c.relrowsecurity = false
+    left join pg_catalog.pg_namespace n on n.nspname = 'public'
+    left join pg_catalog.pg_class c
+      on c.relnamespace = n.oid
+     and c.relname = t.tbl
+     and c.relkind in ('r', 'p')
+    where c.oid is null or c.relrowsecurity = false
+  ),
+  view_failures as (
+    select count(*) as cnt from (values ('space_audit_logs')) as v(vw)
+    left join pg_catalog.pg_namespace n on n.nspname = 'public'
+    left join pg_catalog.pg_class c
+      on c.relnamespace = n.oid
+     and c.relname = v.vw
+     and c.relkind = 'v'
+    where c.oid is null
   ),
   settings_failures as (
     select count(*) as cnt from (select 1 as dummy) d
@@ -1161,9 +1180,11 @@ with
       ('rpc_space_virtual_checkin', 'uuid, uuid'),
       ('rpc_space_revoke_checkin', 'uuid, uuid')
     ) as r(proname, expected_args)
+    left join pg_catalog.pg_namespace n on n.nspname = 'public'
     left join pg_catalog.pg_proc p
-      on p.proname = r.proname and pg_catalog.pg_get_function_identity_arguments(p.oid) = r.expected_args
-    left join pg_catalog.pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+      on p.pronamespace = n.oid
+     and p.proname = r.proname
+     and pg_catalog.pg_get_function_identity_arguments(p.oid) = r.expected_args
     where p.oid is null
        or p.prosecdef = false
        or not (p.proconfig::text like '%search_path=public, pg_temp%')
@@ -1179,15 +1200,25 @@ with
   policy_failures as (
     select count(*) as cnt from pg_catalog.pg_policies
     where schemaname = 'storage' and tablename = 'objects'
-      and (policyname = 'space_flyers_read' or qual ilike '%fole-space-flyers%')
+      and (
+        policyname = 'space_flyers_read'
+        or qual ilike '%fole-space-flyers%'
+        or with_check ilike '%fole-space-flyers%'
+        or (
+          (cmd in ('SELECT', 'ALL') or cmd = '*')
+          and (roles::text like '%public%' or roles::text like '%anon%' or roles::text like '%authenticated%')
+          and (qual is null or qual = 'true' or qual not ilike '%bucket_id%')
+        )
+      )
   )
 select
     case
-        when (select cnt from table_failures) > 0 then 'FAIL: One or more tables missing or RLS disabled'
+        when (select cnt from table_failures) > 0 then 'FAIL: One or more tables missing from public schema or RLS disabled'
+        when (select cnt from view_failures) > 0 then 'FAIL: Backward-compatibility view space_audit_logs missing from public schema'
         when (select cnt from settings_failures) > 0 then 'FAIL: Space settings row 1 missing or invalid'
-        when (select cnt from rpc_failures) > 0 then 'FAIL: One or more RPCs missing, not definer, unhardened search_path, or invalid privileges'
+        when (select cnt from rpc_failures) > 0 then 'FAIL: One or more RPCs missing from public schema, not definer, unhardened search_path, or invalid privileges'
         when (select sum(cnt) from bucket_failures) > 0 then 'FAIL: Flyer bucket missing or public'
-        when (select cnt from policy_failures) > 0 then 'FAIL: Permissive flyer storage policy exists'
+        when (select cnt from policy_failures) > 0 then 'FAIL: Permissive or broad storage policy exposes flyer bucket'
         else 'ALL_CHECKS_PASSED'
     end as overall_status,
     now() as verified_at;
