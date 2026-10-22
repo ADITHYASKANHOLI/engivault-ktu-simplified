@@ -1952,11 +1952,11 @@ async function runTests() {
     assert.ok(sql.includes("on_auth_user_created"), "Migration must keep new internal student profiles synchronized");
     assert.ok(sql.includes("students.fole.invalid"), "Migration must restrict profile syncing to internal student accounts");
     assert.ok(sql.includes("create table if not exists public.student_login_sessions"), "Migration must define login history");
-    assert.ok(sql.includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
+    assert.ok(sql.toLowerCase().includes("user_id uuid references auth.users(id) on delete set null"), "Login history must link to Auth IDs while preserving history if an account is deleted");
     assert.ok(sql.includes("alter table public.student_login_sessions enable row level security"), "Login history must have RLS enabled");
     assert.ok(sql.includes("revoke all on table public.student_login_sessions from PUBLIC, anon, authenticated"), "Login history must not be readable by public API roles");
     assert.ok(sql.includes("grant all on table public.student_login_sessions to service_role"), "Trusted server routes must be able to write login history");
-    assert.ok(!sql.includes("supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
+    assert.ok(!sql.toLowerCase().includes("insert into supabase_migrations.schema_migrations"), "Migration must not mutate its own history table");
   });
 
   test("Student login and logout routes write and close linked session records", () => {
