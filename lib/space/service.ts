@@ -1,4 +1,5 @@
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { revalidateSpaceEvent } from "@/lib/cache/revalidate";
 import {
   SpaceSettings,
   SpaceStatus,
@@ -477,6 +478,35 @@ export async function revokeCheckIn(
 }
 
 /**
+ * Helper to fetch profiles for a list of user IDs in batch
+ */
+async function getProfilesMap(
+  admin: ReturnType<typeof createAdminClient>,
+  userIds: (string | null | undefined)[]
+): Promise<Record<string, { username?: string; display_name?: string }>> {
+  const profileMap: Record<string, { username?: string; display_name?: string }> = {};
+  const uniqueIds = Array.from(new Set(userIds.filter((id): id is string => Boolean(id))));
+  if (uniqueIds.length === 0) return profileMap;
+
+  const { data: profiles, error } = await admin
+    .from("profiles")
+    .select("id, username, display_name")
+    .in("id", uniqueIds);
+
+  if (error) {
+    console.warn("Failed to fetch profiles in getProfilesMap:", error.message);
+    return profileMap;
+  }
+
+  if (profiles) {
+    profiles.forEach((p: any) => {
+      profileMap[p.id] = p;
+    });
+  }
+  return profileMap;
+}
+
+/**
  * Queries events for the public catalogue
  */
 export async function getPublicEvents(options: {
@@ -492,10 +522,7 @@ export async function getPublicEvents(options: {
 
   let query = admin
     .from("space_events")
-    .select(`
-      *,
-      organizer:profiles!space_events_organizer_id_fkey(username, display_name)
-    `)
+    .select("*")
     .in("status", ["published", "live", "completed"])
     .is("deleted_at", null);
 
@@ -517,7 +544,10 @@ export async function getPublicEvents(options: {
   }
 
   const { data: events, error } = await query;
-  if (error || !events) return [];
+  if (error || !events) {
+    if (error) console.error("Error fetching public space events:", error);
+    return [];
+  }
 
   // Count registrations for each event
   const eventIds = events.map((e) => e.id);
@@ -547,11 +577,18 @@ export async function getPublicEvents(options: {
     });
   }
 
+  // Batch query organizer profiles
+  const profileMap = await getProfilesMap(
+    admin,
+    events.map((e) => e.organizer_id)
+  );
+
   return events.map((event) => {
     const regCount = countMap[event.id] || 0;
-    const org = event.organizer as { username?: string; display_name?: string } | null;
+    const org = profileMap[event.organizer_id];
     return {
       ...event,
+      organizer: org ? { username: org.username, display_name: org.display_name } : undefined,
       organizer_username: org?.username || "organizer",
       organizer_name: org?.display_name || org?.username || "Organizer",
       registered_count: regCount,
@@ -565,22 +602,25 @@ export async function getPublicEvents(options: {
 /**
  * Queries single event by slug with attendee details and full flyer metadata
  */
-export async function getEventBySlug(slug: string, currentUserIdOrPublicOnly?: string | boolean): Promise<SpaceEvent | null> {
+export async function getEventBySlug(
+  slug: string,
+  currentUserIdOrPublicOnly?: string | boolean
+): Promise<SpaceEvent | null> {
   if (!isSupabaseAdminConfigured()) return null;
 
   const currentUserId = typeof currentUserIdOrPublicOnly === "string" ? currentUserIdOrPublicOnly : undefined;
   const admin = createAdminClient();
   const { data: event, error } = await admin
     .from("space_events")
-    .select(`
-      *,
-      organizer:profiles!space_events_organizer_id_fkey(username, display_name)
-    `)
+    .select("*")
     .eq("slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (error || !event) return null;
+  if (error || !event) {
+    if (error) console.error("Error fetching event by slug:", error);
+    return null;
+  }
 
   // Registered count
   const { count: regCount } = await admin
@@ -617,10 +657,16 @@ export async function getEventBySlug(slug: string, currentUserIdOrPublicOnly?: s
     }
   }
 
-  const org = event.organizer as { username?: string; display_name?: string } | null;
+  // Profile lookup
+  let org: { username?: string; display_name?: string } | null = null;
+  if (event.organizer_id) {
+    const profileMap = await getProfilesMap(admin, [event.organizer_id]);
+    org = profileMap[event.organizer_id] || null;
+  }
 
   return {
     ...event,
+    organizer: org ? { username: org.username, display_name: org.display_name } : undefined,
     organizer_username: org?.username || "organizer",
     organizer_name: org?.display_name || org?.username || "Organizer",
     registered_count: regCount ?? 0,
@@ -639,19 +685,25 @@ export async function getEventById(id: string): Promise<SpaceEvent | null> {
   const admin = createAdminClient();
   const { data: event, error } = await admin
     .from("space_events")
-    .select(`
-      *,
-      organizer:profiles!space_events_organizer_id_fkey(username, display_name)
-    `)
+    .select("*")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (error || !event) return null;
+  if (error || !event) {
+    if (error) console.error("Error fetching event by id:", error);
+    return null;
+  }
 
-  const org = event.organizer as { username?: string; display_name?: string } | null;
+  let org: { username?: string; display_name?: string } | null = null;
+  if (event.organizer_id) {
+    const profileMap = await getProfilesMap(admin, [event.organizer_id]);
+    org = profileMap[event.organizer_id] || null;
+  }
+
   return {
     ...event,
+    organizer: org ? { username: org.username, display_name: org.display_name } : undefined,
     organizer_username: org?.username || "organizer",
     organizer_name: org?.display_name || org?.username || "Organizer",
   };
@@ -660,49 +712,90 @@ export async function getEventById(id: string): Promise<SpaceEvent | null> {
 /**
  * Fetches events for the space calendar in a target month (Asia/Kolkata)
  */
-export async function getCalendarEvents(yearOrYearMonth: number | string, maybeMonth?: number): Promise<SpaceEvent[]> {
+export async function getCalendarEvents(
+  yearOrYearMonth: number | string,
+  maybeMonthOrUserId?: number | string,
+  maybeUserId?: string
+): Promise<SpaceEvent[]> {
   if (!isSupabaseAdminConfigured()) return [];
 
   let year: number;
   let month: number;
+  let currentUserId: string | undefined;
 
   if (typeof yearOrYearMonth === "string") {
     const [y, m] = yearOrYearMonth.split("-");
     year = parseInt(y, 10);
     month = parseInt(m, 10);
+    if (typeof maybeMonthOrUserId === "string") {
+      currentUserId = maybeMonthOrUserId;
+    }
   } else {
     year = yearOrYearMonth;
-    month = maybeMonth || 1;
+    month = typeof maybeMonthOrUserId === "number" ? maybeMonthOrUserId : 1;
+    currentUserId = maybeUserId;
   }
 
   if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
     return [];
   }
 
-  const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0)).toISOString();
-  const endDate = new Date(Date.UTC(year, month, 1, 0, 0, 0)).toISOString();
+  // Exact boundary in Asia/Kolkata (IST = UTC+05:30 = 19,800,000 ms)
+  // Month start: 1st of month at 00:00:00 IST -> UTC = 00:00 IST - 5h30m
+  // Month end: 1st of next month at 00:00:00 IST -> UTC = 00:00 IST - 5h30m
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const startUtcMs = Date.UTC(year, month - 1, 1, 0, 0, 0) - IST_OFFSET_MS;
+  const endUtcMs = Date.UTC(year, month, 1, 0, 0, 0) - IST_OFFSET_MS;
+
+  const startDate = new Date(startUtcMs).toISOString();
+  const endDate = new Date(endUtcMs).toISOString();
 
   const admin = createAdminClient();
   const { data: events, error } = await admin
     .from("space_events")
-    .select(`
-      id, slug, title, starts_at, ends_at, category, status, capacity, blocks_open_space,
-      organizer:profiles!space_events_organizer_id_fkey(username, display_name)
-    `)
+    .select("id, slug, title, description, starts_at, ends_at, category, status, capacity, blocks_open_space, flyer_path, organizer_id")
     .in("status", ["published", "live", "completed"])
     .is("deleted_at", null)
     .gte("starts_at", startDate)
     .lt("starts_at", endDate)
     .order("starts_at", { ascending: true });
 
-  if (error || !events) return [];
+  if (error || !events) {
+    if (error) console.error("Error fetching calendar events:", error);
+    return [];
+  }
+
+  // Batch query organizer profiles
+  const profileMap = await getProfilesMap(
+    admin,
+    events.map((e) => e.organizer_id)
+  );
+
+  // Current user registrations if student is logged in
+  const userRegMap: Record<string, SpaceEventRegistration> = {};
+  if (currentUserId && events.length > 0) {
+    const eventIds = events.map((e) => e.id);
+    const { data: userRegs } = await admin
+      .from("space_event_registrations")
+      .select("*")
+      .eq("user_id", currentUserId)
+      .in("event_id", eventIds)
+      .eq("status", "registered");
+
+    userRegs?.forEach((reg) => {
+      userRegMap[reg.event_id] = reg as SpaceEventRegistration;
+    });
+  }
 
   return events.map((e) => {
-    const org = e.organizer as { username?: string; display_name?: string } | null;
+    const org = profileMap[e.organizer_id];
     return {
       ...(e as unknown as SpaceEvent),
+      organizer: org ? { username: org.username, display_name: org.display_name } : undefined,
       organizer_username: org?.username || "organizer",
       organizer_name: org?.display_name || org?.username || "Organizer",
+      is_registered: Boolean(userRegMap[e.id]),
+      my_registration: userRegMap[e.id] || null,
     };
   });
 }
@@ -814,16 +907,20 @@ export async function getEventDeskData(eventId: string, _organizerUserId?: strin
     .from("space_event_registrations")
     .select(`
       id, event_id, user_id, status, ticket_code, registered_at, cancelled_at,
-      attendee:profiles!space_event_registrations_user_id_fkey(username, display_name),
       checkin:space_event_checkins(id, checked_in_at, method, revoked_at)
     `)
     .eq("event_id", eventId)
     .order("registered_at", { ascending: true });
 
+  const profileMap = await getProfilesMap(
+    admin,
+    (registrations || []).map((r: any) => r.user_id)
+  );
+
   const participants = (registrations || []).map((reg: any) => {
     const checkins = Array.isArray(reg.checkin) ? reg.checkin : reg.checkin ? [reg.checkin] : [];
     const activeCheckin = checkins.find((c: any) => !c.revoked_at);
-    const profile = reg.attendee as { username?: string; display_name?: string } | null;
+    const profile = profileMap[reg.user_id];
 
     return {
       registrationId: reg.id,
@@ -1045,6 +1142,7 @@ export async function publishEvent(eventId: string, organizerUserId: string) {
   if (error) {
     return { success: false, error: error.message };
   }
+  revalidateSpaceEvent(event?.slug);
   return { success: true, event };
 }
 
@@ -1066,6 +1164,7 @@ export async function unpublishEvent(eventId: string, organizerUserId: string) {
   if (error) {
     return { success: false, error: error.message };
   }
+  revalidateSpaceEvent(event?.slug);
   return { success: true, event };
 }
 
@@ -1099,6 +1198,7 @@ export async function cancelEvent(eventId: string, organizerUserId?: string) {
     .eq("event_id", eventId)
     .eq("status", "registered");
 
+  revalidateSpaceEvent(event?.slug);
   return { success: true, event };
 }
 

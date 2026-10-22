@@ -8,9 +8,16 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category") || undefined;
+    const month = searchParams.get("month") || undefined;
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50", 10), 1), 100);
 
-    const events = await spaceService.getPublicEvents({ category, limit });
+    let events;
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      events = await spaceService.getCalendarEvents(month);
+    } else {
+      events = await spaceService.getPublicEvents({ category, limit });
+    }
+
     return NextResponse.json({ events }, {
       headers: {
         "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",

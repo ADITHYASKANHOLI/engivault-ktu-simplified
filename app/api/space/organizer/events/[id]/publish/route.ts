@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
 import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
+import { revalidateSpaceEvent } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
+    revalidateSpaceEvent(result.event?.slug);
     return NextResponse.json({ success: true, event: result.event });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Failed to publish event." }, { status: 500 });

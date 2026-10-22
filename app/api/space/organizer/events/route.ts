@@ -3,6 +3,7 @@ import { isSafeOrigin } from "@/lib/security/origin";
 import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 import { spaceEventSchema } from "@/lib/space/validation";
+import { revalidateSpaceEvent } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const event = await spaceService.createEvent(student.id, parsed.data);
+    revalidateSpaceEvent(event?.slug);
     return NextResponse.json({ success: true, event }, { status: 201 });
   } catch (error: any) {
     console.error("Create event error:", error);

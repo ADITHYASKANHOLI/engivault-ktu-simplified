@@ -3,6 +3,7 @@ import { isSafeOrigin } from "@/lib/security/origin";
 import { getAuthenticatedStudent, isVerifiedOrganizer } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
 import { spaceEventUpdateSchema } from "@/lib/space/validation";
+import { revalidateSpaceEvent } from "@/lib/cache/revalidate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,6 +78,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await spaceService.updateEvent(id, student.id, parsed.data);
+    revalidateSpaceEvent(updated?.slug);
     return NextResponse.json({ success: true, event: updated });
   } catch (error: any) {
     console.error("Update event error:", error);

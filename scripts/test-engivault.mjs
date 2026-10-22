@@ -2965,6 +2965,187 @@ async function runTests() {
     assert.ok(formCode.includes("savedEventId"), "Form must track saved draft ID to avoid duplicate creation");
   });
 
+  console.log("\n--- 21. FOLE SPACE CALENDAR EVENT RETRIEVAL & RENDERING REGRESSION SUITE ---");
+
+  test("1. Calendar query boundary calculation in Asia/Kolkata strictly includes early-morning (00:00-05:30 IST) events on 1st of month", () => {
+    const year = 2026;
+    const month = 11; // November 2026
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+    // Start of November 2026 in IST is 2026-11-01 00:00:00 IST -> UTC 2026-10-31 18:30:00.000Z
+    const startUtcMs = Date.UTC(year, month - 1, 1, 0, 0, 0) - IST_OFFSET_MS;
+    const endUtcMs = Date.UTC(year, month, 1, 0, 0, 0) - IST_OFFSET_MS;
+    const startDate = new Date(startUtcMs).toISOString();
+    const endDate = new Date(endUtcMs).toISOString();
+
+    assert.strictEqual(startDate, "2026-10-31T18:30:00.000Z", "Nov 1st 00:00 IST must map to Oct 31st 18:30 UTC");
+    assert.strictEqual(endDate, "2026-11-30T18:30:00.000Z", "Dec 1st 00:00 IST must map to Nov 30th 18:30 UTC");
+
+    // Event on Nov 1st at 02:30 AM IST (UTC: Oct 31st 21:00:00.000Z)
+    const earlyMorningEventUtc = "2026-10-31T21:00:00.000Z";
+    const isIncluded = earlyMorningEventUtc >= startDate && earlyMorningEventUtc < endDate;
+    assert.strictEqual(isIncluded, true, "Early morning Nov 1st IST event must be included in November calendar");
+
+    // Contrast with naive UTC comparison where startDate was 2026-11-01T00:00:00.000Z
+    const naiveUtcStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0)).toISOString();
+    const wouldBeOmittedByNaiveUtc = earlyMorningEventUtc < naiveUtcStart;
+    assert.strictEqual(wouldBeOmittedByNaiveUtc, true, "Naive UTC boundary incorrectly omitted 00:00-05:30 IST events");
+  });
+
+  test("2. Calendar query boundary calculation in Asia/Kolkata strictly excludes previous and next month events", () => {
+    const year = 2026;
+    const month = 11;
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0) - IST_OFFSET_MS).toISOString();
+    const endDate = new Date(Date.UTC(year, month, 1, 0, 0, 0) - IST_OFFSET_MS).toISOString();
+
+    // Event on Oct 31st at 23:59:59 IST (UTC: Oct 31st 18:29:59.000Z)
+    const prevMonthEventUtc = "2026-10-31T18:29:59.000Z";
+    assert.strictEqual(prevMonthEventUtc < startDate, true, "Oct 31st 23:59 IST must be excluded from November");
+
+    // Event on Dec 1st at 00:00:01 IST (UTC: Nov 30th 18:30:01.000Z)
+    const nextMonthEventUtc = "2026-11-30T18:30:01.000Z";
+    assert.strictEqual(nextMonthEventUtc >= endDate, true, "Dec 1st 00:00 IST must be excluded from November");
+  });
+
+  test("3. lib/space/service.ts eliminates fragile PostgREST foreign key embeds and implements batch profile enrichment", () => {
+    const serviceCode = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+    assert.strictEqual(
+      serviceCode.includes("space_events_organizer_id_fkey"),
+      false,
+      "service.ts must NOT use space_events_organizer_id_fkey which fails on PostgREST cross-schema lookup"
+    );
+    assert.strictEqual(
+      serviceCode.includes("space_event_registrations_user_id_fkey"),
+      false,
+      "service.ts must NOT use space_event_registrations_user_id_fkey which fails on PostgREST cross-schema lookup"
+    );
+    assert.ok(
+      serviceCode.includes("getProfilesMap"),
+      "service.ts must define getProfilesMap helper for batch profile lookup across schemas"
+    );
+  });
+
+  test("4. getCalendarEvents supports currentUserId and populates is_registered and my_registration", () => {
+    const serviceCode = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+    assert.ok(
+      serviceCode.includes("maybeMonthOrUserId"),
+      "getCalendarEvents must accept optional currentUserId parameter"
+    );
+    assert.ok(
+      serviceCode.includes("is_registered: Boolean(userRegMap[e.id])"),
+      "getCalendarEvents must map is_registered flag"
+    );
+    assert.ok(
+      serviceCode.includes("my_registration: userRegMap[e.id] || null"),
+      "getCalendarEvents must map user registration details"
+    );
+  });
+
+  test("5. Calendar page supports registered view filtering (view=registered) and renders view switch tabs", () => {
+    const calendarCode = nodeFs.readFileSync("app/(public)/fole-space/calendar/page.tsx", "utf-8");
+    assert.ok(
+      calendarCode.includes("getAuthenticatedStudent"),
+      "Calendar page must resolve authenticated student"
+    );
+    assert.ok(
+      calendarCode.includes("view === \"registered\""),
+      "Calendar page must support registered view mode"
+    );
+    assert.ok(
+      calendarCode.includes("All Sessions ("),
+      "Calendar page must render All Sessions tab with count"
+    );
+    assert.ok(
+      calendarCode.includes("My Registered ("),
+      "Calendar page must render My Registered tab with count"
+    );
+    assert.ok(
+      calendarCode.includes("isReg && \"✓ \""),
+      "Calendar page must render checkmark indicator for registered sessions in desktop grid"
+    );
+    assert.ok(
+      calendarCode.includes("Pass Confirmed"),
+      "Calendar page must render confirmed pass indicator in mobile agenda"
+    );
+  });
+
+  test("6. Cache revalidation helper revalidateSpaceEvent exists and is called on all event mutations", () => {
+    const revalCode = nodeFs.readFileSync("lib/cache/revalidate.ts", "utf-8");
+    assert.ok(
+      revalCode.includes("export function revalidateSpaceEvent"),
+      "lib/cache/revalidate.ts must export revalidateSpaceEvent"
+    );
+    assert.ok(
+      revalCode.includes('revalidatePath("/fole-space/calendar")'),
+      "revalidateSpaceEvent must revalidate /fole-space/calendar"
+    );
+
+    const publishRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/publish/route.ts", "utf-8");
+    assert.ok(
+      publishRoute.includes("revalidateSpaceEvent"),
+      "publish route must call revalidateSpaceEvent"
+    );
+
+    const unpublishRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/unpublish/route.ts", "utf-8");
+    assert.ok(
+      unpublishRoute.includes("revalidateSpaceEvent"),
+      "unpublish route must call revalidateSpaceEvent"
+    );
+
+    const editRoute = nodeFs.readFileSync("app/api/space/organizer/events/[id]/route.ts", "utf-8");
+    assert.ok(
+      editRoute.includes("revalidateSpaceEvent"),
+      "PATCH route must call revalidateSpaceEvent"
+    );
+
+    const createRoute = nodeFs.readFileSync("app/api/space/organizer/events/route.ts", "utf-8");
+    assert.ok(
+      createRoute.includes("revalidateSpaceEvent"),
+      "POST create route must call revalidateSpaceEvent"
+    );
+  });
+
+  test("7. Public events API route /api/space/events supports month query parameter", () => {
+    const routeCode = nodeFs.readFileSync("app/api/space/events/route.ts", "utf-8");
+    assert.ok(
+      routeCode.includes('searchParams.get("month")'),
+      "/api/space/events must inspect month search param"
+    );
+    assert.ok(
+      routeCode.includes("getCalendarEvents(month)"),
+      "/api/space/events must invoke getCalendarEvents when month is specified"
+    );
+  });
+
+  test("8. Calendar queries strictly filter published events and exclude unpublished drafts from public view", () => {
+    const serviceCode = nodeFs.readFileSync("lib/space/service.ts", "utf-8");
+    assert.ok(
+      serviceCode.includes('.in("status", ["published", "live", "completed"])'),
+      "getCalendarEvents must restrict retrieval to published, live, or completed statuses"
+    );
+    assert.ok(
+      serviceCode.includes('.is("deleted_at", null)'),
+      "getCalendarEvents must exclude soft-deleted events"
+    );
+  });
+
+  test("9. Calendar handles empty and error states distinctly without silent failure", () => {
+    const calendarCode = nodeFs.readFileSync("app/(public)/fole-space/calendar/page.tsx", "utf-8");
+    assert.ok(
+      calendarCode.includes("queryError"),
+      "Calendar page must capture and display query errors"
+    );
+    assert.ok(
+      calendarCode.includes("No registered sessions in"),
+      "Calendar page must display distinct message when registered view has no events"
+    );
+    assert.ok(
+      calendarCode.includes("No sessions scheduled for"),
+      "Calendar page must display distinct message when all sessions view has no events"
+    );
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

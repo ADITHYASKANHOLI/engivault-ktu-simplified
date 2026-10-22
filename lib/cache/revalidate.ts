@@ -100,3 +100,19 @@ export function revalidateWorksActivity(slug?: string) {
   }
 }
 
+export function revalidateSpaceEvent(slug?: string) {
+  try {
+    revalidatePath("/fole-space");
+    revalidatePath("/fole-space/calendar");
+    revalidatePath("/fole-space/events");
+    revalidatePath("/fole-space/my");
+    revalidatePath("/fole-space/organizer");
+    if (slug) {
+      revalidatePath(`/fole-space/events/${slug}`);
+      revalidatePath(`/api/space/events/${slug}/flyer`);
+    }
+  } catch (err) {
+    console.warn("revalidateSpaceEvent failed:", err);
+  }
+}
+

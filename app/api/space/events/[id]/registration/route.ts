@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isSafeOrigin } from "@/lib/security/origin";
 import { getAuthenticatedStudent } from "@/lib/space/permissions";
 import { spaceService } from "@/lib/space/service";
+import { revalidateSpaceEvent } from "@/lib/cache/revalidate";
 import {
   checkDbRateLimit,
   getClientIp,
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    revalidateSpaceEvent();
     return NextResponse.json({
       success: true,
       registration: result.registration,
@@ -125,6 +127,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    revalidateSpaceEvent();
     return NextResponse.json({
       success: true,
       message: "Registration cancelled successfully.",
