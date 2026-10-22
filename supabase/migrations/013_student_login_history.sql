@@ -205,12 +205,12 @@ BEGIN
 
     RETURN pg_catalog.jsonb_build_object(
       'allowed', true,
-      'remaining', pg_catalog.greatest(0, p_max_attempts - 1),
+      'remaining', GREATEST(0, p_max_attempts - 1),
       'reset_in_seconds', p_window_seconds
     );
   END IF;
 
-  v_reset_in := pg_catalog.greatest(
+  v_reset_in := GREATEST(
     1,
     pg_catalog.ceil(EXTRACT(EPOCH FROM (v_window_end - v_now)))::integer
   );
@@ -229,7 +229,7 @@ BEGIN
 
   RETURN pg_catalog.jsonb_build_object(
     'allowed', true,
-    'remaining', pg_catalog.greatest(0, p_max_attempts - (v_record.count + 1)),
+    'remaining', GREATEST(0, p_max_attempts - (v_record.count + 1)),
     'reset_in_seconds', v_reset_in
   );
 END;
