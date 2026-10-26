@@ -131,6 +131,14 @@ export function LoginDialog({
         return;
       }
 
+      if (studentMode === "signup" && data.signedIn === false) {
+        setSuccess(data.message || "Account created. Please sign in to continue.");
+        setStudentMode("login");
+        setPassword("");
+        setLoading(false);
+        return;
+      }
+
       setSuccess(
         studentMode === "signup"
           ? "Account created! Logging you in..."
