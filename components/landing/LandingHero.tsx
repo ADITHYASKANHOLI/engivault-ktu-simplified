@@ -63,7 +63,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
   };
 
   return (
-    <section className="relative w-full min-h-[920px] lg:min-h-screen pt-24 pb-12 sm:pb-16 flex flex-col justify-between overflow-hidden bg-[#07140E]">
+    <section className="relative w-full min-h-[780px] sm:min-h-[920px] lg:min-h-screen pt-24 pb-12 sm:pb-16 flex flex-col justify-between overflow-hidden bg-[#07140E]">
       {/* ---------------- 1. BACKGROUND PHOTOGRAPHIC & ARCHITECTURAL ART LAYER ---------------- */}
       <div className="absolute inset-0 z-0 select-none overflow-hidden">
         <Image
@@ -108,14 +108,14 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             {/* Oversized Authentic FOLE Brand Logo */}
             <div className="py-1">
               <FoleLogoVector
-                className="w-[280px] sm:w-[380px] md:w-[460px] lg:w-[490px] h-auto text-[#050E09]"
+                className="w-[min(280px,calc(100vw-2rem))] sm:w-[380px] md:w-[460px] lg:w-[490px] h-auto text-[#050E09]"
                 textColor="#050E09"
                 greenColor="#00C853"
               />
             </div>
 
             {/* Tagline: IDEAS INTO IMPACT */}
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#050E09] tracking-[0.24em] uppercase leading-tight font-sans">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black text-[#050E09] tracking-[0.14em] sm:tracking-[0.24em] uppercase leading-tight font-sans">
               IDEAS INTO IMPACT
             </h1>
 
@@ -307,7 +307,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
               <button
                 type="button"
                 onClick={handlePrevSlide}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer"
+                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-label="Previous slide highlight"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -315,7 +315,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
               <button
                 type="button"
                 onClick={handleNextSlide}
-                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer"
+                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-label="Next slide highlight"
               >
                 <ChevronRight className="w-3.5 h-3.5" />

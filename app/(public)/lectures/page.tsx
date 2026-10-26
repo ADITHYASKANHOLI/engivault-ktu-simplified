@@ -144,6 +144,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
               type="text"
               name="q"
               defaultValue={q || ""}
+              aria-label="Search academic lectures"
               placeholder="Search lectures by topic (e.g. Laplace Transform, Isometric Projection, KVL, Normal Form)..."
               className="w-full pl-11 pr-24 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all shadow-xs"
             />

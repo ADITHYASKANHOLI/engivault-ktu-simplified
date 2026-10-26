@@ -123,9 +123,9 @@ export function VideoPlayer({
     const toggleFullscreen = () => {
       if (!videoRef.current) return;
       if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        videoRef.current.requestFullscreen();
+        void document.exitFullscreen().catch(() => undefined);
+      } else if (videoRef.current.requestFullscreen) {
+        void videoRef.current.requestFullscreen().catch(() => undefined);
       }
     };
 
@@ -175,7 +175,7 @@ export function VideoPlayer({
             <div className="flex items-center gap-4">
               <button
                 onClick={togglePlay}
-                className="p-1 hover:text-cyan-400 transition-colors focus:outline-none"
+                className="min-w-11 min-h-11 p-2.5 flex items-center justify-center hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
@@ -183,7 +183,7 @@ export function VideoPlayer({
 
               <button
                 onClick={resetPlayhead}
-                className="p-1 hover:text-cyan-400 transition-colors focus:outline-none"
+                className="min-w-11 min-h-11 p-2.5 flex items-center justify-center hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 aria-label="Restart lecture"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -191,7 +191,7 @@ export function VideoPlayer({
 
               <button
                 onClick={toggleMute}
-                className="p-1 hover:text-cyan-400 transition-colors focus:outline-none"
+                className="min-w-11 min-h-11 p-2.5 flex items-center justify-center hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 aria-label={isMuted ? "Unmute" : "Mute"}
               >
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -208,7 +208,7 @@ export function VideoPlayer({
               </span>
               <button
                 onClick={toggleFullscreen}
-                className="p-1 hover:text-cyan-400 transition-colors focus:outline-none"
+                className="min-w-11 min-h-11 p-2.5 flex items-center justify-center hover:text-cyan-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg"
                 aria-label="Toggle fullscreen"
               >
                 <Maximize className="w-4 h-4" />

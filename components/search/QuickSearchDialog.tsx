@@ -23,10 +23,17 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = originalOverflow;
+      };
     } else {
       setQuery("");
       setResults([]);
@@ -47,28 +54,60 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
   }, [isOpen, onClose]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('input:not([disabled]), button:not([disabled]), a[href]')
+      ).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleTab);
+    return () => window.removeEventListener("keydown", handleTab);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       setLoading(false);
       return;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setResults(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        console.error("Search fetch error:", err);
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          console.error("Search fetch error:", err);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }, 200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   if (!isOpen) return null;
@@ -82,13 +121,14 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
     >
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-[#07140e] rounded-2xl border border-slate-200 dark:border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col">
+      <div ref={dialogRef} className="relative z-10 w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-white dark:bg-[#07140e] rounded-2xl border border-slate-200 dark:border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3.5 border-b border-slate-100 dark:border-emerald-950">
           <Search className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mr-3" />
           <input
             ref={inputRef}
             type="text"
+            aria-label="Search FOLE curriculum"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search KTU subjects, modules, codes (e.g. MAT 101, Calculus)..."
@@ -98,7 +138,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             aria-label="Close search"
           >
             <X className="w-5 h-5" />

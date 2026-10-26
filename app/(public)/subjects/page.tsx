@@ -1,6 +1,5 @@
 import React from "react";
-import Link from "next/link";
-import { BookOpen, Search, Filter } from "lucide-react";
+import { BookOpen, Search } from "lucide-react";
 import { getPublishedSubjects } from "@/lib/queries";
 import { SubjectGrid } from "@/components/subjects/SubjectGrid";
 
@@ -53,6 +52,7 @@ export default async function SubjectsPage({
               type="text"
               name="q"
               defaultValue={q || ""}
+              aria-label="Search engineering subjects"
               placeholder="Search subjects by name (e.g. Calculus, Graphics, Circuits)..."
               className="w-full pl-11 pr-24 py-3.5 rounded-xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm text-slate-900"
             />

@@ -33,6 +33,10 @@ export function RippleCursor() {
 
     // Check reduced motion
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      setMounted(false);
+      return;
+    }
 
     // Is admin route check
     const isAdmin = pathname?.startsWith("/admin");

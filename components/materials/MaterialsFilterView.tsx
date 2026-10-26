@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -39,6 +39,16 @@ export function MaterialsFilterView({
   const [selectedModule, setSelectedModule] = useState(searchParams.get("module") || "");
   const [selectedType, setSelectedType] = useState(searchParams.get("type") || "");
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
+  // Keep controls in sync with browser Back/Forward navigation.
+  useEffect(() => {
+    setSearchQuery(searchParams.get("q") || "");
+    setSelectedDept(searchParams.get("dept") || "");
+    setSelectedSem(searchParams.get("sem") || "");
+    setSelectedSubject(searchParams.get("subject") || "");
+    setSelectedModule(searchParams.get("module") || "");
+    setSelectedType(searchParams.get("type") || "");
+  }, [searchParams]);
 
   // Available modules based on selected subject
   const availableModules = useMemo(() => {

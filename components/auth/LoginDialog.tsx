@@ -37,6 +37,7 @@ export function LoginDialog({
   const router = useRouter();
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const [activeTab, setActiveTab] = useState<"student" | "admin">(initialTab);
   const [studentMode, setStudentMode] = useState<"login" | "signup">("login");
@@ -69,6 +70,8 @@ export function LoginDialog({
   useEffect(() => {
     if (!isOpen) return;
 
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+
     const timer = setTimeout(() => {
       firstInputRef.current?.focus();
     }, 50);
@@ -83,8 +86,37 @@ export function LoginDialog({
     return () => {
       clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
     };
   }, [isOpen, onClose]);
+
+  // Keep keyboard focus inside the modal while it is open.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleTab);
+    return () => window.removeEventListener("keydown", handleTab);
+  }, [isOpen]);
 
   // Lock body scroll when dialog is active
   useEffect(() => {
@@ -210,7 +242,7 @@ export function LoginDialog({
       {/* Modal Dialog Card */}
       <div
         ref={dialogRef}
-        className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 space-y-5 z-10 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 fade-in duration-150"
+        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-5 sm:p-7 space-y-5 z-10 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 fade-in duration-150"
       >
         {/* Header with Title and Close Button */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -225,7 +257,7 @@ export function LoginDialog({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -233,15 +265,17 @@ export function LoginDialog({
         </div>
 
         {/* Segmented Control: Student vs Admin */}
-        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+        <div className="flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold" role="tablist" aria-label="Account type">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "student"}
             onClick={() => {
               setActiveTab("student");
               setError(null);
             }}
             className={cn(
-              "flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none",
+              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
               activeTab === "student"
                 ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -252,12 +286,14 @@ export function LoginDialog({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === "admin"}
             onClick={() => {
               setActiveTab("admin");
               setError(null);
             }}
             className={cn(
-              "flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none",
+              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
               activeTab === "admin"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -322,7 +358,7 @@ export function LoginDialog({
                       setError(null);
                     }}
                     className={cn(
-                      "pb-2 font-semibold transition-colors mr-4 border-b-2",
+                      "min-h-11 pb-2 font-semibold transition-colors mr-4 border-b-2",
                       studentMode === "login"
                         ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
                         : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -337,7 +373,7 @@ export function LoginDialog({
                       setError(null);
                     }}
                     className={cn(
-                      "pb-2 font-semibold transition-colors border-b-2",
+                      "min-h-11 pb-2 font-semibold transition-colors border-b-2",
                       studentMode === "signup"
                         ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
                         : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -407,7 +443,7 @@ export function LoginDialog({
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -479,7 +515,7 @@ export function LoginDialog({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
                   aria-label={showPassword ? "Hide access code" : "Show access code"}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
