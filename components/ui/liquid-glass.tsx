@@ -453,3 +453,158 @@ export function LiquidGlassButton({
     </button>
   );
 }
+
+export type LiquidGlassCardProps = React.HTMLAttributes<HTMLDivElement> & {
+  ref?: React.Ref<HTMLDivElement>;
+  radius?: number;
+  bevelDepth?: number;
+  scale?: number;
+  aberration?: number;
+  frost?: number;
+  tint?: number;
+  contentClassName?: string;
+  glow?: boolean;
+};
+
+/**
+ * Surface card with refractive Snell's-law glass texture and top specular highlight.
+ */
+export function LiquidGlassCard({
+  children,
+  className,
+  contentClassName,
+  radius = 24,
+  bevelDepth = 16,
+  scale = 24,
+  aberration = 2,
+  frost = 0.45,
+  tint = 0.14,
+  glow = false,
+  ref,
+  ...props
+}: LiquidGlassCardProps) {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative rounded-[var(--card-radius,24px)] transition-all",
+        glow && "hover:shadow-[0_0_30px_rgba(0,229,139,0.18)]",
+        className,
+      )}
+      style={{ "--card-radius": `${radius}px` } as React.CSSProperties}
+      {...props}
+    >
+      <LiquidGlass
+        radius={radius}
+        bevelDepth={bevelDepth}
+        scale={scale}
+        aberration={aberration}
+        frost={frost}
+        tint={tint}
+        className="w-full h-full shadow-[0_12px_40px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/15"
+        contentClassName={cn("p-6 sm:p-7 relative z-10", contentClassName)}
+      >
+        {children}
+      </LiquidGlass>
+    </div>
+  );
+}
+
+export type LiquidGlassBadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
+  ref?: React.Ref<HTMLSpanElement>;
+  radius?: number;
+  bevelDepth?: number;
+  scale?: number;
+  aberration?: number;
+  frost?: number;
+  tint?: number;
+  contentClassName?: string;
+};
+
+/**
+ * Optical glass badge / chip with subtle refraction and border shine.
+ */
+export function LiquidGlassBadge({
+  children,
+  className,
+  contentClassName,
+  radius = 999,
+  bevelDepth = 8,
+  scale = 16,
+  aberration = 2,
+  frost = 0.35,
+  tint = 0.16,
+  ref,
+  ...props
+}: LiquidGlassBadgeProps) {
+  return (
+    <span
+      ref={ref}
+      className={cn("inline-flex items-center justify-center p-0 select-none", className)}
+      {...props}
+    >
+      <LiquidGlass
+        radius={radius}
+        bevelDepth={bevelDepth}
+        scale={scale}
+        aberration={aberration}
+        frost={frost}
+        tint={tint}
+        className="shadow-sm shadow-black/15 border border-white/25"
+        contentClassName={cn("px-3 py-1 text-xs font-semibold", contentClassName)}
+      >
+        {children}
+      </LiquidGlass>
+    </span>
+  );
+}
+
+export type LiquidGlassPanelProps = React.HTMLAttributes<HTMLDivElement> & {
+  ref?: React.Ref<HTMLDivElement>;
+  radius?: number;
+  bevelDepth?: number;
+  scale?: number;
+  aberration?: number;
+  frost?: number;
+  tint?: number;
+  contentClassName?: string;
+};
+
+/**
+ * Wide architectural glass panel with refractive Snell's-law displacement.
+ */
+export function LiquidGlassPanel({
+  children,
+  className,
+  contentClassName,
+  radius = 32,
+  bevelDepth = 18,
+  scale = 28,
+  aberration = 3,
+  frost = 0.5,
+  tint = 0.15,
+  ref,
+  ...props
+}: LiquidGlassPanelProps) {
+  return (
+    <div
+      ref={ref}
+      className={cn("relative rounded-[var(--panel-radius,32px)] overflow-hidden", className)}
+      style={{ "--panel-radius": `${radius}px` } as React.CSSProperties}
+      {...props}
+    >
+      <LiquidGlass
+        radius={radius}
+        bevelDepth={bevelDepth}
+        scale={scale}
+        aberration={aberration}
+        frost={frost}
+        tint={tint}
+        className="w-full h-full shadow-[0_20px_50px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.35)] border border-white/10"
+        contentClassName={cn("p-5 sm:p-7 relative z-10", contentClassName)}
+      >
+        {children}
+      </LiquidGlass>
+    </div>
+  );
+}

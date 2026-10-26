@@ -129,16 +129,16 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-40 bg-white/75 dark:bg-[#07140e]/80 backdrop-blur-md border-b border-white/50 dark:border-white/10 shadow-xs transition-all duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] sm:h-20 flex items-center justify-between gap-3 sm:gap-4">
+    <header className="fixed top-3 sm:top-5 md:top-6 inset-x-0 z-50 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-300">
+      <div className="w-full h-14 sm:h-16 px-4 sm:px-6 lg:px-7 rounded-full bg-white/75 dark:bg-[#07140e]/85 backdrop-blur-xl border border-white/60 dark:border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 sm:gap-4 pointer-events-auto">
         {/* Brand Logo on the Left */}
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0">
           <Link
             href="/"
-            className="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded transition-transform hover:scale-[1.02]"
+            className="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-full transition-transform hover:scale-[1.02]"
             aria-label="FOLE Homepage"
           >
-            <FoleLogoVector className="h-8 sm:h-9 w-auto" />
+            <FoleLogoVector className="h-7 sm:h-8 w-auto" textColor="#050908" greenColor="#00A86B" />
           </Link>
         </div>
 
@@ -155,15 +155,15 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative text-sm tracking-tight transition-colors py-2 flex flex-col items-center",
+                  "relative text-xs lg:text-[13px] 2xl:text-sm tracking-tight transition-colors py-2 flex flex-col items-center whitespace-nowrap",
                   active
-                    ? "text-[#050E09] dark:text-white font-bold"
+                    ? "text-[#050908] dark:text-white font-bold"
                     : "text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white font-medium"
                 )}
               >
                 <span>{item.label}</span>
                 {active && (
-                  <span className="absolute -bottom-1.5 w-6 h-0.5 bg-[#00C853] rounded-full" />
+                  <span className="absolute -bottom-1.5 w-6 h-0.5 bg-[#00A86B] rounded-full" />
                 )}
               </Link>
             );
@@ -171,13 +171,13 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         </nav>
 
         {/* Header Right Utilities */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
           {/* Search Icon Button */}
           <button
             type="button"
             onClick={() => setSearchDialogOpen(true)}
             aria-label="Search FOLE Curriculum"
-            className="w-11 h-11 rounded-full text-slate-700 dark:text-slate-200 hover:text-[#00C853] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 dark:text-slate-200 hover:text-[#00A86B] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
           >
             <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
           </button>
@@ -195,12 +195,12 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
               />
             </div>
           ) : (
-            <div className="hidden sm:flex items-center gap-2.5">
+            <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
               {/* Login Button */}
               <button
                 type="button"
                 onClick={() => handleOpenLogin("student")}
-                className="min-h-11 px-4.5 py-2 rounded-full border border-slate-700/40 hover:border-slate-900 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold hover:bg-slate-900/5 dark:hover:bg-white/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                className="min-h-[36px] sm:min-h-[38px] px-4 sm:px-4.5 py-1.5 rounded-full border border-slate-700/50 hover:border-slate-900 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold hover:bg-slate-900/5 dark:hover:bg-white/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer"
               >
                 Login
               </button>
@@ -208,7 +208,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
               {/* Get Started Button */}
               <Link
                 href="/subjects"
-                className="min-h-11 px-5 py-2 rounded-full bg-[#00C853] hover:bg-[#00B048] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="min-h-[36px] sm:min-h-[38px] px-4.5 sm:px-5 py-1.5 rounded-full bg-[#00A86B] hover:bg-[#008f5a] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               >
                 Get Started
               </Link>
@@ -220,15 +220,15 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
             ref={mobileMenuButtonRef}
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="w-11 h-11 flex xl:hidden items-center justify-center rounded-xl text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-10 h-10 flex xl:hidden items-center justify-center rounded-full text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-drawer"
           >
             {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             )}
           </button>
         </div>
@@ -236,16 +236,16 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
 
       {/* Accessible Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div id="mobile-navigation-drawer" className="fixed inset-0 top-[72px] sm:top-20 z-50 xl:hidden flex flex-col">
+        <div id="mobile-navigation-drawer" className="fixed inset-0 top-[70px] sm:top-20 z-50 xl:hidden flex flex-col pointer-events-auto">
           {/* Backdrop */}
           <div
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 top-[72px] sm:top-20 bg-black/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
             aria-hidden="true"
           />
 
           {/* Drawer Sheet */}
-          <div className="relative w-full bg-white dark:bg-[#07140e] border-b border-slate-200 dark:border-emerald-950 shadow-2xl p-4 sm:p-6 space-y-4 z-10 max-h-[calc(100dvh-72px)] sm:max-h-[calc(100dvh-80px)] overflow-y-auto">
+          <div className="relative mx-4 sm:mx-6 rounded-2xl sm:rounded-3xl bg-white/95 dark:bg-[#07140e]/95 backdrop-blur-2xl border border-slate-200/80 dark:border-white/15 shadow-2xl p-4 sm:p-6 space-y-4 z-10 max-h-[calc(100dvh-100px)] overflow-y-auto">
             {/* Quick search input button */}
             <div className="pb-2 border-b border-slate-100 dark:border-emerald-950">
               <button

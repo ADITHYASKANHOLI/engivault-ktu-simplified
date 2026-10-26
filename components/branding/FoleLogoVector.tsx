@@ -14,8 +14,8 @@ export interface FoleLogoVectorProps {
 
 export function FoleLogoVector({
   className = "h-8 w-auto",
-  textColor = "#050E09",
-  greenColor = "#00C853",
+  textColor = "#050908",
+  greenColor = "#00A86B",
   href,
 }: FoleLogoVectorProps) {
   const svgContent = (

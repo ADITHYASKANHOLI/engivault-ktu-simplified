@@ -13,7 +13,12 @@ import {
   Zap,
 } from "lucide-react";
 import LiquidGlassDemo from "@/components/liquid-glass-demo";
-import { LiquidGlass } from "@/components/ui/liquid-glass";
+import {
+  LiquidGlassButton,
+  LiquidGlassCard,
+  LiquidGlassBadge,
+  LiquidGlassPanel,
+} from "@/components/ui/liquid-glass";
 
 export default function LiquidGlassPage() {
   const [shape, setShape] = useState<"circle" | "pill">("circle");
@@ -198,93 +203,90 @@ export default function LiquidGlassPage() {
         <div className="space-y-6 pt-4">
           <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-400 font-mono">
             <Layers className="w-4 h-4" />
-            <span>UI Integration Examples</span>
+            <span>UI Integration Examples & Texture Pack Components</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Example 1: Liquid Glass Button */}
             <div className="p-6 rounded-2xl bg-[#092214]/40 border border-emerald-950 flex flex-col justify-between space-y-4">
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-white">Refractive Pill Button</h3>
+                <h3 className="text-base font-bold text-white">LiquidGlassButton</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Liquid glass used as an active button surface over colorful backgrounds.
+                  Interactive refractive pill button with Snell&apos;s-law refraction, focus rings, and hover states.
                 </p>
               </div>
 
               <div className="pt-2">
-                <LiquidGlass
-                  radius={999}
+                <LiquidGlassButton
                   scale={24}
                   bevelDepth={12}
-                  aberration={6}
-                  tint={0.15}
-                  className="inline-flex items-center px-6 py-3 cursor-pointer transition-transform hover:scale-[1.03] shadow-lg border border-white/20"
+                  aberration={4}
+                  tint={0.16}
+                  onClick={() => alert("Liquid Glass Button Clicked!")}
                 >
-                  <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-[#2EE585]" />
-                    <span>Explore Lectures</span>
-                  </span>
-                </LiquidGlass>
+                  <Zap className="w-3.5 h-3.5 text-[#00E58B]" />
+                  <span>Explore Lectures</span>
+                </LiquidGlassButton>
               </div>
             </div>
 
-            {/* Example 2: Liquid Glass Badge / Card */}
+            {/* Example 2: Liquid Glass Badge */}
             <div className="p-6 rounded-2xl bg-[#092214]/40 border border-emerald-950 flex flex-col justify-between space-y-4">
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-white">Academic Codex Badge</h3>
+                <h3 className="text-base font-bold text-white">LiquidGlassBadge</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Compact refractive pill showing course badges and accreditation.
+                  Compact optical glass chip for status indicators, academic accreditation, and tags.
                 </p>
               </div>
 
-              <div className="pt-2">
-                <LiquidGlass
-                  radius={20}
-                  scale={28}
-                  bevelDepth={16}
-                  aberration={8}
-                  tint={0.18}
-                  className="p-4 border border-white/20 shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00C853] animate-pulse" />
-                    <div>
-                      <div className="text-xs font-bold text-white font-mono">KTU 2024 SCHEME</div>
-                      <div className="text-[11px] text-emerald-300">Verified Curriculum</div>
-                    </div>
+              <div className="pt-2 flex items-center gap-2">
+                <LiquidGlassBadge tint={0.2} frost={0.4}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#00E58B] animate-pulse" />
+                    <span className="text-white font-mono text-[11px] font-bold">KTU 2024 SCHEME</span>
                   </div>
-                </LiquidGlass>
+                </LiquidGlassBadge>
               </div>
             </div>
 
-            {/* Example 3: Space Check-in Card */}
+            {/* Example 3: Liquid Glass Card */}
             <div className="p-6 rounded-2xl bg-[#092214]/40 border border-emerald-950 flex flex-col justify-between space-y-4">
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-white">FOLE SPACE Sanctum</h3>
+                <h3 className="text-base font-bold text-white">LiquidGlassCard</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Refractive glass tile used for occupancy and door status cards.
+                  Full card surface with optical dispersion, top specular highlight, and inner lighting.
                 </p>
               </div>
 
               <div className="pt-2">
-                <LiquidGlass
-                  radius={20}
-                  scale={30}
-                  bevelDepth={18}
-                  aberration={10}
-                  tint={0.2}
-                  className="p-4 border border-white/20 shadow-md"
-                >
+                <LiquidGlassCard radius={18} scale={20} bevelDepth={14} aberration={3} tint={0.18} glow>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white">Open Commons</span>
-                    <span className="text-[10px] font-mono font-bold bg-[#00C853]/30 text-[#2EE585] px-2 py-0.5 rounded-full border border-[#00C853]/50">
+                    <span className="text-[10px] font-mono font-bold bg-[#00A86B]/30 text-[#00E58B] px-2 py-0.5 rounded-full border border-[#00A86B]/50">
                       LIVE
                     </span>
                   </div>
                   <div className="text-xs text-slate-300 mt-1">42 Desks Available</div>
-                </LiquidGlass>
+                </LiquidGlassCard>
               </div>
             </div>
+          </div>
+
+          {/* Example 4: Wide Architectural LiquidGlassPanel */}
+          <div className="mt-4">
+            <LiquidGlassPanel radius={24} scale={26} bevelDepth={16} aberration={3} tint={0.16}>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1 text-center sm:text-left">
+                  <h4 className="text-sm font-bold text-white font-mono">LiquidGlassPanel Architectural Container</h4>
+                  <p className="text-xs text-slate-300">
+                    Full-width translucent glass surface designed for dashboards, dialog banners, and floating hero modules.
+                  </p>
+                </div>
+                <LiquidGlassButton scale={20} bevelDepth={10} aberration={2} tint={0.2}>
+                  <span>Get Started →</span>
+                </LiquidGlassButton>
+              </div>
+            </LiquidGlassPanel>
           </div>
         </div>
 
