@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { FoleLogoVector } from "@/components/branding/FoleLogoVector";
 import { HeroVideoDialog } from "@/components/landing/HeroVideoDialog";
+import { LiquidGlassButton } from "@/components/ui/liquid-glass";
 
 export interface LandingHeroProps {
   totalSubjects?: number;
@@ -145,19 +146,24 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
 
-              {/* Secondary Translucent Video CTA */}
-              <button
+              {/* Secondary Translucent Liquid Glass Video CTA */}
+              <LiquidGlassButton
                 ref={watchVideoBtnRef}
-                type="button"
                 onClick={() => setIsVideoOpen(true)}
-                className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3.5 rounded-full text-sm font-semibold text-white bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/25 hover:border-white/40 shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                radius={999}
+                bevelDepth={12}
+                scale={36}
+                aberration={3}
+                frost={0.5}
+                tint={0.25}
                 aria-label="Watch FOLE Intro Video"
+                contentClassName="gap-2.5 px-6 sm:px-7 py-3.5"
               >
                 <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                   <Play className="w-3 h-3 fill-white text-white ml-0.5" />
                 </div>
                 <span>Watch Video</span>
-              </button>
+              </LiquidGlassButton>
             </div>
           </div>
 

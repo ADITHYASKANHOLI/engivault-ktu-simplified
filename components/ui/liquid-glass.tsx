@@ -396,3 +396,60 @@ function buildFilterSvg({
   <feGaussianBlur in="rgb" stdDeviation="${frost}"/>
 </filter></svg>`;
 }
+
+export type LiquidGlassButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  ref?: React.Ref<HTMLButtonElement>;
+  radius?: number;
+  bevelDepth?: number;
+  scale?: number;
+  aberration?: number;
+  frost?: number;
+  tint?: number;
+  contentClassName?: string;
+};
+
+/**
+ * Interactive button with a responsive Snell's-law liquid glass refractive surface.
+ */
+export function LiquidGlassButton({
+  children,
+  className,
+  contentClassName,
+  radius = 999,
+  bevelDepth = 14,
+  scale = 32,
+  aberration = 3,
+  frost = 0.4,
+  tint = 0.18,
+  type = "button",
+  ref,
+  ...props
+}: LiquidGlassButtonProps) {
+  return (
+    <button
+      ref={ref}
+      type={type}
+      className={cn(
+        "group relative inline-flex items-center justify-center p-0 border-0 bg-transparent cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 transition-transform active:scale-[0.98]",
+        className,
+      )}
+      {...props}
+    >
+      <LiquidGlass
+        radius={radius}
+        bevelDepth={bevelDepth}
+        scale={scale}
+        aberration={aberration}
+        frost={frost}
+        tint={tint}
+        className="w-full h-full shadow-lg shadow-black/20 hover:shadow-black/30 transition-shadow"
+        contentClassName={cn(
+          "flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white",
+          contentClassName,
+        )}
+      >
+        {children}
+      </LiquidGlass>
+    </button>
+  );
+}

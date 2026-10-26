@@ -52,19 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-screen flex flex-col bg-surface-canvas text-on-surface font-body antialiased selection:bg-secondary-fixed selection:text-on-secondary-fixed">
+      <body className="min-h-screen flex flex-col bg-[#F7F9FC] text-[#0B1220] antialiased selection:bg-emerald-100 selection:text-emerald-900">
         <RippleCursor />
         {children}
       </body>
