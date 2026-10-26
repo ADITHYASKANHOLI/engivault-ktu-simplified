@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { spaceService } from "@/lib/space/service";
 import { getAuthenticatedStudent } from "@/lib/space/permissions";
-import { OpenSpaceClientHub } from "@/components/space/OpenSpaceClientHub";
+import { FoleSpaceLiveDesk } from "@/components/space/FoleSpaceLiveDesk";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,18 +14,18 @@ export const metadata: Metadata = {
 
 export default async function OpenSpacePage() {
   const [status, student] = await Promise.all([
-    spaceService.getPublicSpaceStatus(),
-    getAuthenticatedStudent(),
+    spaceService.getPublicSpaceStatus().catch(() => null),
+    getAuthenticatedStudent().catch(() => null),
   ]);
 
   let activeSession = null;
   if (student) {
-    activeSession = await spaceService.getActiveSessionForUser(student.id);
+    activeSession = await spaceService.getActiveSessionForUser(student.id).catch(() => null);
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
-      <OpenSpaceClientHub
+    <div className="min-h-screen bg-surface-canvas pt-20 pb-16 transition-colors">
+      <FoleSpaceLiveDesk
         initialStatus={status}
         initialSession={activeSession}
         isAuthenticated={!!student}

@@ -1,150 +1,119 @@
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, Globe, Share2, Send, Mail } from "lucide-react";
-import { getPublishedSubjects, getSiteSettings, initialFallbackSiteSettings } from "@/lib/queries";
-import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
-import type { Subject, SiteSettings } from "@/types";
+import { ShieldCheck, Sparkles } from "lucide-react";
+import { getPublishedSubjects } from "@/lib/queries";
+import type { Subject } from "@/types";
 
 export async function SiteFooter() {
-  const [subjectsResult, settingsResult] = await Promise.allSettled([
+  const [subjectsResult] = await Promise.allSettled([
     getPublishedSubjects(),
-    getSiteSettings(),
   ]);
 
   const subjects: Subject[] =
     subjectsResult.status === "fulfilled" ? subjectsResult.value : [];
-  const settings: SiteSettings =
-    settingsResult.status === "fulfilled"
-      ? settingsResult.value
-      : initialFallbackSiteSettings;
 
   return (
-    <footer className="bg-[#07111F] text-slate-300 relative overflow-hidden border-t border-cyan-900/30">
-      {/* Background subtle technical grid */}
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-30 pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-          {/* Col 1: Brand & Tagline */}
-          <div className="space-y-4 md:col-span-1">
-            <div>
-              <EngivaultLogo variant="full" size="md" />
+    <footer className="w-full border-t border-border-subtle bg-surface-warm text-on-surface-variant mt-space-2xl">
+      {/* Upper Collegiate Archival Band */}
+      <div className="max-w-7xl mx-auto px-gutter py-space-xl">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-space-lg pb-space-lg border-b border-border-subtle">
+          {/* Brand & Editorial Charter Summary */}
+          <div className="md:col-span-5 space-y-space-xs">
+            <div className="flex items-center gap-space-sm">
+              <span className="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">FOLE</span>
+              <span className="font-label-caps text-label-caps text-outline">OPEN LEARNING CHARTER</span>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              {settings.tagline || "KTU Learning. Simplified."} Authentic video lectures, module breakdowns, and exam question notes built for Kerala Technological University engineers.
+            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md leading-relaxed">
+              An unhurried, humanistic learning collective grounded in open archival research, student agency, and accessible scholarly inquiry. APJ Abdul Kalam Technological University (Kerala) digital repository.
             </p>
-            <div className="pt-2 flex items-center gap-3 text-slate-400">
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-slate-900/80 hover:text-cyan-400 hover:bg-slate-800 transition-colors" aria-label="GitHub">
-                <Globe className="w-4 h-4" />
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-slate-900/80 hover:text-cyan-400 hover:bg-slate-800 transition-colors" aria-label="LinkedIn">
-                <Share2 className="w-4 h-4" />
-              </a>
-              <a href="https://t.me" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-slate-900/80 hover:text-cyan-400 hover:bg-slate-800 transition-colors" aria-label="Telegram">
-                <Send className="w-4 h-4" />
-              </a>
+            <div className="pt-space-xs flex items-center gap-space-md font-code-tabular text-xs text-outline">
+              <span>PROTOCOL: FOLE-KTU-OPEN-ACAD</span>
+              <span>•</span>
+              <span>SCHEME: 2019/2024</span>
             </div>
           </div>
 
-          {/* Col 2: Core KTU Subjects */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-4 font-mono">
-              Core KTU Subjects
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              {subjects.slice(0, 5).map((subject) => (
-                <li key={subject.id}>
+          {/* Quick Curricular Subject Vault Links */}
+          <div className="md:col-span-4 space-y-space-xs">
+            <span className="font-code-tabular text-label-caps text-secondary font-bold uppercase tracking-wider block">
+              CURATED KTU REPOSITORIES
+            </span>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-space-md gap-y-1.5 font-code-tabular text-xs">
+              {subjects.slice(0, 6).map((sub) => (
+                <li key={sub.id}>
                   <Link
-                    href={`/subjects/${subject.slug}`}
-                    className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 group"
+                    href={`/subjects/${sub.slug}`}
+                    className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1.5 group"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/60 group-hover:bg-cyan-400 transition-colors" />
-                    <span>{subject.title}</span>
+                    <span className="text-secondary font-semibold">{sub.code || "KTU"}</span>
+                    <span className="truncate">{sub.title}</span>
                   </Link>
                 </li>
               ))}
               {subjects.length === 0 && (
-                <li className="text-slate-500 text-xs">Curriculum syncing...</li>
+                <li className="text-outline">CST201, MAT203, CST206, EST110...</li>
               )}
             </ul>
           </div>
 
-          {/* Col 3: Curriculum & Quick Links */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-4 font-mono">
-              Platform & Syllabus
-            </h3>
-            <ul className="space-y-2.5 text-sm text-slate-400">
+          {/* Platform Protocols & Admin Access */}
+          <div className="md:col-span-3 space-y-space-xs">
+            <span className="font-code-tabular text-label-caps text-secondary font-bold uppercase tracking-wider block">
+              COMMONS NODES
+            </span>
+            <ul className="space-y-1.5 font-code-tabular text-xs text-on-surface-variant">
               <li>
-                <Link href="/lectures" className="hover:text-white transition-colors">
-                  Video Lectures
+                <Link href="/subjects" className="hover:text-primary transition-colors">
+                  Archival Codex & Syllabi
                 </Link>
               </li>
               <li>
-                <Link href="/subjects" className="hover:text-white transition-colors">
-                  Subject Catalog
+                <Link href="/fole-space" className="hover:text-primary transition-colors">
+                  FOLE Space Live Desk & Floor
                 </Link>
               </li>
               <li>
-                <Link href="/materials" className="hover:text-white transition-colors">
-                  Study Materials
+                <Link href="/fole-works" className="hover:text-primary transition-colors">
+                  Works, Events & Workshops
                 </Link>
               </li>
               <li>
-                <Link href="/fole-works" className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span>FOLE WORKS Activities</span>
+                <Link href="/materials" className="hover:text-primary transition-colors">
+                  Pedagogical Study Dossiers
                 </Link>
               </li>
               <li>
-                <Link href="/fole-space" className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>FOLE SPACE Hub</span>
+                <Link
+                  href="/liquid-glass"
+                  className="hover:text-primary text-secondary font-semibold transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-secondary" />
+                  <span>Liquid Glass Optical Demo</span>
                 </Link>
               </li>
-              <li>
-                <Link href="/about" className="hover:text-white transition-colors">
-                  About KTU Simplified
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-white transition-colors">
-                  Contact & Support
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/login" className="text-cyan-400/80 hover:text-cyan-300 font-medium flex items-center gap-1.5 pt-1">
+              <li className="pt-1">
+                <Link
+                  href="/admin/login"
+                  className="inline-flex items-center gap-1 text-primary hover:text-secondary font-semibold transition-colors"
+                >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Admin Access Portal</span>
+                  <span>Campus Desk Registrar Access</span>
                 </Link>
               </li>
             </ul>
           </div>
-
-          {/* Col 4: Contact & University Mission */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-4 font-mono">
-              Academic Mission
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-4">
-              Dedicated to helping KTU engineering students master core university modules with clarity, precision, and confidence.
-            </p>
-            <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/60 border border-slate-800 p-2.5 rounded-lg">
-              <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span className="truncate">{settings.contact_email || "contact@engivault.edu"}</span>
-            </div>
-          </div>
         </div>
 
-        {/* Bottom copyright & attribution */}
-        <div className="mt-12 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div>
-            {settings.footer_text || "© 2026 ENGIVAULT. All rights reserved."}
+        {/* Lower Legal & Licensing Bar */}
+        <div className="pt-space-md flex flex-col sm:flex-row items-center justify-between gap-space-md text-center sm:text-left">
+          <div className="font-label-caps text-label-caps text-outline">
+            © 2025 FOLE INITIATIVE. CC-BY-NC 4.0 SCHOLARLY LICENSE
           </div>
-          <div className="flex items-center gap-6 font-mono text-[11px]">
-            <span>Designed for KTU Engineering</span>
-            <span>•</span>
-            <span>Vercel + Supabase</span>
+          <div className="flex flex-wrap items-center justify-center gap-space-lg font-code-tabular text-code-tabular text-on-surface-variant">
+            <Link href="/subjects" className="hover:text-primary transition-colors">Archival Codex</Link>
+            <Link href="/subjects" className="hover:text-primary transition-colors">Public Syllabi</Link>
+            <Link href="/fole-space" className="hover:text-primary transition-colors">Campus Protocols</Link>
+            <Link href="/fole-works" className="hover:text-primary transition-colors">Decentralized Nodes</Link>
           </div>
         </div>
       </div>

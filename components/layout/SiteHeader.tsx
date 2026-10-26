@@ -4,23 +4,20 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Compass,
+  Search,
+  ChevronRight,
   BookOpen,
   FileText,
-  Search,
-  Menu,
-  X,
-  ChevronRight,
-  Home,
-  Info,
-  MessageSquare,
+  Users,
   Briefcase,
-  DoorOpen,
+  X,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
+import { FoleLogoVector } from "@/components/branding/FoleLogoVector";
 import { AuthMenu, AuthState } from "@/components/auth/AuthMenu";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { QuickSearchDialog } from "@/components/search/QuickSearchDialog";
 
 export interface SiteHeaderProps {
   initialAuth?: AuthState | null;
@@ -28,8 +25,8 @@ export interface SiteHeaderProps {
 }
 
 export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [auth, setAuth] = useState<AuthState>(initialAuth || { role: null });
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [loginDialogTab, setLoginDialogTab] = useState<"student" | "admin">("student");
@@ -75,15 +72,6 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
     return () => window.removeEventListener("fole:open-login", handleCustomOpenLogin);
   }, []);
 
-  // Scroll detection for header backdrop
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 15);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Close mobile drawer on route change
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -100,7 +88,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mobileMenuOpen]);
 
-  // Lock body scroll when mobile drawer is open to prevent background scrolling
+  // Lock body scroll when mobile drawer is open
   useEffect(() => {
     if (mobileMenuOpen) {
       const originalOverflow = document.body.style.overflow;
@@ -111,15 +99,15 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
     }
   }, [mobileMenuOpen]);
 
+  // Exact navigation items from the FOLE reference mockup
   const navLinks = [
-    { label: "Home", href: "/", icon: Home },
-    { label: "Lectures", href: "/lectures", icon: BookOpen },
-    { label: "Subjects", href: "/subjects", icon: Compass },
-    { label: "Materials", href: "/materials", icon: FileText },
-    { label: "FOLE SPACE", href: "/fole-space", icon: DoorOpen },
-    { label: "FOLE WORKS", href: "/fole-works", icon: Briefcase },
-    { label: "About", href: "/about", icon: Info },
-    { label: "Contact", href: "/contact", icon: MessageSquare },
+    { label: "Home", href: "/", id: "nav-home" },
+    { label: "Learn", href: "/lectures", id: "nav-learn" },
+    { label: "Materials", href: "/materials", id: "nav-materials" },
+    { label: "FOLE SPACE", href: "/fole-space", id: "nav-fole-space" },
+    { label: "FOLE WORKS", href: "/fole-works", id: "nav-fole-works" },
+    { label: "Events", href: "/fole-space/events", id: "nav-events" },
+    { label: "Community", href: "/about", id: "nav-community" },
   ];
 
   const isLinkActive = (href: string) => {
@@ -133,24 +121,23 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   };
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-40 transition-all duration-300",
-        isScrolled
-          ? "bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800 shadow-xs py-2.5 sm:py-3"
-          : "bg-transparent py-3 sm:py-5"
-      )}
-    >
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center justify-between gap-2">
-        {/* Brand Logo - Scaled responsibly for narrow viewports (320px+) */}
-        <div className="shrink-0 max-w-[130px] xs:max-w-[160px] sm:max-w-[200px]">
-          <EngivaultLogo variant="full" size="md" priority className="h-8 xs:h-9 sm:h-10 md:h-11 w-auto" />
+    <header className="fixed top-0 left-0 w-full z-40 bg-white/75 dark:bg-[#07140e]/80 backdrop-blur-md border-b border-white/50 dark:border-white/10 shadow-xs transition-all duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-4">
+        {/* Brand Logo on the Left */}
+        <div className="flex items-center">
+          <Link
+            href="/"
+            className="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded transition-transform hover:scale-[1.02]"
+            aria-label="FOLE Homepage"
+          >
+            <FoleLogoVector className="h-8 sm:h-9 w-auto" />
+          </Link>
         </div>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation - Exact Reference Items */}
         <nav
-          aria-label="Primary Navigation"
-          className="hidden md:flex items-center gap-0.5 bg-slate-100/80 dark:bg-slate-900/70 p-1.5 rounded-full border border-slate-200/70 dark:border-slate-800 backdrop-blur-md"
+          className="hidden lg:flex items-center gap-7 xl:gap-8 h-full"
+          aria-label="Primary Academic Navigation"
         >
           {navLinks.map((item) => {
             const active = isLinkActive(item.href);
@@ -159,114 +146,131 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs lg:text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                  "relative text-sm tracking-tight transition-colors py-2 flex flex-col items-center",
                   active
-                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    ? "text-[#050E09] dark:text-white font-bold"
+                    : "text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white font-medium"
                 )}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {active && (
+                  <span className="absolute -bottom-1.5 w-6 h-0.5 bg-[#00C853] rounded-full" />
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Desktop Right Actions: Materials link & Unified Auth Menu */}
-        <div className="hidden md:flex items-center gap-2.5">
-          <Link
-            href="/materials"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            title="Browse Study Notes & Materials"
+        {/* Header Right Utilities */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Search Icon Button */}
+          <button
+            type="button"
+            onClick={() => setSearchDialogOpen(true)}
+            aria-label="Search FOLE Curriculum"
+            className="p-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-[#00C853] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            <FileText className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Materials</span>
-          </Link>
+            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
+          </button>
 
-          <AuthMenu
-            initialAuth={auth}
-            onOpenLogin={handleOpenLogin}
-            variant="desktop"
-          />
-        </div>
+          {/* Divider */}
+          <div className="h-4 w-px bg-slate-300 dark:bg-white/20 hidden sm:block" />
 
-        {/* Mobile Action Controls: Touch target compliant (>= 44px) */}
-        <div className="flex md:hidden items-center gap-1 shrink-0">
-          <Link
-            href="/materials"
-            className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-            aria-label="Browse Study Materials"
-            title="Materials"
-          >
-            <FileText className="w-5 h-5 text-emerald-600" />
-          </Link>
+          {/* Authentication Actions */}
+          {auth.role ? (
+            <div className="flex items-center gap-2">
+              <AuthMenu
+                initialAuth={auth}
+                onOpenLogin={handleOpenLogin}
+                variant="desktop"
+              />
+            </div>
+          ) : (
+            <div className="hidden sm:flex items-center gap-2.5">
+              {/* Login Button */}
+              <button
+                type="button"
+                onClick={() => handleOpenLogin("student")}
+                className="px-4.5 py-1.5 rounded-full border border-slate-700/40 hover:border-slate-900 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold hover:bg-slate-900/5 dark:hover:bg-white/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              >
+                Login
+              </button>
 
-          <AuthMenu
-            initialAuth={auth}
-            onOpenLogin={handleOpenLogin}
-            variant="mobile-icon"
-          />
+              {/* Get Started Button */}
+              <Link
+                href="/subjects"
+                className="px-5 py-1.5 rounded-full bg-[#00C853] hover:bg-[#00B048] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
 
+          {/* Mobile Menu Toggle Button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="w-11 h-11 flex items-center justify-center rounded-xl text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-10 h-10 flex lg:hidden items-center justify-center rounded-xl text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-drawer"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6 text-slate-900" /> : <Menu className="w-6 h-6 text-slate-900" />}
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Accessible Mobile Navigation Drawer with Overlay */}
+      {/* Accessible Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div id="mobile-navigation-drawer" className="fixed inset-0 top-[60px] z-50 md:hidden flex flex-col">
+        <div id="mobile-navigation-drawer" className="fixed inset-0 top-18 z-50 lg:hidden flex flex-col">
           {/* Backdrop */}
           <div
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 top-[60px] bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 top-18 bg-black/60 backdrop-blur-xs transition-opacity"
             aria-hidden="true"
           />
 
           {/* Drawer Sheet */}
-          <div className="relative w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-2xl p-4 sm:p-6 space-y-3 z-10 max-h-[calc(100vh-60px)] overflow-y-auto">
-            {/* Quick search button */}
-            <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
-              <Link
-                href="/lectures"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 font-medium"
+          <div className="relative w-full bg-white dark:bg-[#07140e] border-b border-slate-200 dark:border-emerald-950 shadow-2xl p-4 sm:p-6 space-y-4 z-10 max-h-[calc(100vh-72px)] overflow-y-auto">
+            {/* Quick search input button */}
+            <div className="pb-2 border-b border-slate-100 dark:border-emerald-950">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setSearchDialogOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/40 border border-slate-200 dark:border-emerald-900 text-xs text-slate-500 dark:text-slate-400"
               >
-                <Search className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Search lectures, modules & topics...</span>
-              </Link>
+                <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Search KTU subjects, modules or topics...</span>
+              </button>
             </div>
 
-            {/* Navigation Links with Active Page Indicators */}
+            {/* Primary Navigation Links */}
             <nav aria-label="Mobile Navigation" className="space-y-1">
               {navLinks.map((item) => {
                 const active = isLinkActive(item.href);
-                const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-colors min-h-[44px]",
+                      "flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-colors min-h-[44px]",
                       active
-                        ? "bg-emerald-50 text-emerald-800 border-l-4 border-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                        ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border-l-4 border-[#00C853]"
+                        : "text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn("w-4 h-4 shrink-0", active ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400")} />
-                      <span>{item.label}</span>
-                    </div>
+                    <span>{item.label}</span>
                     {active ? (
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
-                        Current
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
+                        Active
                       </span>
                     ) : (
                       <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -276,13 +280,73 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
               })}
             </nav>
 
+            {/* Quick Feature Destinations */}
+            <div className="pt-2 border-t border-slate-100 dark:border-emerald-950 grid grid-cols-2 gap-2">
+              <Link
+                href="/subjects"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Curriculum</span>
+              </Link>
+              <Link
+                href="/materials"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Materials</span>
+              </Link>
+              <Link
+                href="/fole-space"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <span>FOLE SPACE</span>
+              </Link>
+              <Link
+                href="/fole-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+              >
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                <span>FOLE WORKS</span>
+              </Link>
+            </div>
+
             {/* Bottom Unified Auth Action */}
-            <AuthMenu
-              initialAuth={auth}
-              onOpenLogin={handleOpenLogin}
-              variant="mobile-drawer"
-              onCloseDrawer={() => setMobileMenuOpen(false)}
-            />
+            <div className="pt-2 border-t border-slate-100 dark:border-emerald-950">
+              {auth.role ? (
+                <AuthMenu
+                  initialAuth={auth}
+                  onOpenLogin={handleOpenLogin}
+                  variant="mobile-drawer"
+                  onCloseDrawer={() => setMobileMenuOpen(false)}
+                />
+              ) : (
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleOpenLogin("student");
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  >
+                    Student / Admin Login
+                  </button>
+                  <Link
+                    href="/subjects"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-[#00C853] hover:bg-[#00B048] text-white text-sm font-bold text-center shadow-sm shadow-emerald-500/25 transition-colors"
+                  >
+                    Get Started Free
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -295,6 +359,12 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         isOffline={isOffline}
         redirectUrl={loginReturnTo}
         onAuthSuccess={(newAuth) => setAuth(newAuth)}
+      />
+
+      {/* Accessible Quick Search Dialog */}
+      <QuickSearchDialog
+        isOpen={searchDialogOpen}
+        onClose={() => setSearchDialogOpen(false)}
       />
     </header>
   );

@@ -27,14 +27,14 @@ export function getSafeSiteUrl(): URL {
 
 export const metadata: Metadata = {
   metadataBase: getSafeSiteUrl(),
-  title: "ENGIVAULT — KTU Learning. Simplified.",
+  title: "FOLE — Free Open Learning & Education | KTU Engineering Codex",
   description:
-    "Authentic video lectures, structured module breakdowns, and exam question notes built specifically for Kerala Technological University (KTU) engineering students.",
-  keywords: ["KTU", "Engineering", "Mathematics", "Graphics", "Electrical", "Kerala Technological University", "KTU Notes", "KTU Lectures"],
-  authors: [{ name: "ENGIVAULT Team" }],
+    "Human-curated lecture indices, handwritten KTU professor compendiums, verified exam question vaults, and module-wise video recordings organized under open scholarly governance.",
+  keywords: ["FOLE", "KTU", "Engineering", "Mathematics", "Graphics", "Electrical", "Kerala Technological University", "KTU Notes", "KTU Lectures", "Open Education"],
+  authors: [{ name: "FOLE Academic Initiative" }],
   openGraph: {
-    title: "ENGIVAULT — KTU Learning. Simplified.",
-    description: "Master KTU Engineering subjects with recorded video classes and authentic downloadable study materials.",
+    title: "FOLE — Free Open Learning & Education | KTU Engineering Codex",
+    description: "Human-curated lecture indices, handwritten KTU professor compendiums, and verified exam question vaults.",
     type: "website",
     images: [{ url: "/branding/fole-logo.png", width: 1024, height: 306, alt: "FOLE" }],
   },
@@ -52,7 +52,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="min-h-screen flex flex-col bg-[#F7F9FC] text-[#0B1220] antialiased selection:bg-cyan-200 selection:text-blue-950">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen flex flex-col bg-surface-canvas text-on-surface font-body antialiased selection:bg-secondary-fixed selection:text-on-secondary-fixed">
         <RippleCursor />
         {children}
       </body>

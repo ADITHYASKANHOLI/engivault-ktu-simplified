@@ -2096,7 +2096,9 @@ async function runTests() {
       "app/api/space/extend/route.ts",
       "app/api/space/my/route.ts",
       "app/api/space/events/route.ts",
-      "app/api/space/events/[slug]/flyer/route.ts",
+      nodeFs.existsSync("app/api/space/events/[id]/flyer/route.ts")
+        ? "app/api/space/events/[id]/flyer/route.ts"
+        : "app/api/space/events/[slug]/flyer/route.ts",
       "app/api/space/events/[id]/registration/route.ts",
       "app/api/space/events/[id]/checkin/virtual/route.ts",
       "app/api/space/organizer/events/route.ts",
@@ -2495,7 +2497,10 @@ async function runTests() {
   });
 
   test("Private flyer delivery route enforces event publication and deletion checks before streaming", () => {
-    const flyerRoute = nodeFs.readFileSync("app/api/space/events/[slug]/flyer/route.ts", "utf-8");
+    const flyerPath = nodeFs.existsSync("app/api/space/events/[id]/flyer/route.ts")
+      ? "app/api/space/events/[id]/flyer/route.ts"
+      : "app/api/space/events/[slug]/flyer/route.ts";
+    const flyerRoute = nodeFs.readFileSync(flyerPath, "utf-8");
     assert.ok(flyerRoute.includes("event.deleted_at"), "Flyer route must reject deleted events");
     assert.ok(flyerRoute.includes("isPublicStatus"), "Flyer route must verify event publication state");
     assert.ok(flyerRoute.includes("createAdminClient"), "Flyer route must download via trusted server admin client");

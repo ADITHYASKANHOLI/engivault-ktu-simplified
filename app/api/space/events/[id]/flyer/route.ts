@@ -8,12 +8,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { slug } = await params;
+    const { id } = await params;
+    const slug = id;
     if (!slug || typeof slug !== "string") {
       return NextResponse.json({ error: "Event slug is required." }, { status: 400 });
     }

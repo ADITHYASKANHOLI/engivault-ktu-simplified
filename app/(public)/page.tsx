@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle, Play, GraduationCap, AlertCircle, Briefcase } from "lucide-react";
+import { ArrowRight, BookOpen, Play, GraduationCap, AlertCircle } from "lucide-react";
 import {
   getPublishedSubjects,
   getSiteSettings,
@@ -8,7 +8,7 @@ import {
   getAllDepartments,
   initialFallbackSiteSettings,
 } from "@/lib/queries";
-import { HeroGraphic } from "@/components/graphics/HeroGraphic";
+import { LandingHero } from "@/components/landing/LandingHero";
 import { SubjectGrid } from "@/components/subjects/SubjectGrid";
 import { LectureCard } from "@/components/lectures/LectureCard";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export default async function HomePage() {
 
   const subjects =
     subjectsResult.status === "fulfilled" ? subjectsResult.value : [];
-  const settings =
+  const _settings =
     settingsResult.status === "fulfilled"
       ? settingsResult.value
       : initialFallbackSiteSettings;
@@ -38,107 +38,19 @@ export default async function HomePage() {
 
   return (
     <main className="relative flex-1">
-      {/* ---------------- 1. HERO SECTION ---------------- */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden bg-gradient-to-b from-[#F0F4FA] via-[#F7F9FC] to-[#F7F9FC] bg-tech-grid">
-        {/* Soft background ambient gradient glow */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-20 left-10 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      {/* ---------------- 1. AUTHENTIC FOLE LANDING HERO ---------------- */}
+      <LandingHero totalSubjects={subjects.length} />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            {/* Left Content Column */}
-            <div className="lg:col-span-7 space-y-8 text-center lg:text-left">
-              {/* Eyebrow Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-200/80 bg-white/80 shadow-xs backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-900 font-mono">
-                  KTU-ORIENTED ENGINEERING LEARNING
-                </span>
-              </div>
-
-              {/* Headline */}
-              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 tracking-tight leading-[1.08]">
-                Learn Engineering. <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-500">
-                  Build Confidence.
-                </span>
-              </h1>
-
-              {/* Supporting Copy */}
-              <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                {settings.headline || "Recorded classes, structured modules and downloadable study materials for KTU-oriented engineering subjects."}
-              </p>
-
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <Link
-                  href="/lectures"
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 shadow-lg shadow-blue-900/20 hover:shadow-blue-900/30 transition-all flex items-center justify-center gap-2 group"
-                >
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Browse Lectures</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-
-                <Link
-                  href="/subjects"
-                  className="w-full sm:w-auto px-7 py-4 rounded-xl text-sm font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all flex items-center justify-center gap-2"
-                >
-                  <BookOpen className="w-4 h-4 text-blue-700" />
-                  <span>Curriculum Subjects</span>
-                </Link>
-
-                <Link
-                  href="/fole-works"
-                  className="w-full sm:w-auto px-7 py-4 rounded-xl text-sm font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 border border-emerald-300/80 dark:border-emerald-700/60 shadow-xs transition-all flex items-center justify-center gap-2"
-                >
-                  <Briefcase className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>FOLE WORKS Activities</span>
-                </Link>
-              </div>
-
-              {/* Trust Strip */}
-              <div className="pt-6 border-t border-slate-200/70">
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-6 text-xs text-slate-500 font-medium">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>{subjects.length} Core KTU Subjects</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Recorded Video Classes</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Notes & Question Banks</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Learn at Your Pace</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Visual Graphic Column */}
-            <div className="lg:col-span-5 flex justify-center lg:justify-end">
-              <HeroGraphic />
-            </div>
-          </div>
-        </div>
-
-        {/* ---------------- 1B. DISCIPLINE / DEPARTMENT QUICK NAV ---------------- */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 relative z-10">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/90 shadow-md">
+      {/* ---------------- 1B. DISCIPLINE / DEPARTMENT QUICK NAV ---------------- */}
+      <section className="py-8 bg-[#F8F7F0] border-b border-slate-200/60 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs">
             <div className="flex items-center justify-between mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
               <span className="flex items-center gap-1.5">
-                <GraduationCap className="w-4 h-4 text-blue-600" />
+                <GraduationCap className="w-4 h-4 text-emerald-600" />
                 <span>Browse by Engineering Department / Discipline</span>
               </span>
-              <Link href="/lectures" className="text-blue-700 hover:underline normal-case font-sans font-semibold">
+              <Link href="/lectures" className="text-emerald-700 hover:underline normal-case font-sans font-semibold">
                 View all →
               </Link>
             </div>
@@ -147,9 +59,9 @@ export default async function HomePage() {
                 <Link
                   key={dept.id}
                   href={`/lectures?dept=${dept.slug}`}
-                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-blue-50/80 hover:border-blue-300 transition-all text-center group"
+                  className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-emerald-50/80 hover:border-emerald-300 transition-all text-center group"
                 >
-                  <span className="font-mono text-xs font-black text-blue-900 group-hover:text-blue-700">
+                  <span className="font-mono text-xs font-black text-slate-900 group-hover:text-emerald-700">
                     {dept.code}
                   </span>
                   <span className="text-[11px] text-slate-600 group-hover:text-slate-900 truncate max-w-full mt-0.5">
