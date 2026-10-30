@@ -5,12 +5,12 @@ import { EngivaultLogo } from "@/components/branding/EngivaultLogo";
 
 export default function NotFound() {
   return (
-    <main className="flex-1 min-h-[65vh] flex items-center justify-center p-6 bg-[#F7F9FC]">
+    <main className="flex-1 min-h-[65vh] flex items-center justify-center p-6 bg-[#f7f6ef]">
       <div className="text-center max-w-md space-y-6">
         <div className="flex justify-center">
           <EngivaultLogo size="md" />
         </div>
-        <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mx-auto text-2xl font-mono font-bold">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-2xl font-mono font-bold">
           404
         </div>
         <div className="space-y-2">
@@ -29,7 +29,7 @@ export default function NotFound() {
           </Link>
           <Link
             href="/subjects"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 shadow-xs"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 shadow-xs"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Browse Subjects</span>

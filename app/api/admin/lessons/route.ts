@@ -3,7 +3,9 @@ import { getAdminSession } from "@/lib/auth/session";
 import { lessonSchema, lessonUpdateSchema } from "@/lib/validation/schemas";
 import { getAllLessons, getLessonById, createLesson, updateLesson, deleteLesson, getModuleById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
+import { parseYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils/youtube";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -37,7 +39,41 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const rawBody = await request.json();
+    const body = {
+      ...rawBody,
+      youtube_url: rawBody.youtube_url !== undefined ? rawBody.youtube_url : rawBody.youtubeUrl,
+    };
+
+    // Strict validation for required fields
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title || title.length < 2) {
+      return NextResponse.json(
+        { error: "Lecture Name is required (minimum 2 characters)." },
+        { status: 400 }
+      );
+    }
+
+    const youtubeUrl = typeof body.youtube_url === "string" ? body.youtube_url.trim() : "";
+    if (!youtubeUrl) {
+      return NextResponse.json(
+        { error: "YouTube Video Link is required." },
+        { status: 400 }
+      );
+    }
+
+    const parseResult = parseYouTubeUrl(youtubeUrl);
+    if (!parseResult.isValid || !parseResult.videoId) {
+      return NextResponse.json(
+        { error: "Please enter a valid YouTube video link." },
+        { status: 400 }
+      );
+    }
+
+    body.youtube_video_id = parseResult.videoId;
+    body.youtube_url = parseResult.canonicalUrl;
+    body.thumbnail_path = body.thumbnail_path || getYouTubeThumbnailUrl(parseResult.videoId, "hqdefault");
+
     const result = lessonSchema.safeParse(body);
 
     if (!result.success) {
@@ -74,11 +110,30 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { id, ...updates } = body;
+    const rawBody = await request.json();
+    const { id, ...rawUpdates } = rawBody;
 
     if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "Lesson ID is required" }, { status: 400 });
+    }
+
+    const updates = {
+      ...rawUpdates,
+      youtube_url:
+        rawUpdates.youtube_url !== undefined
+          ? rawUpdates.youtube_url
+          : rawUpdates.youtubeUrl,
+    };
+
+    if (updates.youtube_url && typeof updates.youtube_url === "string" && updates.youtube_url.trim()) {
+      const parseResult = parseYouTubeUrl(updates.youtube_url.trim());
+      if (parseResult.isValid && parseResult.videoId) {
+        updates.youtube_video_id = parseResult.videoId;
+        updates.youtube_url = parseResult.canonicalUrl;
+        if (!updates.thumbnail_path) {
+          updates.thumbnail_path = getYouTubeThumbnailUrl(parseResult.videoId, "hqdefault");
+        }
+      }
     }
 
     const result = lessonUpdateSchema.safeParse(updates);

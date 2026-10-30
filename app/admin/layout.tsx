@@ -1,7 +1,7 @@
 import React from "react";
 
 export const metadata = {
-  title: "ENGIVAULT Administrator Console",
+  title: "FOLE Administrator Console",
   robots: {
     index: false,
     follow: false,

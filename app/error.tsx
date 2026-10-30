@@ -17,7 +17,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="flex-1 min-h-[65vh] flex items-center justify-center p-6 bg-[#F7F9FC]">
+    <main className="flex-1 min-h-[65vh] flex items-center justify-center p-6 bg-[#f7f6ef]">
       <div className="text-center max-w-md space-y-6">
         <div className="flex justify-center">
           <EngivaultLogo size="md" />
@@ -30,11 +30,16 @@ export default function Error({
           <p className="text-xs text-slate-500">
             An unexpected error occurred while loading this page. Our technical logs have recorded this incident.
           </p>
+          {error.digest && (
+            <p className="text-[11px] font-mono text-slate-400 bg-slate-100 py-1 px-2 rounded inline-block">
+              Incident ID: {error.digest}
+            </p>
+          )}
         </div>
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
             onClick={() => reset()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 shadow-xs transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 shadow-xs transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Try Again</span>

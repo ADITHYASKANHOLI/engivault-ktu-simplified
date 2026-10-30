@@ -4,6 +4,7 @@ import { moduleSchema, moduleUpdateSchema } from "@/lib/validation/schemas";
 import { getAllModules, getModuleById, createModule, updateModule, deleteModule, getSubjectById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

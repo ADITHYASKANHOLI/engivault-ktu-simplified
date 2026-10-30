@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 
 export interface EngivaultLogoProps {
   /**
-   * "full" displays the complete official ENGIVAULT logo artwork freely.
+   * "full" displays the complete official FOLE logo artwork.
    * "compact" displays a streamlined smaller scale variant for tight mobile or collapsed states.
    */
   variant?: "full" | "compact";
   /**
    * Predefined size presets that scale height while letting width calculate automatically
-   * according to the authentic 16:9 aspect ratio.
+   * according to the official artwork aspect ratio.
    * sm: ~28-36px (compact / mobile)
    * md: ~38-48px (standard header desktop / tablet)
    * lg: ~48-60px (login / splash / footer)
@@ -33,7 +33,7 @@ export function EngivaultLogo({
   className = "",
   href = "/",
   priority = false,
-  alt = "ENGIVAULT — KTU Learning Simplified",
+  alt = "FOLE — Engineering Learning Simplified",
 }: EngivaultLogoProps) {
   // Height presets respecting recommended values from design specs:
   // Desktop: 38–52px; Tablet: 34–44px; Mobile: 30–38px
@@ -51,12 +51,12 @@ export function EngivaultLogo({
 
   const isCompact = variant === "compact";
   const imageSrc = isCompact
-    ? "/branding/ev-emblem.png"
-    : "/branding/engivault-official-logo.png";
-  const imageWidth = isCompact ? 274 : 1024;
-  const imageHeight = isCompact ? 220 : 341;
+    ? "/branding/fole-emblem.png"
+    : "/branding/fole-logo.png";
+  const imageWidth = isCompact ? 280 : 1024;
+  const imageHeight = isCompact ? 280 : 306;
 
-  // Render the official logo artwork directly with NO enclosing boxes, NO borders, NO background tiles, NO clipping
+  // Render the official FOLE logo artwork directly without an enclosing tile or border.
   const logoImage = (
     <Image
       src={imageSrc}
@@ -80,8 +80,8 @@ export function EngivaultLogo({
   return (
     <Link
       href={href}
-      className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 rounded transition-opacity hover:opacity-95"
-      aria-label="ENGIVAULT Homepage"
+      className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600/30 rounded transition-opacity hover:opacity-95"
+      aria-label="FOLE Homepage"
     >
       {logoImage}
     </Link>

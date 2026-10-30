@@ -44,6 +44,7 @@ export default function AdminVideosPage() {
         alert("Failed to delete video.");
       }
     } catch (err) {
+      console.error("Error deleting video:", err);
       alert("Error deleting video.");
     } finally {
       setDeletingId(null);
@@ -67,15 +68,15 @@ export default function AdminVideosPage() {
             title="Refresh videos"
             className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-emerald-600" : ""}`} />
           </button>
 
           <Link
-            href="/admin/dashboard/uploads"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-xs"
+            href="/admin/dashboard/lessons?create=true"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>Upload Lecture Video</span>
+            <span>Add YouTube Video</span>
           </Link>
         </div>
       </div>
@@ -83,7 +84,7 @@ export default function AdminVideosPage() {
       <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-slate-500 space-y-3">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" />
             <p className="text-xs font-medium">Fetching videos from Supabase...</p>
           </div>
         ) : videos.length === 0 ? (
@@ -120,7 +121,7 @@ export default function AdminVideosPage() {
                     <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="p-4 font-bold text-slate-900">
                         <div className="flex items-center gap-2.5">
-                          <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
+                          <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
                             <VideoIcon className="w-4 h-4" />
                           </div>
                           <span>{v.title || "Lecture Video"}</span>
@@ -144,9 +145,9 @@ export default function AdminVideosPage() {
                           <Link
                             href={publicUrl}
                             target="_blank"
-                            className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-semibold"
+                            className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold"
                           >
-                            <Play className="w-3.5 h-3.5 fill-blue-700" />
+                            <Play className="w-3.5 h-3.5 fill-emerald-700" />
                             <span>Watch</span>
                           </Link>
                         )}

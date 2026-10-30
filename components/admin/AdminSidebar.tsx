@@ -16,7 +16,17 @@ import {
   LogOut,
   ExternalLink,
   X,
+  Briefcase,
+  Calendar,
+  PlusCircle,
+  Users,
+  DoorOpen,
+  Sliders,
+  UserCheck,
+  CalendarCheck,
+  BarChart3,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 interface AdminSidebarProps {
@@ -27,6 +37,33 @@ interface AdminSidebarProps {
 export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Close mobile drawer on route changes
+  React.useEffect(() => {
+    if (mobileOpen && onCloseMobile) {
+      onCloseMobile();
+    }
+  }, [pathname, mobileOpen, onCloseMobile]);
+
+  // Lock body scroll and listen for Escape key when mobile drawer is open
+  React.useEffect(() => {
+    if (!mobileOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && onCloseMobile) {
+        onCloseMobile();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen, onCloseMobile]);
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -50,17 +87,37 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
       ],
     },
     {
+      group: "FOLE WORKS",
+      items: [
+        { label: "Works Overview", href: "/admin/dashboard/works", icon: Briefcase },
+        { label: "Activities", href: "/admin/dashboard/works/activities", icon: Calendar },
+        { label: "Create Activity", href: "/admin/dashboard/works/create", icon: PlusCircle },
+      ],
+    },
+    {
+      group: "FOLE SPACE",
+      items: [
+        { label: "Space Overview", href: "/admin/dashboard/space", icon: DoorOpen },
+        { label: "Space Settings", href: "/admin/dashboard/space/settings", icon: Sliders },
+        { label: "Organizers", href: "/admin/dashboard/space/organizers", icon: UserCheck },
+        { label: "Events Moderation", href: "/admin/dashboard/space/events", icon: CalendarCheck },
+        { label: "Usage Reports", href: "/admin/dashboard/space/reports", icon: BarChart3 },
+      ],
+    },
+    {
       group: "SYSTEM & PIPELINE",
       items: [
+        { label: "Students", href: "/admin/dashboard/students", icon: Users },
         { label: "Upload Wizard", href: "/admin/dashboard/uploads", icon: UploadCloud },
         { label: "Activity Logs", href: "/admin/dashboard/activity", icon: Activity },
         { label: "Site Settings", href: "/admin/dashboard/settings", icon: Settings },
       ],
     },
+
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#0B132B] text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-[#10291f] text-slate-300 select-none">
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800/80 flex items-center justify-between shrink-0">
         <Link
@@ -68,7 +125,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
           onClick={onCloseMobile}
           className="flex flex-col gap-2 group focus:outline-none"
         >
-          {/* Official Full ENGIVAULT Logo freely displayed without any confining container */}
+          {/* Official FOLE logo displayed without an enclosing container */}
           <EngivaultLogo
             variant="full"
             size="sm"
@@ -77,7 +134,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
             priority
           />
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold tracking-widest text-cyan-400 uppercase font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">
+            <span className="text-[10px] font-bold tracking-widest text-emerald-400 uppercase font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/40">
               ADMIN CONTROL
             </span>
           </div>
@@ -111,9 +168,9 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
                   href={item.href}
                   onClick={onCloseMobile}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 min-h-[44px]",
                     active
-                      ? "bg-blue-600 text-white shadow-xs font-bold"
+                      ? "bg-emerald-600 text-white shadow-xs font-bold"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                   )}
                 >
@@ -132,15 +189,15 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
       </div>
 
       {/* Bottom Anchored Actions */}
-      <div className="mt-auto p-4 border-t border-slate-800/80 space-y-2 shrink-0 bg-[#0B132B]">
+      <div className="mt-auto p-4 border-t border-slate-800/80 space-y-2 shrink-0 bg-[#10291f]">
         <Link
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+          className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors min-h-[44px]"
         >
           <span className="flex items-center gap-2">
-            <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
             <span>Open Public Site</span>
           </span>
           <span className="text-[10px] font-mono text-slate-500">↗</span>
@@ -148,7 +205,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 transition-colors text-left"
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 transition-colors text-left min-h-[44px]"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
@@ -166,7 +223,12 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
 
       {/* Mobile / Tablet Drawer & Backdrop */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div
+          className="fixed inset-0 z-50 lg:hidden flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin Navigation Drawer"
+        >
           {/* Backdrop */}
           <div
             onClick={onCloseMobile}

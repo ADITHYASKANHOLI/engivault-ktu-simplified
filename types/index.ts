@@ -8,6 +8,56 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+  slug: string;
+  description?: string | null;
+  display_order: number;
+  icon?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Semester {
+  id: string;
+  department_id?: string | null;
+  number: number;
+  semester_number?: number;
+  title: string;
+  slug: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Faculty {
+  id: string;
+  name: string;
+  title?: string | null;
+  department?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Topic {
+  id: string;
+  module_id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  display_order: number;
+  published?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  // Joined
+  module?: Module;
+  lectures_count?: number;
+}
+
 export interface Subject {
   id: string;
   title: string;
@@ -18,10 +68,15 @@ export interface Subject {
   thumbnail_path?: string | null;
   published: boolean;
   display_order: number;
+  department_id?: string | null;
+  semester_id?: string | null;
+  semester_number?: number | null;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
   // Computed / joined fields
+  department?: Department;
+  semester?: Semester;
   modules_count?: number;
   lessons_count?: number;
   materials_count?: number;
@@ -40,6 +95,7 @@ export interface Module {
   updated_at: string;
   // Joined fields
   subject?: Subject;
+  topics?: Topic[];
   lessons_count?: number;
   lessons?: Lesson[];
 }
@@ -47,22 +103,46 @@ export interface Module {
 export interface Lesson {
   id: string;
   module_id: string;
+  topic_id?: string | null;
+  faculty_id?: string | null;
   title: string;
   slug: string;
   lesson_number?: number | null;
+  sequence_order?: number | null;
+  orderIndex?: number | null;
   description?: string | null;
+  short_description?: string | null;
   thumbnail_path?: string | null;
   duration_seconds?: number | null;
   published: boolean;
   display_order: number;
+  order_index?: number;
+  status?: "published" | "draft" | "archived";
   created_by?: string | null;
   created_at: string;
   updated_at: string;
-  // Joined fields
+  // YouTube Video fields
+  youtube_url?: string | null;
+  youtube_video_id?: string | null;
+  youtubeUrl?: string | null;
+  youtubeVideoId?: string | null;
+  // Instructor / Faculty attribution
+  instructor?: string | null;
+  faculty?: Faculty;
+  // Joined / legacy fields
+  video_id?: string | null;
+  videoId?: string | null;
+  topic?: Topic;
   module?: Module;
+  subject?: Subject;
   video?: Video | null;
   materials?: Material[];
 }
+
+/**
+ * In ENGIVAULT, Lecture is the central academic unit (represented canonically by Lesson in the data layer).
+ */
+export type Lecture = Lesson;
 
 export interface Video {
   id: string;
@@ -103,6 +183,10 @@ export interface Material {
   deleted_at?: string | null;
   // Virtual signed download URL
   download_url?: string;
+  // Joined academic relations
+  subject?: Subject;
+  module?: Module;
+  lesson?: Lesson;
 }
 
 export type UploadStatus = "pending" | "uploading" | "completed" | "failed" | "deleted";
@@ -157,4 +241,72 @@ export interface SearchResultItem {
   description?: string | null;
   url: string;
   badge?: string;
+  youtube_url?: string | null;
+  youtube_video_id?: string | null;
 }
+
+/**
+ * FOLE WORKS - Professional & Operational Activities System
+ */
+export type WorksCategory =
+  | "Workshop"
+  | "Internship"
+  | "Technical Training"
+  | "Collaborative Project"
+  | "Seminar / Talk"
+  | "Hackathon / Contest"
+  | "Certification"
+  | "Other";
+
+export type WorksDeliveryMode = "in_person" | "online" | "hybrid";
+export type WorksActivityStatus = "draft" | "published" | "archived";
+
+export interface WorksSupportingResource {
+  title: string;
+  url: string;
+  type?: "document" | "link" | "slides" | "code" | "form" | "other";
+}
+
+export interface WorksActivity {
+  id: string;
+  title: string;
+  slug: string;
+  short_description?: string | null;
+  description: string;
+  category: WorksCategory | string;
+  activity_type: string;
+  delivery_mode: WorksDeliveryMode;
+  venue?: string | null;
+  cover_image?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  timezone?: string;
+  organizer_details?: string | null;
+  learning_outcomes?: string[] | null;
+  registration_url?: string | null;
+  registration_opens_at?: string | null;
+  registration_closes_at?: string | null;
+  fee_amount?: number;
+  currency?: string;
+  capacity?: number | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  supporting_resources?: WorksSupportingResource[];
+  status: WorksActivityStatus;
+  is_featured: boolean;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+  archived_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export interface WorksActivityMetrics {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  upcoming: number;
+}
+

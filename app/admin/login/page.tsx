@@ -44,12 +44,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#07111F] text-white relative overflow-hidden">
-      {/* Ambient background engineering grid */}
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-40 pointer-events-none" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#10291f] text-white relative overflow-hidden">
       <div className="w-full max-w-md relative z-10 space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
@@ -63,7 +58,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
+        <div className="bg-[#163b2b] border border-[#315a46] rounded-md p-6 sm:p-8 space-y-6">
           {error && (
             <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-800/80 text-red-300 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
@@ -92,7 +87,7 @@ export default function AdminLoginPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Enter Admin Access Code"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-950/80 text-sm text-white font-mono tracking-wider placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#426451] bg-[#10291f] text-sm text-white font-mono tracking-wider placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
                 />
               </div>
             </div>
@@ -100,7 +95,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading || success || !code.trim()}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-400/20"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-[#176b45] hover:bg-[#105437] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <span>Verifying access code...</span>
@@ -116,11 +111,11 @@ export default function AdminLoginPage() {
           {/* Security Information */}
           <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 space-y-2">
             <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Security Information</span>
             </div>
             <p className="leading-relaxed">
-              Administrator authentication requires the secure access code configured in your server environment variables (<code className="text-cyan-300 font-mono px-1 py-0.5 bg-slate-800 rounded">ADMIN_ACCESS_CODE</code>).
+              Administrator authentication requires the secure access code configured in your server environment variables (<code className="text-emerald-300 font-mono px-1 py-0.5 bg-slate-800 rounded">ADMIN_ACCESS_CODE</code>).
             </p>
           </div>
         </div>

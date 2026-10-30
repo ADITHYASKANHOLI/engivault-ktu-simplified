@@ -1,343 +1,55 @@
 import fs from "fs";
 import path from "path";
-import { Subject, Module, Lesson, Video, Material, SiteSettings, ActivityLog, SearchResultItem } from "@/types";
+import {
+  Subject,
+  Module,
+  Lesson,
+  Video,
+  Material,
+  SiteSettings,
+  ActivityLog,
+  SearchResultItem,
+  Department,
+  Semester,
+  Topic,
+  Faculty,
+  WorksActivity,
+  WorksActivityStatus,
+  WorksActivityMetrics,
+  WorksSupportingResource,
+} from "@/types";
 import { createClient as createServerSupabase, isSupabaseConfigured } from "../supabase/server";
-import { createAdminClient } from "../supabase/admin";
+import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
 import { getSignedVideoUrl, getSignedMaterialUrl } from "../storage/signed-urls";
-
-// ---------------- In-Memory Fallback State ----------------
-// Provides reliable offline and development fallback while keeping live Supabase as primary source of truth.
-
-const initialFallbackSiteSettings: SiteSettings = {
-  id: "00000000-0000-0000-0000-000000000001",
-  site_name: "ENGIVAULT",
-  headline: "Learn Engineering. Build Confidence.",
-  tagline: "KTU Learning. Simplified.",
-  logo_path: "/branding/engivault-official-logo.png",
-  contact_email: "contact@engivault.edu",
-  about_text: "ENGIVAULT is a dedicated KTU engineering study companion providing video lectures, structured module breakdowns, and authentic study notes.",
-  footer_text: "© 2026 ENGIVAULT. All rights reserved. KTU Engineering Learning Simplified.",
-  social_links: {
-    github: "https://github.com",
-    linkedin: "https://linkedin.com",
-    telegram: "https://t.me",
-  },
-  updated_at: new Date().toISOString(),
-};
-
-const initialFallbackSubjects: Subject[] = [
-  {
-    id: "11111111-1111-1111-1111-111111111111",
-    title: "Engineering Mathematics",
-    slug: "engineering-mathematics",
-    code: "MAT 101",
-    short_description: "Differential calculus, linear algebra, multivariable calculus, and infinite series for KTU first-year engineers.",
-    description: "Comprehensive KTU curriculum coverage of Engineering Mathematics. Topics include limits, continuity, partial differentiation, matrices, eigenvalues, multiple integrals, and series expansions with solved university question papers.",
-    thumbnail_path: null,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    modules_count: 2,
-    lessons_count: 2,
-    materials_count: 2,
-  },
-  {
-    id: "22222222-2222-2222-2222-222222222222",
-    title: "Engineering Graphics",
-    slug: "engineering-graphics",
-    code: "EST 110",
-    short_description: "Principles of engineering drawing, orthographic projection, isometric projection, and CAD drafting.",
-    description: "Detailed step-by-step visual instruction on engineering drawing conventions, projection of lines, planes, and solids, sectional views, and isometric representations tailored for KTU university exams.",
-    thumbnail_path: null,
-    published: true,
-    display_order: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    modules_count: 1,
-    lessons_count: 1,
-    materials_count: 1,
-  },
-  {
-    id: "33333333-3333-3333-3333-333333333333",
-    title: "Basics of Electrical Engineering",
-    slug: "electrical-engineering",
-    code: "EST 130",
-    short_description: "DC circuits, AC fundamentals, magnetic circuits, transformers, and AC/DC electrical machines.",
-    description: "Foundational electrical engineering concepts covering Ohm's and Kirchhoff's laws, network analysis, single-phase and three-phase circuits, electromagnetic induction, transformer operation, and electrical safety standards.",
-    thumbnail_path: null,
-    published: true,
-    display_order: 3,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    modules_count: 1,
-    lessons_count: 1,
-    materials_count: 1,
-  },
-];
-
-const initialFallbackModules: Module[] = [
-  {
-    id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    subject_id: "11111111-1111-1111-1111-111111111111",
-    title: "Module 1 — Single Variable Calculus",
-    slug: "module-1-single-variable-calculus",
-    short_description: "Limits, indeterminate forms, Rolle's Theorem, Mean Value Theorems, Taylor's series.",
-    display_order: 1,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    lessons_count: 2,
-  },
-  {
-    id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-    subject_id: "11111111-1111-1111-1111-111111111111",
-    title: "Module 2 — Multivariable Calculus",
-    slug: "module-2-multivariable-calculus",
-    short_description: "Functions of two variables, partial derivatives, chain rule, maxima and minima.",
-    display_order: 2,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    lessons_count: 0,
-  },
-  {
-    id: "cccccccc-0000-0000-0000-000000000001",
-    subject_id: "22222222-2222-2222-2222-222222222222",
-    title: "Module 1 — Introduction to Drafting & Projections",
-    slug: "module-1-introduction-to-drafting",
-    short_description: "Scales, lines, lettering, orthographic projection of points and lines in various quadrants.",
-    display_order: 1,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    lessons_count: 1,
-  },
-  {
-    id: "dddddddd-0000-0000-0000-000000000001",
-    subject_id: "33333333-3333-3333-3333-333333333333",
-    title: "Module 1 — DC Circuits & Network Theorems",
-    slug: "module-1-dc-circuits",
-    short_description: "Mesh and nodal analysis, Thevenin's and Norton's theorem, Maximum power transfer theorem.",
-    display_order: 1,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    lessons_count: 1,
-  },
-];
-
-const initialFallbackLessons: Lesson[] = [
-  {
-    id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
-    module_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    title: "Lecture 01 — Introduction to Limits & L'Hospital's Rule",
-    slug: "lecture-01-introduction-to-limits",
-    lesson_number: 1,
-    description: "Understanding evaluation of limits, indeterminate forms (0/0, inf/inf), and applying L'Hospital's rule with KTU exam problem walkthroughs.",
-    thumbnail_path: null,
-    duration_seconds: 1420,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    module_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    title: "Lecture 02 — Mean Value Theorems & Applications",
-    slug: "lecture-02-mean-value-theorems",
-    lesson_number: 2,
-    description: "Rolle's Theorem, Lagrange's Mean Value Theorem, Cauchy's Mean Value Theorem, geometric interpretation and analytical proofs.",
-    thumbnail_path: null,
-    duration_seconds: 1680,
-    published: true,
-    display_order: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "eeeeeeee-0000-0000-0000-000000000001",
-    module_id: "cccccccc-0000-0000-0000-000000000001",
-    title: "Lecture 01 — Projection of Points & First Angle System",
-    slug: "lecture-01-projection-of-points",
-    lesson_number: 1,
-    description: "Conventions of First and Third angle projections, drawing projection of points in 4 quadrants with step-by-step layout.",
-    thumbnail_path: null,
-    duration_seconds: 1850,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "ffffffff-0000-0000-0000-000000000001",
-    module_id: "dddddddd-0000-0000-0000-000000000001",
-    title: "Lecture 01 — Mesh & Nodal Analysis with Dependent Sources",
-    slug: "lecture-01-mesh-nodal-analysis",
-    lesson_number: 1,
-    description: "Systematic nodal and mesh equations for multi-loop circuits, Supernode and Supermesh techniques.",
-    thumbnail_path: null,
-    duration_seconds: 1540,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
-const initialFallbackVideos: Video[] = [
-  {
-    id: "v1111111-1111-1111-1111-111111111111",
-    lesson_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
-    title: "Lecture 01 — Limits & L'Hospital's Rule",
-    storage_path: "videos/engineering-mathematics/module-1/lecture-01.mp4",
-    mime_type: "video/mp4",
-    file_size: 154200000,
-    duration_seconds: 1420,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "v2222222-2222-2222-2222-222222222222",
-    lesson_id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    title: "Lecture 02 — Mean Value Theorems",
-    storage_path: "videos/engineering-mathematics/module-1/lecture-02.mp4",
-    mime_type: "video/mp4",
-    file_size: 182000000,
-    duration_seconds: 1680,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "v3333333-3333-3333-3333-333333333333",
-    lesson_id: "eeeeeeee-0000-0000-0000-000000000001",
-    title: "Lecture 01 — Projection of Points",
-    storage_path: "videos/engineering-graphics/module-1/lecture-01.mp4",
-    mime_type: "video/mp4",
-    file_size: 198000000,
-    duration_seconds: 1850,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "v4444444-4444-4444-4444-444444444444",
-    lesson_id: "ffffffff-0000-0000-0000-000000000001",
-    title: "Lecture 01 — Mesh & Nodal Analysis",
-    storage_path: "videos/electrical-engineering/module-1/lecture-01.mp4",
-    mime_type: "video/mp4",
-    file_size: 165000000,
-    duration_seconds: 1540,
-    published: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
-const initialFallbackMaterials: Material[] = [
-  {
-    id: "m1111111-1111-1111-1111-111111111111",
-    lesson_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
-    subject_id: "11111111-1111-1111-1111-111111111111",
-    module_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    title: "Module 1 Handwritten Class Notes — Limits & Derivatives",
-    description: "Clean handwritten classroom formulas, step-by-step limits derivation, and KTU previous year solved questions.",
-    material_type: "pdf",
-    storage_path: "materials/engineering-mathematics/module-1/limits-notes.pdf",
-    original_filename: "MAT101_Module1_Limits_Notes.pdf",
-    mime_type: "application/pdf",
-    file_size: 4820000,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "m2222222-2222-2222-2222-222222222222",
-    lesson_id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    subject_id: "11111111-1111-1111-1111-111111111111",
-    module_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-    title: "Mean Value Theorems Practice Problem Sheet with Solutions",
-    description: "25 standard university exam questions covering Rolle's and Lagrange's theorems with complete analytical steps.",
-    material_type: "pdf",
-    storage_path: "materials/engineering-mathematics/module-1/mvt-problems.pdf",
-    original_filename: "MAT101_MVT_Practice_Sheet.pdf",
-    mime_type: "application/pdf",
-    file_size: 3240000,
-    published: true,
-    display_order: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "m3333333-3333-3333-3333-333333333333",
-    lesson_id: "eeeeeeee-0000-0000-0000-000000000001",
-    subject_id: "22222222-2222-2222-2222-222222222222",
-    module_id: "cccccccc-0000-0000-0000-000000000001",
-    title: "Engineering Graphics Drawing Sheet Standards & Quadrant Rules",
-    description: "First angle projection conventions, line weights, dimensioning guides, and drawing sheet layout.",
-    material_type: "pdf",
-    storage_path: "materials/engineering-graphics/module-1/drawing-standards.pdf",
-    original_filename: "EST110_Drawing_Standards.pdf",
-    mime_type: "application/pdf",
-    file_size: 6120000,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "m4444444-4444-4444-4444-444444444444",
-    lesson_id: "ffffffff-0000-0000-0000-000000000001",
-    subject_id: "33333333-3333-3333-3333-333333333333",
-    module_id: "dddddddd-0000-0000-0000-000000000001",
-    title: "Circuit Theory Summary & Network Theorems Formula Sheet",
-    description: "Key equations for mesh, nodal, Thevenin, and Norton analysis with standard circuit diagrams.",
-    material_type: "pdf",
-    storage_path: "materials/electrical-engineering/module-1/theorems-summary.pdf",
-    original_filename: "EST130_Network_Theorems_CheatSheet.pdf",
-    mime_type: "application/pdf",
-    file_size: 2750000,
-    published: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
-const initialFallbackActivity: ActivityLog[] = [
-  {
-    id: "act-1",
-    action: "System Initialized",
-    entity_type: "system",
-    metadata: { version: "1.0.0" },
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: "act-2",
-    action: "Subject Published",
-    entity_type: "subject",
-    metadata: { title: "Engineering Mathematics", code: "MAT 101" },
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-  {
-    id: "act-3",
-    action: "Lecture Uploaded",
-    entity_type: "lesson",
-    metadata: { title: "Lecture 01 — Introduction to Limits" },
-    created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
-  },
-  {
-    id: "act-4",
-    action: "Study Material Added",
-    entity_type: "material",
-    metadata: { title: "Module 1 Handwritten Class Notes", type: "pdf" },
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-];
+import { extractYouTubeVideoId, getYouTubeThumbnailUrl, getYouTubeWatchUrl } from "../utils/youtube";
+export {
+  initialFallbackSiteSettings,
+  initialFallbackDepartments,
+  initialFallbackSemesters,
+  initialFallbackFaculty,
+  initialFallbackSubjects,
+  initialFallbackModules,
+  initialFallbackTopics,
+  initialFallbackLessons,
+  initialFallbackVideos,
+  initialFallbackMaterials,
+  initialFallbackActivity,
+  initialFallbackWorksActivities,
+} from "./seed-data";
+import {
+  initialFallbackSiteSettings,
+  initialFallbackDepartments,
+  initialFallbackSemesters,
+  initialFallbackFaculty,
+  initialFallbackSubjects,
+  initialFallbackModules,
+  initialFallbackTopics,
+  initialFallbackLessons,
+  initialFallbackVideos,
+  initialFallbackMaterials,
+  initialFallbackActivity,
+  initialFallbackWorksActivities,
+} from "./seed-data";
 
 // ---------------- Synchronized File-Backed Fallback Store ----------------
 // When Supabase is not yet configured with production keys, this store ensures that
@@ -346,12 +58,17 @@ const initialFallbackActivity: ActivityLog[] = [
 
 interface FallbackStoreData {
   siteSettings: SiteSettings;
+  departments: Department[];
+  semesters: Semester[];
+  faculty: Faculty[];
+  topics: Topic[];
   subjects: Subject[];
   modules: Module[];
   lessons: Lesson[];
   videos: Video[];
   materials: Material[];
   activity: ActivityLog[];
+  worksActivities: WorksActivity[];
 }
 
 const STORE_FILE_PATH = path.join(process.cwd(), ".engivault-local-store.json");
@@ -359,21 +76,48 @@ const STORE_FILE_PATH = path.join(process.cwd(), ".engivault-local-store.json");
 function getInitialStore(): FallbackStoreData {
   return {
     siteSettings: { ...initialFallbackSiteSettings },
+    departments: [...initialFallbackDepartments],
+    semesters: [...initialFallbackSemesters],
+    faculty: [...initialFallbackFaculty],
+    topics: [...initialFallbackTopics],
     subjects: [...initialFallbackSubjects],
     modules: [...initialFallbackModules],
     lessons: [...initialFallbackLessons],
     videos: [...initialFallbackVideos],
     materials: [...initialFallbackMaterials],
     activity: [...initialFallbackActivity],
+    worksActivities: [...initialFallbackWorksActivities],
   };
 }
 
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
 function getStore(): FallbackStoreData {
+  if (isProduction()) {
+    return getInitialStore();
+  }
   try {
     if (fs.existsSync(STORE_FILE_PATH)) {
       const content = fs.readFileSync(STORE_FILE_PATH, "utf-8");
       const parsed = JSON.parse(content);
       if (parsed && Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+        if (!Array.isArray(parsed.departments) || parsed.departments.length === 0) {
+          parsed.departments = [...initialFallbackDepartments];
+        }
+        if (!Array.isArray(parsed.semesters) || parsed.semesters.length === 0) {
+          parsed.semesters = [...initialFallbackSemesters];
+        }
+        if (!Array.isArray(parsed.faculty) || parsed.faculty.length === 0) {
+          parsed.faculty = [...initialFallbackFaculty];
+        }
+        if (!Array.isArray(parsed.topics) || parsed.topics.length === 0) {
+          parsed.topics = [...initialFallbackTopics];
+        }
+        if (!Array.isArray(parsed.worksActivities) || parsed.worksActivities.length === 0) {
+          parsed.worksActivities = [...initialFallbackWorksActivities];
+        }
         return parsed;
       }
     }
@@ -388,6 +132,9 @@ function getStore(): FallbackStoreData {
 }
 
 function saveStore(data: FallbackStoreData): void {
+  if (isProduction()) {
+    return; // Strictly no filesystem writes on Vercel/production
+  }
   try {
     fs.writeFileSync(STORE_FILE_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
@@ -397,7 +144,7 @@ function saveStore(data: FallbackStoreData): void {
 
 function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
   return new Proxy([] as unknown as T[], {
-    get(target, prop, receiver) {
+    get(_target, prop, _receiver) {
       const store = getStore();
       const arr = store[key] as unknown as any[];
       const val = Reflect.get(arr, prop, arr);
@@ -414,7 +161,7 @@ function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
       }
       return val;
     },
-    set(target, prop, value) {
+    set(_target, prop, value) {
       const s = getStore();
       Reflect.set(s[key] as unknown as any, prop, value, s[key]);
       saveStore(s);
@@ -424,11 +171,11 @@ function createStoreArrayProxy<T>(key: keyof FallbackStoreData): T[] {
 }
 
 const fallbackSiteSettings: SiteSettings = new Proxy({} as SiteSettings, {
-  get(target, prop, receiver) {
+  get(_target, prop, _receiver) {
     const s = getStore().siteSettings;
     return Reflect.get(s, prop, s);
   },
-  set(target, prop, value) {
+  set(_target, prop, value) {
     const s = getStore();
     Reflect.set(s.siteSettings, prop, value, s.siteSettings);
     saveStore(s);
@@ -436,27 +183,123 @@ const fallbackSiteSettings: SiteSettings = new Proxy({} as SiteSettings, {
   },
 });
 
+const fallbackDepartments: Department[] = createStoreArrayProxy<Department>("departments");
+const fallbackSemesters: Semester[] = createStoreArrayProxy<Semester>("semesters");
+const fallbackFaculty: Faculty[] = createStoreArrayProxy<Faculty>("faculty");
+const fallbackTopics: Topic[] = createStoreArrayProxy<Topic>("topics");
 const fallbackSubjects: Subject[] = createStoreArrayProxy<Subject>("subjects");
 const fallbackModules: Module[] = createStoreArrayProxy<Module>("modules");
 const fallbackLessons: Lesson[] = createStoreArrayProxy<Lesson>("lessons");
 const fallbackVideos: Video[] = createStoreArrayProxy<Video>("videos");
 const fallbackMaterials: Material[] = createStoreArrayProxy<Material>("materials");
 const fallbackActivity: ActivityLog[] = createStoreArrayProxy<ActivityLog>("activity");
+const fallbackWorksActivities: WorksActivity[] = createStoreArrayProxy<WorksActivity>("worksActivities");
 
 // Helper to populate virtual relations in fallback arrays
 function enrichFallbackLesson(lesson: Lesson): Lesson {
   const mod = fallbackModules.find((m) => m.id === lesson.module_id);
-  const subject = mod ? fallbackSubjects.find((s) => s.id === mod.subject_id) : undefined;
+  const rawSubject = mod ? fallbackSubjects.find((s) => s.id === mod.subject_id) : undefined;
+  const topic = lesson.topic_id ? fallbackTopics.find((t) => t.id === lesson.topic_id) : undefined;
+  const faculty = lesson.faculty_id
+    ? fallbackFaculty.find((f) => f.id === lesson.faculty_id)
+    : undefined;
   const video = fallbackVideos.find((v) => v.lesson_id === lesson.id) || null;
   const materials = fallbackMaterials.filter((m) => m.lesson_id === lesson.id);
 
+  const rawVideoId =
+    lesson.youtube_video_id ||
+    lesson.youtubeVideoId ||
+    lesson.video_id ||
+    lesson.videoId ||
+    null;
+  const rawYoutubeUrl = lesson.youtube_url || lesson.youtubeUrl || null;
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
+  const youtube_video_id =
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawYoutubeUrl ? extractYouTubeVideoId(String(rawYoutubeUrl).trim()) : null);
+
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : (rawYoutubeUrl ? getYouTubeWatchUrl(String(rawYoutubeUrl).trim()) : null);
+
+  const thumbnail_path =
+    lesson.thumbnail_path ||
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
+
+  const enrichedSubject: Subject | undefined = rawSubject
+    ? {
+        ...rawSubject,
+        department: rawSubject.department_id
+          ? fallbackDepartments.find((d) => d.id === rawSubject.department_id)
+          : undefined,
+        semester: rawSubject.semester_id
+          ? fallbackSemesters.find((s) => s.id === rawSubject.semester_id)
+          : undefined,
+      }
+    : undefined;
+
   return {
     ...lesson,
-    module: mod ? { ...mod, subject } : undefined,
+    youtube_url,
+    youtube_video_id,
+    youtubeUrl: youtube_url,
+    youtubeVideoId: youtube_video_id,
+    thumbnail_path,
+    instructor: lesson.instructor || faculty?.name || null,
+    faculty,
+    topic,
+    module: mod ? { ...mod, subject: enrichedSubject } : undefined,
     video,
     materials,
   };
 }
+
+export function normalizeLessonFields<T extends Record<string, any>>(lesson: T): T {
+  if (!lesson) return lesson;
+  const rawUrl = lesson.youtube_url || lesson.youtubeUrl || null;
+  const rawVideoId =
+    lesson.youtube_video_id ||
+    lesson.youtubeVideoId ||
+    lesson.video_id ||
+    lesson.videoId ||
+    null;
+
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
+  const youtube_video_id =
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : (rawUrl ? getYouTubeWatchUrl(String(rawUrl).trim()) : null);
+
+  const thumbnail_path =
+    lesson.thumbnail_path ||
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
+
+  const display_order =
+    lesson.display_order ??
+    lesson.order_index ??
+    lesson.orderIndex ??
+    lesson.lesson_number ??
+    1;
+
+  return {
+    ...lesson,
+    display_order,
+    order_index: display_order,
+    orderIndex: display_order,
+    youtube_url,
+    youtube_video_id,
+    youtubeUrl: youtube_url,
+    youtubeVideoId: youtube_video_id,
+    thumbnail_path,
+  };
+}
+
+
 
 /**
  * Determines whether the in-memory/file fallback store may be used.
@@ -465,6 +308,11 @@ function enrichFallbackLesson(lesson: Lesson): Lesson {
  *   Otherwise, all Supabase errors throw loudly to prevent silent data desynchronization.
  */
 export function isLocalFallbackAllowed(): boolean {
+  // In production (Vercel deployment or NODE_ENV=production), local fallback is strictly disabled.
+  // The authoritative production data source MUST be Supabase PostgreSQL.
+  if (isProduction()) {
+    return false;
+  }
   if (!isSupabaseConfigured()) {
     return true;
   }
@@ -483,20 +331,19 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       .from("site_settings")
       .select("*")
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-      throw new Error(`Failed to fetch site settings from Supabase: ${error.message}`);
+      console.warn("Notice: Fetching site settings from Supabase:", error.message);
+      return fallbackSiteSettings;
     }
     if (!data) {
-      if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-      throw new Error("Site settings record not found in Supabase.");
+      return fallbackSiteSettings;
     }
     return data;
-  } catch (err) {
-    if (isLocalFallbackAllowed()) return fallbackSiteSettings;
-    throw err;
+  } catch (err: any) {
+    console.warn("Notice: Fetching site settings from Supabase:", err?.message || err);
+    return fallbackSiteSettings;
   }
 }
 
@@ -666,7 +513,11 @@ export async function getSubjectById(id: string): Promise<Subject | null> {
 
 export async function createSubject(subject: Partial<Subject>): Promise<Subject> {
   const newId = subject.id || crypto.randomUUID();
-  const row: Subject = {
+
+  // DB insert payload: only columns that actually exist in the subjects table.
+  // modules_count, lessons_count, and materials_count are computed/display-only
+  // fields that do NOT exist as database columns — never send them to Supabase.
+  const dbPayload: Record<string, unknown> = {
     id: newId,
     title: subject.title || "Untitled Subject",
     slug: subject.slug || `subject-${Date.now()}`,
@@ -678,26 +529,43 @@ export async function createSubject(subject: Partial<Subject>): Promise<Subject>
     display_order: subject.display_order ?? fallbackSubjects.length + 1,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    ...(subject.department_id !== undefined && { department_id: subject.department_id }),
+    ...(subject.semester_id !== undefined && { semester_id: subject.semester_id }),
+    ...(subject.semester_number !== undefined && { semester_number: subject.semester_number }),
+  };
+
+  // Full in-memory / fallback representation (includes computed frontend fields)
+  const row: Subject = {
+    ...(dbPayload as Omit<Subject, "modules_count" | "lessons_count" | "materials_count">),
     modules_count: 0,
     lessons_count: 0,
     materials_count: 0,
-  };
+  } as Subject;
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
-      const { data, error } = await supabase.from("subjects").insert(row).select().single();
+      // Insert only dbPayload — excludes computed columns that don't exist in the DB schema
+      const { data, error } = await supabase.from("subjects").insert(dbPayload).select().single();
       if (error) {
         console.error("Supabase createSubject error:", error);
         throw new Error(`Failed to create subject: ${error.message}`);
       }
-      fallbackSubjects.push(data);
+      // Enrich with computed display fields (0 since subject was just created)
+      const enriched: Subject = { ...data, modules_count: 0, lessons_count: 0, materials_count: 0 };
+      if (!isProduction()) {
+        fallbackSubjects.push(enriched);
+      }
       await logActivity("Subject Created", "subject", { id: data.id, title: data.title, slug: data.slug });
-      return data;
+      return enriched;
     } catch (err: any) {
       console.error("Supabase createSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create subjects in production. Local JSON store is strictly disabled.");
   }
 
   fallbackSubjects.push(row);
@@ -720,9 +588,11 @@ export async function updateSubject(id: string, updates: Partial<Subject>): Prom
         console.error("Supabase updateSubject error:", error);
         throw new Error(`Failed to update subject: ${error.message}`);
       }
-      const idx = fallbackSubjects.findIndex((s) => s.id === id);
-      if (idx !== -1) {
-        fallbackSubjects[idx] = { ...fallbackSubjects[idx], ...data };
+      if (!isProduction()) {
+        const idx = fallbackSubjects.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+          fallbackSubjects[idx] = { ...fallbackSubjects[idx], ...data };
+        }
       }
       await logActivity("Subject Updated", "subject", { id, title: data.title });
       return data;
@@ -730,6 +600,10 @@ export async function updateSubject(id: string, updates: Partial<Subject>): Prom
       console.error("Supabase updateSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update subjects in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackSubjects.findIndex((s) => s.id === id);
@@ -869,30 +743,31 @@ export async function deleteSubject(id: string): Promise<boolean> {
         throw new Error("Subject deletion verification failed: record still exists in Supabase.");
       }
 
-      // 9. Sync fallback local store — remove subject and all its children
-      const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
-      const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
+      if (!isProduction()) {
+        const localModIds = fallbackModules.filter((m) => m.subject_id === id).map((m) => m.id);
+        const localLessonIds = fallbackLessons.filter((l) => localModIds.includes(l.module_id)).map((l) => l.id);
 
-      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (
-          localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
-          fallbackMaterials[i].subject_id === id ||
-          (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
-        ) {
-          fallbackMaterials.splice(i, 1);
+        for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+          if (
+            localLessonIds.includes(fallbackMaterials[i].lesson_id) ||
+            fallbackMaterials[i].subject_id === id ||
+            (fallbackMaterials[i].module_id && localModIds.includes(fallbackMaterials[i].module_id!))
+          ) {
+            fallbackMaterials.splice(i, 1);
+          }
         }
+        for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+          if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
+        }
+        for (let i = fallbackLessons.length - 1; i >= 0; i--) {
+          if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
+        }
+        for (let i = fallbackModules.length - 1; i >= 0; i--) {
+          if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
+        }
+        const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
+        if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
       }
-      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-        if (localLessonIds.includes(fallbackVideos[i].lesson_id)) fallbackVideos.splice(i, 1);
-      }
-      for (let i = fallbackLessons.length - 1; i >= 0; i--) {
-        if (localModIds.includes(fallbackLessons[i].module_id)) fallbackLessons.splice(i, 1);
-      }
-      for (let i = fallbackModules.length - 1; i >= 0; i--) {
-        if (fallbackModules[i].subject_id === id) fallbackModules.splice(i, 1);
-      }
-      const subIdx = fallbackSubjects.findIndex((s) => s.id === id);
-      if (subIdx !== -1) fallbackSubjects.splice(subIdx, 1);
 
       await logActivity("Subject Deleted", "subject", { id, title: existing.title });
       return true;
@@ -900,6 +775,10 @@ export async function deleteSubject(id: string): Promise<boolean> {
       console.error("Supabase deleteSubject error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete subjects in production. Local JSON store is strictly disabled.");
   }
 
   // Fallback-only mode: cascade through local store arrays
@@ -1153,13 +1032,19 @@ export async function createModule(data: Partial<Module>): Promise<Module> {
         throw new Error(`Failed to create module: ${error.message}`);
       }
       const enriched: Module = { ...created, lessons_count: 0 };
-      fallbackModules.push(enriched);
+      if (!isProduction()) {
+        fallbackModules.push(enriched);
+      }
       await logActivity("Module Created", "module", { id: created.id, title: created.title, slug: created.slug });
       return enriched;
     } catch (err: any) {
       console.error("Supabase createModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create modules in production. Local JSON store is strictly disabled.");
   }
 
   const newMod: Module = {
@@ -1186,14 +1071,20 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
         console.error("Supabase updateModule error:", error);
         throw new Error(`Failed to update module: ${error.message}`);
       }
-      const idx = fallbackModules.findIndex((m) => m.id === id);
-      if (idx !== -1) fallbackModules[idx] = { ...fallbackModules[idx], ...data };
+      if (!isProduction()) {
+        const idx = fallbackModules.findIndex((m) => m.id === id);
+        if (idx !== -1) fallbackModules[idx] = { ...fallbackModules[idx], ...data };
+      }
       await logActivity("Module Updated", "module", { id, title: data.title });
       return data;
     } catch (err: any) {
       console.error("Supabase updateModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update modules in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackModules.findIndex((m) => m.id === id);
@@ -1339,7 +1230,9 @@ export async function deleteModule(id: string): Promise<boolean> {
       }
 
       // Step 6: Clean up local fallback store atomically
-      cleanupLocalStoreForModule(id, lessonIds);
+      if (!isProduction()) {
+        cleanupLocalStoreForModule(id, lessonIds);
+      }
 
       await logActivity("Module Deleted", "module", { id, title: existing.title });
       return true;
@@ -1347,6 +1240,10 @@ export async function deleteModule(id: string): Promise<boolean> {
       console.error("Supabase deleteModule error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete modules in production. Local JSON store is strictly disabled.");
   }
 
   const existing = fallbackModules.find((m) => m.id === id);
@@ -1376,7 +1273,9 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
   }
 
   try {
-    const supabase = createAdminClient();
+    const supabase = isSupabaseAdminConfigured()
+      ? createAdminClient()
+      : await createServerSupabase();
     let query = supabase
       .from("lessons")
       .select("*, modules(id, title, slug, subject_id, subjects(id, title, slug, code)), videos(*), materials(*)")
@@ -1405,17 +1304,20 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
     }
     if (!data) return [];
 
-    let lessons = data.map((l: any) => ({
-      ...l,
-      module: l.modules
-        ? {
-            ...l.modules,
-            subject: l.modules.subjects,
-          }
-        : undefined,
-      video: l.videos?.[0] || null,
-      materials: l.materials || [],
-    }));
+    let lessons = data.map((l: any) =>
+      normalizeLessonFields({
+        ...l,
+        module: l.modules
+          ? {
+              ...l.modules,
+              subject: l.modules.subjects,
+            }
+          : undefined,
+        video: l.videos?.[0] || null,
+        materials: l.materials || [],
+      })
+    );
+
 
     if (options?.subjectId) {
       lessons = lessons.filter((l: any) => l.module?.subject_id === options.subjectId);
@@ -1439,7 +1341,7 @@ export async function getAllLessons(options?: { moduleId?: string; subjectId?: s
   }
 }
 
-export async function getLessonsForModule(moduleId: string, requirePublished = true): Promise<Lesson[]> {
+export async function getLessonsForModule(moduleId: string, requirePublished = false): Promise<Lesson[]> {
   if (!isSupabaseConfigured()) {
     return fallbackLessons
       .filter((l) => l.module_id === moduleId && (!requirePublished || l.published))
@@ -1467,11 +1369,13 @@ export async function getLessonsForModule(moduleId: string, requirePublished = t
       throw new Error(`Failed to fetch lessons for module from Supabase: ${error.message}`);
     }
     if (!data) return [];
-    return data.map((l: any) => ({
-      ...l,
-      video: l.videos?.[0] || null,
-      materials: l.materials || [],
-    }));
+    return data.map((l: any) =>
+      normalizeLessonFields({
+        ...l,
+        video: l.videos?.[0] || null,
+        materials: l.materials || [],
+      })
+    );
   } catch (err) {
     if (isLocalFallbackAllowed()) {
       return fallbackLessons
@@ -1535,7 +1439,7 @@ export async function getLessonBySlug(moduleId: string, lessonSlug: string, requ
       m.download_url = await getSignedMaterialUrl(m.storage_path);
     }
 
-    return {
+    return normalizeLessonFields({
       ...data,
       module: data.modules
         ? {
@@ -1545,7 +1449,7 @@ export async function getLessonBySlug(moduleId: string, lessonSlug: string, requ
         : undefined,
       video,
       materials,
-    };
+    });
   } catch (err) {
     if (isLocalFallbackAllowed()) {
       const l = fallbackLessons.find((les) => les.module_id === moduleId && les.slug === lessonSlug);
@@ -1576,7 +1480,7 @@ export async function getLessonById(id: string): Promise<Lesson | null> {
       throw new Error(`Failed to fetch lesson by ID from Supabase: ${error.message}`);
     }
     if (!data) return null;
-    return {
+    return normalizeLessonFields({
       ...data,
       module: data.modules
         ? {
@@ -1586,7 +1490,7 @@ export async function getLessonById(id: string): Promise<Lesson | null> {
         : undefined,
       video: data.videos?.[0] || null,
       materials: data.materials || [],
-    };
+    });
   } catch (err) {
     if (isLocalFallbackAllowed()) {
       const les = fallbackLessons.find((l) => l.id === id);
@@ -1610,7 +1514,6 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       .select("*, modules!inner(id, title, slug, subject_id, published, subjects!inner(id, title, slug, code, published)), videos(*), materials(*)")
       .eq("published", true)
       .eq("modules.published", true)
-      .eq("modules.subjects.published", true)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -1618,53 +1521,106 @@ export async function getRecentPublishedLessons(limit = 3): Promise<Lesson[]> {
       if (isLocalFallbackAllowed()) {
         return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
       }
-      throw new Error(`Failed to fetch recent published lessons from Supabase: ${error.message}`);
+      console.warn("Notice: Fetching recent published lessons from Supabase:", error.message);
+      return [];
     }
     if (!data) return [];
 
-    return data.map((l: any) => ({
-      ...l,
-      module: {
-        ...l.modules,
-        subject: l.modules.subjects,
-      },
-      video: l.videos?.[0] || null,
-      materials: l.materials || [],
-    }));
-  } catch (err) {
+    const validLessons = data.filter((l: any) => l.modules?.subjects?.published !== false);
+
+    return validLessons.map((l: any) =>
+      normalizeLessonFields({
+        ...l,
+        module: l.modules
+          ? {
+              ...l.modules,
+              subject: l.modules.subjects,
+            }
+          : undefined,
+        video: l.videos?.[0] || null,
+        materials: l.materials || [],
+      })
+    );
+  } catch (err: any) {
     if (isLocalFallbackAllowed()) {
       return fallbackLessons.filter((l) => l.published).map(enrichFallbackLesson).slice(0, limit);
     }
-    throw err;
+    console.warn("Notice: Fetching recent published lessons from Supabase:", err?.message || err);
+    return [];
   }
 }
 
 export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
-  const insertPayload = {
+  const rawUrl = data.youtube_url || data.youtubeUrl || null;
+  const rawVideoId = data.youtube_video_id || data.youtubeVideoId || null;
+  const trimmedId = rawVideoId ? String(rawVideoId).trim() : null;
+  const youtube_video_id =
+    (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+      ? trimmedId
+      : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+  const youtube_url = youtube_video_id
+    ? `https://www.youtube.com/watch?v=${youtube_video_id}`
+    : null;
+  const thumbnail_path =
+    data.thumbnail_path ||
+    (youtube_video_id ? getYouTubeThumbnailUrl(youtube_video_id, "hqdefault") : null);
+
+  const display_order =
+    data.display_order ??
+    data.order_index ??
+    (data as any).orderIndex ??
+    data.lesson_number ??
+    (fallbackLessons.length + 1);
+
+  const insertPayload: Record<string, any> = {
     id: data.id || crypto.randomUUID(),
     module_id: data.module_id!,
+    topic_id: data.topic_id || null,
+    faculty_id: data.faculty_id || null,
+    instructor: data.instructor || null,
     title: data.title || "Untitled Lecture",
     slug: data.slug || `lecture-${Date.now()}`,
     lesson_number: data.lesson_number ?? 1,
     description: data.description || null,
-    thumbnail_path: data.thumbnail_path || null,
+    thumbnail_path: thumbnail_path || null,
     duration_seconds: data.duration_seconds ?? 1200,
     published: Boolean(data.published),
-    display_order: data.display_order ?? (fallbackLessons.length + 1),
+    display_order,
+    status: data.status || (Boolean(data.published) ? "published" : "draft"),
+    youtube_url,
+    youtube_video_id,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  if (data.created_by) {
+    insertPayload.created_by = data.created_by;
+  }
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
       const { data: created, error } = await supabase.from("lessons").insert(insertPayload).select().single();
+
       if (error) {
+        if (error.message.includes("instructor") && error.message.includes("schema cache")) {
+          const diagnostic = `Database schema mismatch: Could not find the 'instructor' column of 'lessons' in the schema cache. Please apply migration 007 (supabase/migrations/007_reconcile_lesson_instructor_column.sql) in your Supabase SQL Editor: ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text; NOTIFY pgrst, 'reload schema'; Original error: ${error.message}`;
+          console.error("Supabase createLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
+        if (error.message.includes("in the schema cache")) {
+          const diagnostic = `Database schema mismatch on 'lessons' table: ${error.message}. Please verify migrations 005, 006, and 007 have been applied to your Supabase database and execute NOTIFY pgrst, 'reload schema'; to refresh the schema cache.`;
+          console.error("Supabase createLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
         console.error("Supabase createLesson error:", error);
         throw new Error(`Failed to create lesson in database: ${error.message}`);
       }
-      const enriched = enrichFallbackLesson(created);
-      fallbackLessons.push(enriched);
+      const normalizedData = normalizeLessonFields(created);
+      const enriched = enrichFallbackLesson(normalizedData);
+      if (!isProduction()) {
+        fallbackLessons.push(enriched);
+      }
       await logActivity("Lesson Created", "lesson", { id: created.id, title: created.title, slug: created.slug });
       return enriched;
     } catch (err: any) {
@@ -1673,9 +1629,13 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
     }
   }
 
-  const newLesson: Lesson = {
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create lectures in production. Local JSON store is strictly disabled.");
+  }
+
+  const newLesson: Lesson = normalizeLessonFields({
     ...insertPayload,
-  };
+  }) as Lesson;
   const enriched = enrichFallbackLesson(newLesson);
   fallbackLessons.push(enriched);
   await logActivity("Lesson Created", "lesson", { id: newLesson.id, title: newLesson.title });
@@ -1683,11 +1643,51 @@ export async function createLesson(data: Partial<Lesson>): Promise<Lesson> {
 }
 
 export async function updateLesson(id: string, updates: Partial<Lesson>): Promise<Lesson | null> {
+  const cleanUpdates: Record<string, any> = { ...updates };
+  if ("youtubeUrl" in cleanUpdates && !("youtube_url" in cleanUpdates)) {
+    cleanUpdates.youtube_url = cleanUpdates.youtubeUrl;
+  }
+  if ("youtubeVideoId" in cleanUpdates && !("youtube_video_id" in cleanUpdates)) {
+    cleanUpdates.youtube_video_id = cleanUpdates.youtubeVideoId;
+  }
+  if (
+    "youtube_url" in cleanUpdates ||
+    "youtubeUrl" in cleanUpdates ||
+    "youtube_video_id" in cleanUpdates ||
+    "youtubeVideoId" in cleanUpdates
+  ) {
+    const rawUrl = cleanUpdates.youtube_url ?? cleanUpdates.youtubeUrl ?? null;
+    const rawId = cleanUpdates.youtube_video_id ?? cleanUpdates.youtubeVideoId ?? null;
+    const trimmedId = rawId ? String(rawId).trim() : null;
+    const vidId =
+      (trimmedId && /^[a-zA-Z0-9_-]{11}$/.test(trimmedId))
+        ? trimmedId
+        : (rawUrl ? extractYouTubeVideoId(String(rawUrl).trim()) : null);
+
+    if (vidId) {
+      cleanUpdates.youtube_video_id = vidId;
+      cleanUpdates.youtube_url = `https://www.youtube.com/watch?v=${vidId}`;
+      if (!cleanUpdates.thumbnail_path) {
+        cleanUpdates.thumbnail_path = getYouTubeThumbnailUrl(vidId, "hqdefault");
+      }
+    } else {
+      cleanUpdates.youtube_url = null;
+      cleanUpdates.youtube_video_id = null;
+    }
+  }
+
+  if (cleanUpdates.display_order === undefined && cleanUpdates.order_index !== undefined) {
+    cleanUpdates.display_order = cleanUpdates.order_index;
+  }
+  delete cleanUpdates.order_index;
+  delete cleanUpdates.orderIndex;
+  delete cleanUpdates.sequence_order;
+
   if (isSupabaseConfigured()) {
     try {
       const supabase = createAdminClient();
       const payload: Record<string, any> = {
-        ...updates,
+        ...cleanUpdates,
         updated_at: new Date().toISOString(),
       };
       delete payload.id;
@@ -1695,30 +1695,60 @@ export async function updateLesson(id: string, updates: Partial<Lesson>): Promis
       delete payload.module;
       delete payload.video;
       delete payload.materials;
+      delete payload.faculty;
+      delete payload.topic;
+      delete payload.subject;
+      delete payload.lectures_count;
+      delete payload.lessons_count;
+      delete payload.materials_count;
+      delete payload.youtubeUrl;
+      delete payload.youtubeVideoId;
+      delete payload.order_index;
+      delete payload.orderIndex;
+      delete payload.sequence_order;
 
       const { data, error } = await supabase.from("lessons").update(payload).eq("id", id).select().single();
+
       if (error) {
+        if (error.message.includes("instructor") && error.message.includes("schema cache")) {
+          const diagnostic = `Database schema mismatch: Could not find the 'instructor' column of 'lessons' in the schema cache. Please apply migration 007 (supabase/migrations/007_reconcile_lesson_instructor_column.sql) in your Supabase SQL Editor: ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS instructor text; NOTIFY pgrst, 'reload schema'; Original error: ${error.message}`;
+          console.error("Supabase updateLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
+        if (error.message.includes("in the schema cache")) {
+          const diagnostic = `Database schema mismatch on 'lessons' table: ${error.message}. Please verify migrations 005, 006, and 007 have been applied to your Supabase database and execute NOTIFY pgrst, 'reload schema'; to refresh the schema cache.`;
+          console.error("Supabase updateLesson schema mismatch:", diagnostic);
+          throw new Error(diagnostic);
+        }
         console.error("Supabase updateLesson error:", error);
         throw new Error(`Failed to update lesson in database: ${error.message}`);
       }
-      const idx = fallbackLessons.findIndex((l) => l.id === id);
-      if (idx !== -1) fallbackLessons[idx] = { ...fallbackLessons[idx], ...data };
-      await logActivity("Lesson Updated", "lesson", { id, title: data.title });
-      return data;
+      const normalizedData = normalizeLessonFields(data);
+      if (!isProduction()) {
+        const idx = fallbackLessons.findIndex((l) => l.id === id);
+        if (idx !== -1) fallbackLessons[idx] = enrichFallbackLesson({ ...fallbackLessons[idx], ...normalizedData });
+      }
+      await logActivity("Lesson Updated", "lesson", { id, title: normalizedData.title });
+      return normalizedData;
     } catch (err: any) {
       console.error("Supabase updateLesson error:", err);
       throw err;
     }
   }
 
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to update lectures in production. Local JSON store is strictly disabled.");
+  }
+
   const index = fallbackLessons.findIndex((l) => l.id === id);
   if (index === -1) return null;
-  fallbackLessons[index] = {
+  const merged = enrichFallbackLesson({
     ...fallbackLessons[index],
-    ...updates,
+    ...cleanUpdates,
     updated_at: new Date().toISOString(),
-  };
-  await logActivity("Lesson Updated", "lesson", { id, updates });
+  });
+  fallbackLessons[index] = merged;
+  await logActivity("Lesson Updated", "lesson", { id, updates: cleanUpdates });
   return fallbackLessons[index];
 }
 
@@ -1789,13 +1819,15 @@ export async function deleteLesson(id: string): Promise<boolean> {
         throw new Error("Lesson deletion verification failed: record still exists in Supabase.");
       }
 
-      const idx = fallbackLessons.findIndex((l) => l.id === id);
-      if (idx !== -1) fallbackLessons.splice(idx, 1);
-      for (let i = fallbackVideos.length - 1; i >= 0; i--) {
-        if (fallbackVideos[i].lesson_id === id) fallbackVideos.splice(i, 1);
-      }
-      for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
-        if (fallbackMaterials[i].lesson_id === id) fallbackMaterials.splice(i, 1);
+      if (!isProduction()) {
+        const idx = fallbackLessons.findIndex((l) => l.id === id);
+        if (idx !== -1) fallbackLessons.splice(idx, 1);
+        for (let i = fallbackVideos.length - 1; i >= 0; i--) {
+          if (fallbackVideos[i].lesson_id === id) fallbackVideos.splice(i, 1);
+        }
+        for (let i = fallbackMaterials.length - 1; i >= 0; i--) {
+          if (fallbackMaterials[i].lesson_id === id) fallbackMaterials.splice(i, 1);
+        }
       }
 
       await logActivity("Lesson Deleted", "lesson", { id, title: existing?.title || "Lesson" });
@@ -1804,6 +1836,10 @@ export async function deleteLesson(id: string): Promise<boolean> {
       console.error("Supabase deleteLesson error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete lectures in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackLessons.findIndex((l) => l.id === id);
@@ -1957,13 +1993,19 @@ export async function createVideo(data: Partial<Video>): Promise<Video> {
 
       const { data: created, error } = await supabase.from("videos").insert(newVid).select().single();
       if (error) throw error;
-      fallbackVideos.push(created);
+      if (!isProduction()) {
+        fallbackVideos.push(created);
+      }
       await logActivity("Video Uploaded", "video", { id: created.id, title: created.title, lesson_id: created.lesson_id });
       return created;
     } catch (err: any) {
       console.error("Supabase createVideo error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create videos in production. Local JSON store is strictly disabled.");
   }
 
   // Fallback mode: upsert
@@ -1993,14 +2035,20 @@ export async function deleteVideo(id: string): Promise<boolean> {
       }
       const { error } = await supabase.from("videos").delete().eq("id", id);
       if (error) throw error;
-      const fIdx = fallbackVideos.findIndex((v) => v.id === id);
-      if (fIdx !== -1) fallbackVideos.splice(fIdx, 1);
+      if (!isProduction()) {
+        const fIdx = fallbackVideos.findIndex((v) => v.id === id);
+        if (fIdx !== -1) fallbackVideos.splice(fIdx, 1);
+      }
       await logActivity("Video Deleted", "video", { id });
       return true;
     } catch (err) {
       console.error("Supabase deleteVideo error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete videos in production. Local JSON store is strictly disabled.");
   }
 
   const idx = fallbackVideos.findIndex((v) => v.id === id);
@@ -2047,7 +2095,7 @@ export async function getMaterialsForLesson(lessonId: string): Promise<Material[
     return data;
   } catch (err) {
     if (isLocalFallbackAllowed()) {
-      const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published);
+      const list = fallbackMaterials.filter((m) => m.lesson_id === lessonId && m.published && !m.deleted_at);
       for (const mat of list) {
         mat.download_url = await getSignedMaterialUrl(mat.storage_path);
       }
@@ -2056,6 +2104,191 @@ export async function getMaterialsForLesson(lessonId: string): Promise<Material[
     throw err;
   }
 }
+
+/**
+ * Public-Safe Study Materials Query for Student Catalogue.
+ *
+ * Enforces:
+ * - Public createServerSupabase client (no administrative service-role exposure).
+ * - published = true on materials, parent lessons, parent modules, and parent subjects.
+ * - Soft-deleted records excluded (deleted_at is null).
+ * - Generates secure signed download URLs.
+ */
+export async function getPublishedMaterialsForCatalog(): Promise<Material[]> {
+  if (!isSupabaseConfigured()) {
+    const list: Material[] = [];
+    for (const mat of fallbackMaterials) {
+      if (!mat.published || mat.deleted_at) continue;
+
+      const lesson = fallbackLessons.find((l) => l.id === mat.lesson_id);
+      if (!lesson || !lesson.published) continue;
+
+      const mod = fallbackModules.find((m) => m.id === (mat.module_id || lesson.module_id));
+      if (!mod || !mod.published) continue;
+
+      const subject = fallbackSubjects.find((s) => s.id === (mat.subject_id || mod.subject_id));
+      if (!subject || !subject.published) continue;
+
+      const download_url = await getSignedMaterialUrl(mat.storage_path);
+
+      list.push({
+        ...mat,
+        download_url,
+        lesson,
+        module: mod,
+        subject,
+      });
+    }
+
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("materials")
+      .select(`
+        id,
+        lesson_id,
+        subject_id,
+        module_id,
+        title,
+        description,
+        material_type,
+        storage_path,
+        original_filename,
+        mime_type,
+        file_size,
+        published,
+        display_order,
+        created_at,
+        updated_at,
+        deleted_at,
+        lessons (
+          id,
+          title,
+          slug,
+          published,
+          modules (
+            id,
+            title,
+            slug,
+            published,
+            subjects (
+              id,
+              title,
+              slug,
+              code,
+              department_id,
+              semester_number,
+              published
+            )
+          )
+        )
+      `)
+      .eq("published", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isLocalFallbackAllowed()) {
+        return getPublishedMaterialsForCatalogFallback();
+      }
+      throw new Error(`Failed to fetch published materials from Supabase: ${error.message}`);
+    }
+
+    if (!data) return [];
+
+    const results: Material[] = [];
+    for (const raw of data as any[]) {
+      const lesson = raw.lessons;
+      const mod = lesson?.modules;
+      const subject = mod?.subjects;
+
+      // Defensive check: ensure full hierarchy is published
+      if (!lesson || !lesson.published || !mod || !mod.published || !subject || !subject.published) {
+        continue;
+      }
+
+      const download_url = await getSignedMaterialUrl(raw.storage_path);
+
+      results.push({
+        id: raw.id,
+        lesson_id: raw.lesson_id,
+        subject_id: raw.subject_id || subject?.id,
+        module_id: raw.module_id || mod?.id,
+        title: raw.title,
+        description: raw.description,
+        material_type: raw.material_type,
+        storage_path: raw.storage_path,
+        original_filename: raw.original_filename,
+        mime_type: raw.mime_type,
+        file_size: raw.file_size,
+        published: raw.published,
+        display_order: raw.display_order,
+        created_at: raw.created_at,
+        updated_at: raw.updated_at,
+        deleted_at: raw.deleted_at,
+        download_url,
+        lesson,
+        module: mod,
+        subject,
+      });
+    }
+
+    return results;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) {
+      return getPublishedMaterialsForCatalogFallback();
+    }
+    throw err;
+  }
+}
+
+async function getPublishedMaterialsForCatalogFallback(): Promise<Material[]> {
+  const list: Material[] = [];
+  for (const mat of fallbackMaterials) {
+    if (!mat.published || mat.deleted_at) continue;
+
+    const lesson = fallbackLessons.find((l) => l.id === mat.lesson_id);
+    if (!lesson || !lesson.published) continue;
+
+    const mod = fallbackModules.find((m) => m.id === (mat.module_id || lesson.module_id));
+    if (!mod || !mod.published) continue;
+
+    const subject = fallbackSubjects.find((s) => s.id === (mat.subject_id || mod.subject_id));
+    if (!subject || !subject.published) continue;
+
+    const download_url = await getSignedMaterialUrl(mat.storage_path);
+
+    list.push({
+      ...mat,
+      download_url,
+      lesson,
+      module: mod,
+      subject,
+    });
+  }
+
+  return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+}
+
+/**
+ * Returns published study materials for a specific subject.
+ */
+export async function getMaterialsForSubject(subjectId: string): Promise<Material[]> {
+  const all = await getPublishedMaterialsForCatalog();
+  return all.filter((m) => m.subject_id === subjectId || m.subject?.id === subjectId);
+}
+
+/**
+ * Returns published study materials for a specific module.
+ */
+export async function getMaterialsForModule(moduleId: string): Promise<Material[]> {
+  const all = await getPublishedMaterialsForCatalog();
+  return all.filter((m) => m.module_id === moduleId || m.module?.id === moduleId);
+}
+
 
 export async function getAllMaterials(): Promise<Material[]> {
   if (!isSupabaseConfigured()) {
@@ -2120,13 +2353,19 @@ export async function createMaterial(data: Partial<Material>): Promise<Material>
       const supabase = createAdminClient();
       const { data: created, error } = await supabase.from("materials").insert(newMat).select().single();
       if (error) throw error;
-      fallbackMaterials.push(created);
+      if (!isProduction()) {
+        fallbackMaterials.push(created);
+      }
       await logActivity("Material Uploaded", "material", { id: created.id, title: created.title });
       return created;
     } catch (err: any) {
       console.error("Supabase createMaterial error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to upload materials in production. Local JSON store is strictly disabled.");
   }
 
   fallbackMaterials.push(newMat);
@@ -2148,14 +2387,20 @@ export async function deleteMaterial(id: string): Promise<boolean> {
       }
       const { error } = await supabase.from("materials").delete().eq("id", id);
       if (error) throw error;
-      const idx = fallbackMaterials.findIndex((m) => m.id === id);
-      if (idx !== -1) fallbackMaterials.splice(idx, 1);
+      if (!isProduction()) {
+        const idx = fallbackMaterials.findIndex((m) => m.id === id);
+        if (idx !== -1) fallbackMaterials.splice(idx, 1);
+      }
       await logActivity("Material Deleted", "material", { id });
       return true;
     } catch (err) {
       console.error("Supabase deleteMaterial error:", err);
       throw err;
     }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to delete materials in production. Local JSON store is strictly disabled.");
   }
 
   const index = fallbackMaterials.findIndex((m) => m.id === id);
@@ -2225,10 +2470,9 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       // Search published lessons
       const { data: lessons, error: lesErr } = await supabase
         .from("lessons")
-        .select("id, title, slug, description, module_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
+        .select("id, title, slug, description, module_id, youtube_url, youtube_video_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
         .eq("published", true)
         .eq("modules.published", true)
-        .eq("modules.subjects.published", true)
         .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
 
       if (lesErr) throw lesErr;
@@ -2236,6 +2480,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       if (lessons) {
         for (const l of lessons) {
           const mod = l.modules as any;
+          const watchUrl = getYouTubeWatchUrl((l as any).youtube_url || (l as any).youtube_video_id);
+          const videoId = (l as any).youtube_video_id || extractYouTubeVideoId(watchUrl);
           results.push({
             id: l.id,
             type: "lesson",
@@ -2243,6 +2489,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
             description: l.description || undefined,
             url: `/subjects/${mod.subjects.slug}/${mod.slug}/${l.slug}`,
             badge: "Lecture",
+            youtube_url: watchUrl,
+            youtube_video_id: videoId,
           });
         }
       }
@@ -2292,6 +2540,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
       const parentModule = fallbackModules.find((m) => m.id === les.module_id && m.published);
       const parentSubject = parentModule ? subjects.find((s) => s.id === parentModule.subject_id) : null;
       if (parentSubject && parentModule) {
+        const watchUrl = getYouTubeWatchUrl(les.youtube_url || les.youtube_video_id);
+        const videoId = les.youtube_video_id || extractYouTubeVideoId(watchUrl);
         results.push({
           id: les.id,
           type: "lesson",
@@ -2299,6 +2549,8 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
           description: les.description || undefined,
           url: `/subjects/${parentSubject.slug}/${parentModule.slug}/${les.slug}`,
           badge: "Lecture",
+          youtube_url: watchUrl,
+          youtube_video_id: videoId,
         });
       }
     }
@@ -2477,3 +2729,969 @@ export async function runDataConsistencyCheck() {
     timestamp: new Date().toISOString(),
   };
 }
+
+
+// ============================================================================
+// ---------------- ACADEMIC HIERARCHY QUERY LAYER ----------------
+// Tier 1: Departments / Branches
+// Tier 2: Semesters / Academic Years
+// Tier 3: Subjects
+// Tier 4: Modules / Units
+// Tier 5: Topics
+// Tier 6: Lectures (Canonical central unit: Lesson)
+// ============================================================================
+
+export async function getAllDepartments(): Promise<Department[]> {
+  if (!isSupabaseConfigured()) {
+    return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
+  }
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("departments")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error || !data) {
+      console.warn("Notice: Fetching departments from Supabase:", error?.message);
+      return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
+    }
+    return data;
+  } catch (err: any) {
+    console.warn("Notice: Fetching departments from Supabase:", err?.message || err);
+    return [...fallbackDepartments].sort((a, b) => a.display_order - b.display_order);
+  }
+}
+
+export async function getDepartmentBySlug(slug: string): Promise<Department | null> {
+  const departments = await getAllDepartments();
+  return departments.find((d) => d.slug === slug || d.code.toLowerCase() === slug.toLowerCase()) || null;
+}
+
+export async function getAllSemesters(): Promise<Semester[]> {
+  if (!isSupabaseConfigured()) {
+    return [...fallbackSemesters].sort((a, b) => a.number - b.number);
+  }
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("semesters")
+      .select("*")
+      .order("number", { ascending: true });
+
+    if (error || !data) {
+      console.warn("Notice: Fetching semesters from Supabase:", error?.message);
+      return [...fallbackSemesters].sort((a, b) => a.number - b.number);
+    }
+    return data;
+  } catch (err: any) {
+    console.warn("Notice: Fetching semesters from Supabase:", err?.message || err);
+    return [...fallbackSemesters].sort((a, b) => a.number - b.number);
+  }
+}
+
+export async function getSemestersByDepartment(departmentId?: string): Promise<Semester[]> {
+  const semesters = await getAllSemesters();
+  if (!departmentId) return semesters;
+  return semesters.filter((s) => !s.department_id || s.department_id === departmentId);
+}
+
+export async function getAllFaculty(): Promise<Faculty[]> {
+  if (!isSupabaseConfigured()) {
+    return [...fallbackFaculty];
+  }
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("faculty")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error || !data) {
+      if (isLocalFallbackAllowed()) return [...fallbackFaculty];
+      throw new Error(`Failed to fetch faculty from Supabase: ${error?.message}`);
+    }
+    return data;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return [...fallbackFaculty];
+    throw err;
+  }
+}
+
+export async function getFacultyById(id: string): Promise<Faculty | null> {
+  const facultyList = await getAllFaculty();
+  return facultyList.find((f) => f.id === id) || null;
+}
+
+export async function getAllTopics(): Promise<Topic[]> {
+  if (!isSupabaseConfigured()) {
+    return [...fallbackTopics].sort((a, b) => a.display_order - b.display_order);
+  }
+  try {
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("topics")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (error || !data) {
+      if (isLocalFallbackAllowed()) return [...fallbackTopics].sort((a, b) => a.display_order - b.display_order);
+      throw new Error(`Failed to fetch topics from Supabase: ${error?.message}`);
+    }
+    return data;
+  } catch (err) {
+    if (isLocalFallbackAllowed()) return [...fallbackTopics].sort((a, b) => a.display_order - b.display_order);
+    throw err;
+  }
+}
+
+export async function getTopicsByModule(moduleId: string): Promise<Topic[]> {
+  const topics = await getAllTopics();
+  return topics.filter((t) => t.module_id === moduleId);
+}
+
+export async function getTopicById(id: string): Promise<Topic | null> {
+  const topics = await getAllTopics();
+  return topics.find((t) => t.id === id) || null;
+}
+
+export async function getTopicBySlug(moduleSlug: string, topicSlug: string): Promise<Topic | null> {
+  const allMods = await getAllModules();
+  const mod = allMods.find((m) => m.slug === moduleSlug);
+  if (!mod) return null;
+  const topics = await getTopicsByModule(mod.id);
+  const topic = topics.find((t) => t.slug === topicSlug) || null;
+  if (topic) topic.module = mod;
+  return topic;
+}
+
+export async function createTopic(data: Partial<Topic>): Promise<Topic> {
+  const newTopic: Topic = {
+    id: data.id || crypto.randomUUID(),
+    module_id: data.module_id!,
+    title: data.title!,
+    slug: data.slug || `topic-${Date.now()}`,
+    description: data.description || null,
+    display_order: data.display_order ?? (fallbackTopics.length + 1),
+    published: data.published ?? true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data: created, error } = await supabase.from("topics").insert(newTopic).select().single();
+      if (error) {
+        throw new Error(`Failed to create topic in database: ${error.message}`);
+      }
+      if (!isProduction()) {
+        fallbackTopics.push(created);
+      }
+      return created;
+    } catch (err) {
+      if (!isLocalFallbackAllowed()) throw err;
+    }
+  }
+
+  if (isProduction()) {
+    throw new Error("Supabase database configuration is required to create topics in production. Local JSON store is strictly disabled.");
+  }
+
+  fallbackTopics.push(newTopic);
+  return newTopic;
+}
+
+export async function getLecturesByTopic(topicId: string): Promise<Lesson[]> {
+  const allLessons = await getAllLessons();
+  return allLessons.filter((l) => l.topic_id === topicId && l.published);
+}
+
+/**
+ * Multi-discipline cascading academic search and filter query.
+ * Matches across:
+ * - Department / Branch
+ * - Semester / Year
+ * - Subject
+ * - Module
+ * - Topic
+ * - Faculty / Instructor
+ * - Lecture title & code
+ */
+export async function getLecturesByHierarchy(filter: {
+  departmentId?: string;
+  semesterNumber?: number;
+  subjectId?: string;
+  moduleId?: string;
+  topicId?: string;
+  query?: string;
+}): Promise<Lesson[]> {
+  const allLessons = await getAllLessons();
+  let filtered = allLessons.filter((l) => l.published);
+
+  if (filter.topicId) {
+    filtered = filtered.filter((l) => l.topic_id === filter.topicId);
+  }
+
+  if (filter.moduleId) {
+    filtered = filtered.filter((l) => l.module_id === filter.moduleId);
+  }
+
+  if (filter.subjectId) {
+    filtered = filtered.filter((l) => l.module?.subject_id === filter.subjectId);
+  }
+
+  if (filter.departmentId) {
+    filtered = filtered.filter(
+      (l) => l.module?.subject?.department_id === filter.departmentId
+    );
+  }
+
+  if (filter.semesterNumber) {
+    filtered = filtered.filter(
+      (l) => l.module?.subject?.semester_number === filter.semesterNumber
+    );
+  }
+
+  if (filter.query && filter.query.trim()) {
+    const q = filter.query.toLowerCase().trim();
+    filtered = filtered.filter((l) => {
+      const titleMatch = l.title.toLowerCase().includes(q);
+      const descMatch = (l.description || "").toLowerCase().includes(q);
+      const topicMatch = (l.topic?.title || "").toLowerCase().includes(q);
+      const moduleMatch = (l.module?.title || "").toLowerCase().includes(q);
+      const subjectMatch = (l.module?.subject?.title || "").toLowerCase().includes(q);
+      const subjectCodeMatch = (l.module?.subject?.code || "").toLowerCase().includes(q);
+      const instructorMatch = (l.instructor || l.faculty?.name || "").toLowerCase().includes(q);
+      const deptMatch = (l.module?.subject?.department?.name || "").toLowerCase().includes(q);
+
+      return (
+        titleMatch ||
+        descMatch ||
+        topicMatch ||
+        moduleMatch ||
+        subjectMatch ||
+        subjectCodeMatch ||
+        instructorMatch ||
+        deptMatch
+      );
+    });
+  }
+
+  return filtered;
+}
+
+// ============================================================================
+// FOLE WORKS Operational & Professional Activities Data Access Layer
+// ============================================================================
+
+/**
+ * Normalizes raw activity data from database or store into a strictly typed,
+ * null-safe WorksActivity object. Prevents runtime exceptions in filters,
+ * date formatters, and rendering components when optional columns are null.
+ */
+export function normalizeWorksActivity(raw: any): WorksActivity {
+  if (!raw || typeof raw !== "object") {
+    const now = new Date().toISOString();
+    return {
+      id: crypto.randomUUID(),
+      title: "Untitled Activity",
+      slug: `activity-${Date.now()}`,
+      short_description: null,
+      description: "",
+      category: "Workshop",
+      activity_type: "Workshop",
+      delivery_mode: "in_person",
+      venue: null,
+      cover_image: null,
+      start_at: null,
+      end_at: null,
+      timezone: "Asia/Kolkata",
+      organizer_details: null,
+      learning_outcomes: [],
+      registration_url: null,
+      registration_opens_at: null,
+      registration_closes_at: null,
+      fee_amount: 0,
+      currency: "INR",
+      capacity: null,
+      contact_email: null,
+      contact_phone: null,
+      supporting_resources: [],
+      status: "draft",
+      is_featured: false,
+      created_by: null,
+      created_at: now,
+      updated_at: now,
+      published_at: null,
+      archived_at: null,
+      deleted_at: null,
+    };
+  }
+
+  // Safe fee amount parsing
+  let fee = 0;
+  if (typeof raw.fee_amount === "number" && !isNaN(raw.fee_amount)) {
+    fee = Math.max(0, raw.fee_amount);
+  } else if (typeof raw.fee_amount === "string") {
+    const parsed = parseFloat(raw.fee_amount);
+    fee = !isNaN(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
+  // Delivery mode validation
+  const validModes = ["in_person", "online", "hybrid"];
+  const delivery_mode = validModes.includes(raw.delivery_mode) ? raw.delivery_mode : "in_person";
+
+  // Category normalization
+  const category = (typeof raw.category === "string" && raw.category.trim())
+    ? raw.category.trim()
+    : "Workshop";
+
+  // Learning outcomes array safety
+  let learning_outcomes: string[] = [];
+  if (Array.isArray(raw.learning_outcomes)) {
+    learning_outcomes = raw.learning_outcomes.filter((item: any) => typeof item === "string");
+  }
+
+  // Supporting resources array safety
+  let supporting_resources: WorksSupportingResource[] = [];
+  if (Array.isArray(raw.supporting_resources)) {
+    supporting_resources = raw.supporting_resources.filter(
+      (item: any) => item && typeof item === "object" && typeof item.title === "string" && typeof item.url === "string"
+    );
+  }
+
+  // Status validation
+  const status = ["draft", "published", "archived"].includes(raw.status) ? raw.status : "draft";
+
+  return {
+    id: String(raw.id || crypto.randomUUID()),
+    title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim() : "Untitled Activity",
+    slug: typeof raw.slug === "string" && raw.slug.trim() ? raw.slug.trim() : `activity-${raw.id || Date.now()}`,
+    short_description: typeof raw.short_description === "string" && raw.short_description.trim() ? raw.short_description.trim() : null,
+    description: typeof raw.description === "string" ? raw.description : (raw.description ? String(raw.description) : ""),
+    category,
+    activity_type: typeof raw.activity_type === "string" && raw.activity_type.trim() ? raw.activity_type.trim() : category,
+    delivery_mode,
+    venue: typeof raw.venue === "string" && raw.venue.trim() ? raw.venue.trim() : null,
+    cover_image: typeof raw.cover_image === "string" && raw.cover_image.trim() ? raw.cover_image.trim() : null,
+    start_at: raw.start_at ? String(raw.start_at) : null,
+    end_at: raw.end_at ? String(raw.end_at) : null,
+    timezone: typeof raw.timezone === "string" && raw.timezone.trim() ? raw.timezone.trim() : "Asia/Kolkata",
+    organizer_details: typeof raw.organizer_details === "string" && raw.organizer_details.trim() ? raw.organizer_details.trim() : null,
+    learning_outcomes,
+    registration_url: typeof raw.registration_url === "string" && raw.registration_url.trim() ? raw.registration_url.trim() : null,
+    registration_opens_at: raw.registration_opens_at ? String(raw.registration_opens_at) : null,
+    registration_closes_at: raw.registration_closes_at ? String(raw.registration_closes_at) : null,
+    fee_amount: fee,
+    currency: typeof raw.currency === "string" && raw.currency.trim() ? raw.currency.trim() : "INR",
+    capacity: typeof raw.capacity === "number" && !isNaN(raw.capacity) && raw.capacity > 0 ? Math.floor(raw.capacity) : null,
+    contact_email: typeof raw.contact_email === "string" && raw.contact_email.trim() ? raw.contact_email.trim() : null,
+    contact_phone: typeof raw.contact_phone === "string" && raw.contact_phone.trim() ? raw.contact_phone.trim() : null,
+    supporting_resources,
+    status,
+    is_featured: Boolean(raw.is_featured),
+    created_by: raw.created_by ? String(raw.created_by) : null,
+    created_at: raw.created_at ? String(raw.created_at) : new Date().toISOString(),
+    updated_at: raw.updated_at ? String(raw.updated_at) : new Date().toISOString(),
+    published_at: raw.published_at ? String(raw.published_at) : null,
+    archived_at: raw.archived_at ? String(raw.archived_at) : null,
+    deleted_at: raw.deleted_at ? String(raw.deleted_at) : null,
+  };
+}
+
+interface WorksQueryOptions {
+  category?: string;
+  deliveryMode?: string;
+  status?: string;
+  search?: string;
+  limit?: number;
+}
+
+function filterFallbackWorksActivities(
+  options?: WorksQueryOptions,
+  requirePublished = false
+): WorksActivity[] {
+  let list = fallbackWorksActivities
+    .filter((a) => !a.deleted_at)
+    .map(normalizeWorksActivity);
+
+  if (requirePublished) {
+    list = list.filter((a) => a.status === "published");
+  }
+
+  if (options?.status && !requirePublished) {
+    list = list.filter((a) => a.status === options.status);
+  }
+
+  if (options?.category && options.category !== "all") {
+    list = list.filter((a) => (a.category || "").toLowerCase() === options.category?.toLowerCase());
+  }
+
+  if (options?.deliveryMode && options.deliveryMode !== "all") {
+    list = list.filter((a) => (a.delivery_mode || "").toLowerCase() === options.deliveryMode?.toLowerCase());
+  }
+
+  if (options?.search && options.search.trim()) {
+    const q = options.search.toLowerCase().trim();
+    list = list.filter(
+      (a) =>
+        (a.title || "").toLowerCase().includes(q) ||
+        (a.short_description || "").toLowerCase().includes(q) ||
+        (a.description || "").toLowerCase().includes(q) ||
+        (a.category || "").toLowerCase().includes(q) ||
+        (a.venue || "").toLowerCase().includes(q) ||
+        (a.organizer_details || "").toLowerCase().includes(q)
+    );
+  }
+
+  // Sort: featured first, then by start_at ascending (upcoming first)
+  list.sort((a, b) => {
+    if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
+    const timeA = a.start_at ? new Date(a.start_at).getTime() : 0;
+    const timeB = b.start_at ? new Date(b.start_at).getTime() : 0;
+    return timeA - timeB;
+  });
+
+  if (options?.limit && options.limit > 0) {
+    list = list.slice(0, options.limit);
+  }
+
+  return list;
+}
+
+/**
+ * Public query: retrieves published FOLE WORKS activities for student catalogue.
+ * Strictly filters out drafts, archived, and soft-deleted records.
+ */
+export async function getPublishedWorksActivities(
+  options?: WorksQueryOptions
+): Promise<WorksActivity[]> {
+  if (!isSupabaseConfigured()) {
+    return filterFallbackWorksActivities(options, true);
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .order("is_featured", { ascending: false })
+      .order("start_at", { ascending: true, nullsFirst: false });
+
+    if (options?.category && options.category !== "all") {
+      q = q.eq("category", options.category);
+    }
+
+    if (options?.deliveryMode && options.deliveryMode !== "all") {
+      q = q.eq("delivery_mode", options.deliveryMode);
+    }
+
+    if (options?.limit && options.limit > 0) {
+      q = q.limit(options.limit);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error("[FOLE WORKS] Error fetching published activities from Supabase:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+
+      if (isLocalFallbackAllowed()) {
+        return filterFallbackWorksActivities(options, true);
+      }
+      throw new Error(`Failed to fetch published FOLE WORKS activities: ${error.message}`);
+    }
+
+    let results = ((data || []) as any[]).map(normalizeWorksActivity);
+
+    if (options?.search && options.search.trim()) {
+      const query = options.search.toLowerCase().trim();
+      results = results.filter(
+        (a) =>
+          (a.title || "").toLowerCase().includes(query) ||
+          (a.short_description || "").toLowerCase().includes(query) ||
+          (a.description || "").toLowerCase().includes(query) ||
+          (a.category || "").toLowerCase().includes(query) ||
+          (a.venue || "").toLowerCase().includes(query)
+      );
+    }
+
+    return results;
+  } catch (err: any) {
+    if (isLocalFallbackAllowed()) {
+      return filterFallbackWorksActivities(options, true);
+    }
+    console.error("[FOLE WORKS] Exception during getPublishedWorksActivities:", err?.message || err);
+    throw err;
+  }
+}
+
+/**
+ * Public query: retrieves a single activity by slug.
+ * If requirePublished is true (default), rejects draft or archived activities.
+ */
+export async function getWorksActivityBySlug(
+  slug: string,
+  requirePublished = true
+): Promise<WorksActivity | null> {
+  if (!slug) return null;
+
+  if (!isSupabaseConfigured()) {
+    const act = fallbackWorksActivities.find(
+      (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+    );
+    return act ? normalizeWorksActivity(act) : null;
+  }
+
+  try {
+    const supabase = await createServerSupabase();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .eq("slug", slug)
+      .is("deleted_at", null);
+
+    if (requirePublished) {
+      q = q.eq("status", "published");
+    }
+
+    const { data, error } = await q.maybeSingle();
+
+    if (error) {
+      console.error("[FOLE WORKS] Error fetching activity by slug from Supabase:", {
+        slug,
+        code: error.code,
+        message: error.message,
+      });
+      if (isLocalFallbackAllowed()) {
+        const act = fallbackWorksActivities.find(
+          (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+        );
+        return act ? normalizeWorksActivity(act) : null;
+      }
+      throw new Error(`Failed to fetch activity by slug from Supabase: ${error.message}`);
+    }
+
+    return data ? normalizeWorksActivity(data) : null;
+  } catch (err: any) {
+    if (isLocalFallbackAllowed()) {
+      const act = fallbackWorksActivities.find(
+        (a) => a.slug === slug && !a.deleted_at && (!requirePublished || a.status === "published")
+      );
+      return act ? normalizeWorksActivity(act) : null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Admin query: retrieves all activities including drafts and archives.
+ */
+export async function getAllWorksActivitiesForAdmin(
+  options?: WorksQueryOptions
+): Promise<WorksActivity[]> {
+  if (!isSupabaseConfigured()) {
+    return filterFallbackWorksActivities(options, false);
+  }
+
+  try {
+    const supabase = createAdminClient();
+    let q = supabase
+      .from("works_activities")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (options?.status && options.status !== "all") {
+      q = q.eq("status", options.status);
+    }
+
+    if (options?.category && options.category !== "all") {
+      q = q.eq("category", options.category);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error("[FOLE WORKS] Error fetching admin activities from Supabase:", {
+        code: error.code,
+        message: error.message,
+      });
+      if (isLocalFallbackAllowed()) {
+        return filterFallbackWorksActivities(options, false);
+      }
+      throw new Error(`Failed to fetch admin activities from Supabase: ${error.message}`);
+    }
+
+    let results = ((data || []) as any[]).map(normalizeWorksActivity);
+
+    if (options?.search && options.search.trim()) {
+      const query = options.search.toLowerCase().trim();
+      results = results.filter(
+        (a) =>
+          (a.title || "").toLowerCase().includes(query) ||
+          (a.short_description || "").toLowerCase().includes(query) ||
+          (a.description || "").toLowerCase().includes(query) ||
+          (a.category || "").toLowerCase().includes(query)
+      );
+    }
+
+    return results;
+  } catch (err: any) {
+    if (isLocalFallbackAllowed()) {
+      return filterFallbackWorksActivities(options, false);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Admin query: retrieves a single activity by ID.
+ */
+export async function getWorksActivityById(id: string): Promise<WorksActivity | null> {
+  if (!id) return null;
+
+  if (!isSupabaseConfigured()) {
+    const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+    return act ? normalizeWorksActivity(act) : null;
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("works_activities")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[FOLE WORKS] Error fetching activity by ID from Supabase:", {
+        id,
+        code: error.code,
+        message: error.message,
+      });
+      if (isLocalFallbackAllowed()) {
+        const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+        return act ? normalizeWorksActivity(act) : null;
+      }
+      throw new Error(`Failed to fetch activity by ID: ${error.message}`);
+    }
+
+    return data ? normalizeWorksActivity(data) : null;
+  } catch (err: any) {
+    if (isLocalFallbackAllowed()) {
+      const act = fallbackWorksActivities.find((a) => a.id === id && !a.deleted_at);
+      return act ? normalizeWorksActivity(act) : null;
+    }
+    throw err;
+  }
+}
+
+
+/**
+ * Admin mutation: creates a new FOLE WORKS activity.
+ */
+export async function createWorksActivity(
+  input: Partial<WorksActivity>
+): Promise<WorksActivity> {
+  const newId = input.id || crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  // Ensure unique slug
+  let slug = input.slug || input.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `activity-${Date.now()}`;
+  if (fallbackWorksActivities.some((a) => a.slug === slug && a.id !== newId)) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
+
+  const isPublished = input.status === "published";
+
+  const dbPayload: Record<string, unknown> = {
+    id: newId,
+    title: input.title || "Untitled Activity",
+    slug,
+    short_description: input.short_description || null,
+    description: input.description || "",
+    category: input.category || "Workshop",
+    activity_type: input.activity_type || "Workshop",
+    delivery_mode: input.delivery_mode || "in_person",
+    venue: input.venue || null,
+    cover_image: input.cover_image || null,
+    start_at: input.start_at || null,
+    end_at: input.end_at || null,
+    timezone: input.timezone || "Asia/Kolkata",
+    organizer_details: input.organizer_details || null,
+    learning_outcomes: input.learning_outcomes || [],
+    registration_url: input.registration_url || null,
+    registration_opens_at: input.registration_opens_at || null,
+    registration_closes_at: input.registration_closes_at || null,
+    fee_amount: typeof input.fee_amount === "number" ? input.fee_amount : 0,
+    currency: input.currency || "INR",
+    capacity: input.capacity ?? null,
+    contact_email: input.contact_email || null,
+    contact_phone: input.contact_phone || null,
+    supporting_resources: input.supporting_resources || [],
+    status: input.status || "draft",
+    is_featured: Boolean(input.is_featured),
+    created_at: now,
+    updated_at: now,
+    published_at: isPublished ? now : null,
+    archived_at: input.status === "archived" ? now : null,
+    deleted_at: null,
+  };
+
+  const createdActivity = dbPayload as unknown as WorksActivity;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("works_activities")
+        .insert(dbPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase createWorksActivity error:", error);
+        throw new Error(`Failed to create works activity: ${error.message}`);
+      }
+
+      if (!isProduction()) {
+        fallbackWorksActivities.unshift(data as WorksActivity);
+      }
+
+      await logActivity("FOLE WORKS Activity Created", "works_activity", {
+        id: data.id,
+        title: data.title,
+        slug: data.slug,
+        status: data.status,
+      });
+
+      return data as WorksActivity;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        fallbackWorksActivities.unshift(createdActivity);
+        await logActivity("FOLE WORKS Activity Created (Fallback)", "works_activity", {
+          id: createdActivity.id,
+          title: createdActivity.title,
+        });
+        return createdActivity;
+      }
+      throw err;
+    }
+  }
+
+  fallbackWorksActivities.unshift(createdActivity);
+  await logActivity("FOLE WORKS Activity Created", "works_activity", {
+    id: createdActivity.id,
+    title: createdActivity.title,
+  });
+  return createdActivity;
+}
+
+/**
+ * Admin mutation: updates an existing FOLE WORKS activity.
+ */
+export async function updateWorksActivity(
+  id: string,
+  updates: Partial<WorksActivity>
+): Promise<WorksActivity> {
+  const existing = await getWorksActivityById(id);
+  if (!existing) {
+    throw new Error(`Works activity with ID ${id} not found.`);
+  }
+
+  const now = new Date().toISOString();
+  const nextStatus = updates.status || existing.status;
+  const isNowPublished = nextStatus === "published" && existing.status !== "published";
+  const isNowArchived = nextStatus === "archived" && existing.status !== "archived";
+
+  const dbPayload: Record<string, unknown> = {
+    updated_at: now,
+  };
+
+  if (updates.title !== undefined) dbPayload.title = updates.title;
+  if (updates.slug !== undefined) dbPayload.slug = updates.slug;
+  if (updates.short_description !== undefined) dbPayload.short_description = updates.short_description;
+  if (updates.description !== undefined) dbPayload.description = updates.description;
+  if (updates.category !== undefined) dbPayload.category = updates.category;
+  if (updates.activity_type !== undefined) dbPayload.activity_type = updates.activity_type;
+  if (updates.delivery_mode !== undefined) dbPayload.delivery_mode = updates.delivery_mode;
+  if (updates.venue !== undefined) dbPayload.venue = updates.venue;
+  if (updates.cover_image !== undefined) dbPayload.cover_image = updates.cover_image;
+  if (updates.start_at !== undefined) dbPayload.start_at = updates.start_at;
+  if (updates.end_at !== undefined) dbPayload.end_at = updates.end_at;
+  if (updates.timezone !== undefined) dbPayload.timezone = updates.timezone;
+  if (updates.organizer_details !== undefined) dbPayload.organizer_details = updates.organizer_details;
+  if (updates.learning_outcomes !== undefined) dbPayload.learning_outcomes = updates.learning_outcomes;
+  if (updates.registration_url !== undefined) dbPayload.registration_url = updates.registration_url;
+  if (updates.registration_opens_at !== undefined) dbPayload.registration_opens_at = updates.registration_opens_at;
+  if (updates.registration_closes_at !== undefined) dbPayload.registration_closes_at = updates.registration_closes_at;
+  if (updates.fee_amount !== undefined) dbPayload.fee_amount = updates.fee_amount;
+  if (updates.currency !== undefined) dbPayload.currency = updates.currency;
+  if (updates.capacity !== undefined) dbPayload.capacity = updates.capacity;
+  if (updates.contact_email !== undefined) dbPayload.contact_email = updates.contact_email;
+  if (updates.contact_phone !== undefined) dbPayload.contact_phone = updates.contact_phone;
+  if (updates.supporting_resources !== undefined) dbPayload.supporting_resources = updates.supporting_resources;
+  if (updates.status !== undefined) {
+    dbPayload.status = updates.status;
+    if (isNowPublished) dbPayload.published_at = now;
+    if (isNowArchived) dbPayload.archived_at = now;
+  }
+  if (updates.is_featured !== undefined) dbPayload.is_featured = Boolean(updates.is_featured);
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("works_activities")
+        .update(dbPayload)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase updateWorksActivity error:", error);
+        throw new Error(`Failed to update works activity: ${error.message}`);
+      }
+
+      if (!isProduction()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          fallbackWorksActivities[idx] = data as WorksActivity;
+        }
+      }
+
+      await logActivity("FOLE WORKS Activity Updated", "works_activity", {
+        id: data.id,
+        title: data.title,
+        status: data.status,
+      });
+
+      return data as WorksActivity;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        const updated = { ...existing, ...dbPayload } as WorksActivity;
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) fallbackWorksActivities[idx] = updated;
+        return updated;
+      }
+      throw err;
+    }
+  }
+
+  const updated = { ...existing, ...dbPayload } as WorksActivity;
+  const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+  if (idx !== -1) fallbackWorksActivities[idx] = updated;
+
+  await logActivity("FOLE WORKS Activity Updated", "works_activity", {
+    id: updated.id,
+    title: updated.title,
+    status: updated.status,
+  });
+
+  return updated;
+}
+
+/**
+ * Admin mutation: quick status transition (draft | published | archived).
+ */
+export async function updateWorksActivityStatus(
+  id: string,
+  status: WorksActivityStatus
+): Promise<WorksActivity> {
+  return updateWorksActivity(id, { status });
+}
+
+/**
+ * Admin mutation: deletes or soft-deletes an activity.
+ */
+export async function deleteWorksActivity(
+  id: string,
+  soft = true
+): Promise<boolean> {
+  const existing = await getWorksActivityById(id);
+  if (!existing) return false;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createAdminClient();
+      if (soft) {
+        const { error } = await supabase
+          .from("works_activities")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from("works_activities").delete().eq("id", id);
+        if (error) throw new Error(error.message);
+      }
+
+      if (!isProduction()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+          else fallbackWorksActivities.splice(idx, 1);
+        }
+      }
+
+      await logActivity("FOLE WORKS Activity Deleted", "works_activity", {
+        id: existing.id,
+        title: existing.title,
+        soft,
+      });
+
+      return true;
+    } catch (err: any) {
+      if (isLocalFallbackAllowed()) {
+        const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+        if (idx !== -1) {
+          if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+          else fallbackWorksActivities.splice(idx, 1);
+        }
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  const idx = fallbackWorksActivities.findIndex((a) => a.id === id);
+  if (idx !== -1) {
+    if (soft) fallbackWorksActivities[idx].deleted_at = new Date().toISOString();
+    else fallbackWorksActivities.splice(idx, 1);
+  }
+
+  await logActivity("FOLE WORKS Activity Deleted", "works_activity", {
+    id: existing.id,
+    title: existing.title,
+    soft,
+  });
+
+  return true;
+}
+
+/**
+ * Admin query: computes real activity metrics for FOLE WORKS dashboard overview.
+ */
+export async function getWorksActivityMetrics(): Promise<WorksActivityMetrics> {
+  const all = await getAllWorksActivitiesForAdmin();
+  const now = Date.now();
+
+  return {
+    total: all.length,
+    published: all.filter((a) => a.status === "published").length,
+    draft: all.filter((a) => a.status === "draft").length,
+    archived: all.filter((a) => a.status === "archived").length,
+    upcoming: all.filter(
+      (a) => a.status === "published" && a.start_at && new Date(a.start_at).getTime() >= now
+    ).length,
+  };
+}
+

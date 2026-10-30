@@ -4,6 +4,8 @@ import { videoSchema } from "@/lib/validation/schemas";
 import { getAllVideos, createVideo, deleteVideo, getLessonById, getModuleById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session) {
