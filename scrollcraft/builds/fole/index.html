@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FOLE · Free Open Learning &amp; Education</title>
+<meta name="description" content="An open community for discovering ideas, understanding concepts, and exploring knowledge together. College of Engineering Vadakara.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23070A08'/><circle cx='16' cy='16' r='4' fill='%23B9EF71'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scrollcraft.css">
+
+<style>
+/* ─── FOLE token overrides ────────────────────────────────────────────────── */
+:root {
+  --sc-canvas:      #070A08;
+  --sc-surface:     #101610;
+  --sc-ink:         #F4F6F0;
+  --sc-ink-soft:    #A1AA9F;
+  --sc-accent:      #B9EF71;
+  --sc-accent-ink:  #070A08;
+  --sc-font-display: "DM Sans", system-ui, sans-serif;
+  --sc-font-text:    "DM Sans", system-ui, sans-serif;
+  --sc-font-mono:    "DM Mono", ui-monospace, monospace;
+
+  --fole-green:     #B9EF71;
+  --fole-green-hi:  #D4FF91;
+  --fole-muted:     #556055;
+  --fole-dark:      #070A08;
+  --fole-surface:   #101610;
+}
+
+/* ─── WebGL canvas ground ───────────────────────────────────────────────────
+   The canvas is fixed behind all three pin acts and driven by JS.
+   It is NOT an act device — it is the ground the whole typographic poster
+   sits on, updated continuously from a single st variable. */
+#fole-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── Chrome ──────────────────────────────────────────────────────────────── */
+.fole-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem clamp(1.25rem, 5vw, 3.5rem);
+  transition: background 400ms cubic-bezier(0.23, 1, 0.32, 1),
+              backdrop-filter 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.fole-bar.scrolled {
+  background: color-mix(in oklab, var(--sc-canvas) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid color-mix(in oklab, var(--fole-muted) 30%, transparent);
+}
+
+.fole-bar__logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.fole-bar__logo img {
+  height: 28px;
+  width: auto;
+  max-width: none;
+}
+/* Logo fallback text if image fails */
+.fole-bar__logo-text {
+  font-family: var(--sc-font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--sc-ink);
+  display: none;
+}
+
+.fole-bar__nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fole-bar__nav a {
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sc-ink-soft);
+  text-decoration: none;
+  transition: color 180ms ease-out;
+}
+.fole-bar__nav a:hover { color: var(--sc-ink); }
+.fole-bar__nav a:focus-visible {
+  outline: 2px solid var(--fole-green);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+/* Mobile: collapse nav */
+.fole-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin: -0.5rem;
+}
+.fole-hamburger span {
+  display: block;
+  width: 22px;
+  height: 1.5px;
+  background: var(--sc-ink);
+  transition: transform 260ms var(--sc-ease-out), opacity 260ms var(--sc-ease-out);
+}
+.fole-hamburger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.fole-hamburger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.fole-hamburger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+.fole-drawer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--fole-dark);
+  z-index: 55;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+.fole-drawer.open { display: flex; }
+.fole-drawer a {
+  font-family: var(--sc-font-display);
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--sc-ink);
+  text-decoration: none;
+  transition: color 160ms ease-out;
+}
+.fole-drawer a:hover { color: var(--fole-green); }
+
+@media (max-width: 680px) {
+  .fole-bar__nav { display: none; }
+  .fole-hamburger { display: flex; }
+}
+
+/* ─── Scene index / waypoint indicators ──────────────────────────────────── */
+.fole-index {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.fole-index__dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fole-muted);
+  transition: background 300ms ease-out, transform 300ms ease-out;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.fole-index__dot.active {
+  background: var(--fole-green);
+  transform: scale(1.8);
+}
+.fole-index__dot:focus-visible {
+  outline: 2px solid var(--fole-green);
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+
+@media (max-width: 860px) { .fole-index { display: none; } }
+
+/* ─── Curiosity trace rail (signature move) ───────────────────────────────
+   A thin green line fixed at bottom. Accumulates notches as the visitor
+   passes key connections in the WebGL graph. Clickable for navigation.  */
+.fole-trace {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 61;
+  background: color-mix(in oklab, var(--fole-muted) 35%, transparent);
+  pointer-events: none;
+}
+.fole-trace__fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  background: var(--fole-green);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  will-change: transform;
+  transition: transform 60ms linear;
+}
+.fole-trace__notch {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 10px;
+  background: var(--fole-green-hi);
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 400ms ease-out;
+}
+.fole-trace__notch.visible { opacity: 1; }
+.fole-trace__notch:hover { background: white; }
+
+/* ─── Pin acts ────────────────────────────────────────────────────────────── */
+.fole-act {
+  position: relative;
+  /* Height is set by engine via data-sc-span */
+}
+.fole-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: clip;
+}
+
+/* ─── ACT 1 – DISCOVER ───────────────────────────────────────────────────── */
+.discover-copy {
+  position: absolute;
+  inset-inline: var(--sc-gutter);
+  bottom: clamp(3rem, 14vh, 8rem);
+  max-width: min(54rem, 82vw);
+  will-change: opacity, transform;
+}
+.discover-label {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fole-green);
+  margin-bottom: var(--sc-4);
+}
+.discover-headline {
+  font-family: var(--sc-font-display);
+  font-size: clamp(2.8rem, 7vw, 6.4rem);
+  font-weight: 700;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  color: var(--sc-ink);
+  text-wrap: balance;
+  margin: 0 0 var(--sc-5) 0;
+}
+.discover-sub {
+  font-size: var(--sc-t-base);
+  color: var(--sc-ink-soft);
+  max-width: 42ch;
+  line-height: var(--sc-leading-body);
+  margin: 0;
+  letter-spacing: 0.005em;
+}
+
+/* Green orb centre indicator */
+.discover-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fole-green);
+  box-shadow: 0 0 24px 8px color-mix(in oklab, var(--fole-green) 35%, transparent);
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+/* ─── ACT 2 – UNDERSTAND ─────────────────────────────────────────────────── */
+.understand-copy {
+  position: absolute;
+  inset-inline: var(--sc-gutter);
+  top: 50%;
+  translate: 0 -50%;
+  max-width: min(48rem, 78vw);
+  will-change: opacity, transform;
+}
+.understand-headline {
+  font-family: var(--sc-font-display);
+  font-size: clamp(2.2rem, 5.5vw, 5rem);
+  font-weight: 700;
+  line-height: 1.0;
+  letter-spacing: -0.04em;
+  color: var(--sc-ink);
+  text-wrap: balance;
+  margin: 0 0 var(--sc-5) 0;
+}
+.understand-sub {
+  font-size: var(--sc-t-base);
+  color: var(--sc-ink-soft);
+  max-width: 46ch;
+  line-height: var(--sc-leading-body);
+  margin: 0;
+}
+
+/* ─── ACT 3 – EXPLORE (PEAK) ─────────────────────────────────────────────── */
+.explore-copy {
+  position: absolute;
+  inset-inline: var(--sc-gutter);
+  top: 50%;
+  translate: 0 -50%;
+  text-align: center;
+  inset-inline: auto;
+  left: 50%;
+  translate: -50% -50%;
+  width: min(60rem, 90vw);
+  will-change: opacity, transform;
+}
+.explore-headline {
+  font-family: var(--sc-font-display);
+  font-size: clamp(3rem, 8.5vw, 7.8rem);
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  color: var(--sc-ink);
+  text-wrap: balance;
+  margin: 0 0 var(--sc-5) 0;
+}
+.explore-sub {
+  font-size: var(--sc-t-lg);
+  color: var(--sc-ink-soft);
+  max-width: 48ch;
+  line-height: var(--sc-leading-body);
+  margin: 0 auto var(--sc-7) auto;
+}
+
+/* ─── Activities section (flow) ──────────────────────────────────────────── */
+#activities {
+  position: relative;
+  z-index: 10;
+  background: var(--fole-dark);
+  padding-block: clamp(5rem, 11vw, 12rem);
+}
+.activities-inner {
+  max-width: var(--sc-maxw);
+  margin-inline: auto;
+  padding-inline: var(--sc-gutter);
+}
+.activities-eyebrow {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fole-green);
+  margin-bottom: var(--sc-7);
+}
+.activities-heading {
+  font-family: var(--sc-font-display);
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--sc-ink);
+  margin: 0 0 clamp(3rem, 7vw, 6rem) 0;
+  max-width: 28ch;
+  line-height: 1.1;
+}
+.activities-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+  gap: 0;
+}
+.activity-item {
+  padding: clamp(1.5rem, 3vw, 2.5rem) 0;
+  border-top: 1px solid color-mix(in oklab, var(--fole-muted) 30%, transparent);
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.activity-item:last-child {
+  border-bottom: 1px solid color-mix(in oklab, var(--fole-muted) 30%, transparent);
+}
+.activity-num {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.06em;
+  color: var(--fole-muted);
+  padding-top: 0.2em;
+}
+.activity-body {}
+.activity-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-t-lg);
+  font-weight: 500;
+  color: var(--sc-ink);
+  margin: 0 0 var(--sc-2) 0;
+  letter-spacing: -0.02em;
+}
+.activity-desc {
+  font-size: var(--sc-t-sm);
+  color: var(--sc-ink-soft);
+  line-height: var(--sc-leading-body);
+  margin: 0;
+  max-width: 38ch;
+}
+
+/* ─── Close act (pin) ────────────────────────────────────────────────────── */
+.close-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: clip;
+  gap: var(--sc-6);
+}
+.close-fole-name {
+  font-family: var(--sc-font-display);
+  font-size: clamp(3rem, 9vw, 8rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+  color: var(--sc-ink);
+  margin: 0;
+  will-change: opacity, transform;
+}
+.close-tagline {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fole-green);
+  margin: 0;
+  will-change: opacity, transform;
+}
+.close-statement {
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  color: var(--sc-ink-soft);
+  max-width: 44ch;
+  line-height: 1.55;
+  margin: 0;
+  will-change: opacity, transform;
+}
+.close-institution {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.09em;
+  color: var(--fole-muted);
+  text-transform: uppercase;
+  margin: 0;
+  will-change: opacity, transform;
+}
+.close-actions {
+  display: flex;
+  gap: var(--sc-5);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  will-change: opacity, transform;
+}
+.close-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-t-sm);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sc-accent-ink);
+  background: var(--fole-green);
+  text-decoration: none;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--sc-r-sm);
+  transition: background 160ms ease-out, transform 120ms ease-out;
+}
+.close-cta-primary:hover { background: var(--fole-green-hi); }
+.close-cta-primary:active { transform: translateY(1px); }
+.close-cta-primary:focus-visible {
+  outline: 2px solid var(--fole-green);
+  outline-offset: 3px;
+}
+.close-cta-secondary {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-t-sm);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sc-ink-soft);
+  text-decoration: none;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--fole-muted);
+  transition: color 160ms ease-out, border-color 160ms ease-out;
+}
+.close-cta-secondary:hover { color: var(--sc-ink); border-color: var(--sc-ink); }
+.close-cta-secondary:focus-visible {
+  outline: 2px solid var(--fole-green);
+  outline-offset: 3px;
+}
+
+/* Footer inside close stage */
+.close-foot {
+  position: absolute;
+  bottom: clamp(1.25rem, 4vh, 2.5rem);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.07em;
+  color: var(--fole-muted);
+  padding-inline: var(--sc-gutter);
+}
+
+/* ─── Scene label (fixed, updates per act) ───────────────────────────────── */
+.fole-scene-label {
+  position: fixed;
+  bottom: 1.75rem;
+  left: clamp(1.25rem, 5vw, 3.5rem);
+  z-index: 60;
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-t-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fole-muted);
+  transition: opacity 400ms ease-out;
+  pointer-events: none;
+}
+
+/* ─── Grain ─────────────────────────────────────────────────────────────── */
+.sc-grain { opacity: 0.038; }
+
+/* ─── Reduced motion overrides ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .fole-trace__fill { transition: none; }
+  .discover-orb { animation: none; }
+  #fole-canvas { display: none; }
+}
+
+/* ─── Mobile compositions ────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .discover-copy, .understand-copy {
+    inset-inline: var(--sc-gutter);
+    max-width: none;
+  }
+  .discover-headline { font-size: clamp(2.2rem, 9vw, 3.4rem); }
+  .understand-headline { font-size: clamp(2rem, 8vw, 3rem); }
+  .explore-headline { font-size: clamp(2.4rem, 10vw, 4rem); }
+  .explore-copy {
+    width: min(90vw, 90vw);
+  }
+  .close-fole-name { font-size: clamp(2.4rem, 12vw, 4rem); }
+}
+
+/* ─── CSS fallback if WebGL unavailable ──────────────────────────────────── */
+.no-webgl #fole-canvas { display: none; }
+.no-webgl .fole-act[data-sc-act] .fole-stage {
+  background: radial-gradient(ellipse 70% 60% at 50% 50%,
+    color-mix(in oklab, var(--fole-green) 8%, var(--fole-dark)) 0%,
+    var(--fole-dark) 70%);
+}
+
+/* ─── Progress bar override ─────────────────────────────────────────────── */
+[data-sc-progress] { background: var(--fole-green); height: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Progress bar (scrollcraft) -->
+<span data-sc-progress aria-hidden="true"></span>
+<!-- Atmospheric grain -->
+<div class="sc-grain" aria-hidden="true"></div>
+
+<!-- WebGL canvas — the fixed ground for all three acts -->
+<canvas id="fole-canvas" aria-hidden="true"></canvas>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header class="fole-bar" id="site-bar">
+  <a class="fole-bar__logo" href="#top" aria-label="FOLE — Free Open Learning and Education">
+    <img src="fole-logo.png" alt="FOLE" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <span class="fole-bar__logo-text">FOLE</span>
+  </a>
+  <nav aria-label="Main navigation">
+    <ul class="fole-bar__nav">
+      <li><a href="#discover">About</a></li>
+      <li><a href="#understand">Our Purpose</a></li>
+      <li><a href="#activities">Activities</a></li>
+      <li><a href="#explore">Community</a></li>
+    </ul>
+  </nav>
+  <button class="fole-hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<!-- Mobile nav drawer -->
+<nav class="fole-drawer" id="mobile-drawer" aria-label="Mobile navigation">
+  <a href="#discover" class="drawer-link">About</a>
+  <a href="#understand" class="drawer-link">Our Purpose</a>
+  <a href="#activities" class="drawer-link">Activities</a>
+  <a href="#explore" class="drawer-link">Community</a>
+</nav>
+
+<!-- Scene waypoint index -->
+<nav class="fole-index" aria-label="Scene navigation">
+  <button class="fole-index__dot active" data-scene="0" aria-label="Scene: Discover" title="Discover"></button>
+  <button class="fole-index__dot" data-scene="1" aria-label="Scene: Understand" title="Understand"></button>
+  <button class="fole-index__dot" data-scene="2" aria-label="Scene: Explore" title="Explore"></button>
+</nav>
+
+<!-- Scene label (bottom-left fixed) -->
+<div class="fole-scene-label" aria-live="polite" aria-atomic="true">
+  FOLE / 01 — DISCOVER
+</div>
+
+<!-- Curiosity trace rail (signature move) -->
+<div class="fole-trace" aria-hidden="true">
+  <div class="fole-trace__fill" id="trace-fill"></div>
+</div>
+
+<main id="top">
+
+  <!-- ── ACT 1 — DISCOVER ────────────────────────────────────────────── -->
+  <section id="discover" class="fole-act" data-sc-act="pin" data-sc-span="3.2" data-sc-drift="#070A08">
+    <div class="fole-stage" data-sc-stage>
+      <!-- Green origin point -->
+      <div class="discover-orb" id="discover-orb" aria-hidden="true"></div>
+      <!-- Copy block — greet form so it is present the instant the page lands -->
+      <div class="discover-copy" data-sc-cue="0 0.85 0">
+        <p class="discover-label" aria-label="Scene 01">FOLE / 01 — DISCOVER</p>
+        <h1 class="discover-headline" data-sc-kinetic="lines">What if we asked more?</h1>
+        <p class="discover-sub">Learning begins when we become curious.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ACT 2 — UNDERSTAND ──────────────────────────────────────────── -->
+  <section id="understand" class="fole-act" data-sc-act="pin" data-sc-span="3.8" data-sc-drift="#0D1410">
+    <div class="fole-stage" data-sc-stage>
+      <div class="understand-copy" data-sc-cue="0.08 0.9">
+        <p class="discover-label" aria-label="Scene 02">FOLE / 02 — UNDERSTAND</p>
+        <h2 class="understand-headline" data-sc-kinetic="lines">Every question opens a new connection.</h2>
+        <p class="understand-sub">Explore concepts, exchange perspectives, and understand the ideas that shape the world around us.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ACT 3 — EXPLORE (peak) ──────────────────────────────────────── -->
+  <section id="explore" class="fole-act" data-sc-act="pin" data-sc-span="3.4" data-sc-drift="#070A08">
+    <div class="fole-stage" data-sc-stage>
+      <div class="explore-copy" data-sc-cue="0.06 0.92">
+        <p class="discover-label" aria-label="Scene 03">FOLE / 03 — EXPLORE</p>
+        <h2 class="explore-headline" data-sc-kinetic="lines">Learning has no fixed boundary.</h2>
+        <p class="explore-sub">An open community for discovering ideas, understanding concepts, and exploring knowledge together.</p>
+        <div class="close-actions" style="margin-top:2.5rem;">
+          <a class="close-cta-primary" href="#activities">Explore FOLE</a>
+          <a class="close-cta-secondary" href="#activities">Our Activities</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ACTIVITIES (flow section) ───────────────────────────────────── -->
+  <section class="activities-wrap" style="position:relative;z-index:10;background:var(--fole-dark);">
+    <div id="activities" class="activities-inner">
+      <p class="activities-eyebrow" data-sc-in>What we do</p>
+      <h2 class="activities-heading" data-sc-in>Five ways to learn, think, and share together.</h2>
+      <ul class="activities-list" data-sc-stagger="80">
+        <li class="activity-item">
+          <span class="activity-num" aria-hidden="true">01</span>
+          <div class="activity-body">
+            <h3 class="activity-title">Curiosity Sessions</h3>
+            <p class="activity-desc">Open sessions built around questions, concepts, and unfamiliar ideas.</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-num" aria-hidden="true">02</span>
+          <div class="activity-body">
+            <h3 class="activity-title">Concept Conversations</h3>
+            <p class="activity-desc">Discussions that help students understand subjects beyond textbook explanations.</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-num" aria-hidden="true">03</span>
+          <div class="activity-body">
+            <h3 class="activity-title">Interdisciplinary Exploration</h3>
+            <p class="activity-desc">Opportunities to discover connections between different academic fields.</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-num" aria-hidden="true">04</span>
+          <div class="activity-body">
+            <h3 class="activity-title">Open Knowledge Sharing</h3>
+            <p class="activity-desc">Student-led opportunities to share knowledge, perspectives, explanations, and discoveries.</p>
+          </div>
+        </li>
+        <li class="activity-item">
+          <span class="activity-num" aria-hidden="true">05</span>
+          <div class="activity-body">
+            <h3 class="activity-title">Learning Dialogues</h3>
+            <p class="activity-desc">Interactive discussions where participants can question, listen, examine, and exchange ideas.</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── CLOSE (pin) ──────────────────────────────────────────────────── -->
+  <section id="join" class="fole-act" data-sc-act="pin" data-sc-span="1.5" data-sc-drift="#070A08" style="background:var(--fole-dark);">
+    <div class="close-stage" data-sc-stage data-sc-spotlight>
+      <p class="close-tagline" data-sc-cue="0.04">Free Open Learning &amp; Education</p>
+      <h2 class="close-fole-name" data-sc-cue="0.04" data-sc-kinetic="lines">FOLE</h2>
+      <p class="close-statement" data-sc-cue="0.06">A student-led community at the College of Engineering Vadakara, Kerala, where learning begins with curiosity and grows through open conversation.</p>
+      <div class="close-actions" data-sc-cue="0.08">
+        <a class="close-cta-primary" href="#activities" data-sc-magnet="0.22" data-sc-rise="0">Explore FOLE</a>
+        <a class="close-cta-secondary" href="#activities">Our Activities</a>
+      </div>
+      <p class="close-institution" data-sc-cue="0.1">College of Engineering Vadakara · Kerala</p>
+      <footer class="close-foot">
+        <span>FOLE &copy; <span id="yr"></span></span>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<!-- ─── ScrollCraft engine ─────────────────────────────────────────────── -->
+<script src="scrollcraft.js"></script>
+
+<!-- ─── Three.js via importmap ───────────────────────────────────────────
+     r170. No build step, no bundler, pure ES modules.                    -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FOLE OPEN FIELD — WebGL particle & connection system
+   
+   st = 0 → DISCOVER: single bright point, expanding particles
+   st = 1 → UNDERSTAND: particles connecting, graph forming
+   st = 2 → EXPLORE: camera pulls back, full field revealed
+
+   All animation values are derived from a single st variable (0..2).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('fole-canvas');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (reduceMotion) {
+  document.body.classList.add('reduced-motion');
+} else {
+  initWebGL();
+}
+
+function initWebGL() {
+  /* ── renderer ─────────────────────────────────────────────────────────── */
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
+  } catch (e) {
+    document.body.classList.add('no-webgl');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x070A08, 1);
+
+  /* ── scene & camera ──────────────────────────────────────────────────── */
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+  camera.position.set(0, 0, 18);
+
+  /* ── palette ─────────────────────────────────────────────────────────── */
+  const C_GREEN    = new THREE.Color(0xB9EF71);
+  const C_GREEN_HI = new THREE.Color(0xD4FF91);
+  const C_MUTED    = new THREE.Color(0x556055);
+  const C_DIM      = new THREE.Color(0x2A3A2A);
+
+  /* ── state ───────────────────────────────────────────────────────────── */
+  let st = 0;           // 0..2, the unified state value
+  let stTarget = 0;     // what st is heading to
+  let mouse = { x: 0, y: 0 };   // normalized -0.5..0.5
+  let mouseTarget = { x: 0, y: 0 };
+  let connectionsMade = 0;  // for trace rail notch triggers
+
+  /* ── easing ──────────────────────────────────────────────────────────── */
+  const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
+  const clamp01 = x => clamp(x, 0, 1);
+  const smooth = x => { x = clamp01(x); return x * x * (3 - 2 * x); };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PARTICLE SYSTEM (main field)
+     ════════════════════════════════════════════════════════════════════ */
+  const PARTICLE_COUNT = window.innerWidth < 768 ? 180 : 340;
+
+  // Each particle has: pos, vel, basePos, phase, size, brightness
+  const positions  = new Float32Array(PARTICLE_COUNT * 3);
+  const colors     = new Float32Array(PARTICLE_COUNT * 3);
+  const sizes      = new Float32Array(PARTICLE_COUNT);
+  const phases     = new Float32Array(PARTICLE_COUNT);
+  const basePos    = new Float32Array(PARTICLE_COUNT * 3);  // resting positions
+
+  // Distribute particles in a spherical field
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+    // Radius varies: inner dense core + scattered outer field
+    const radiusBias = Math.pow(Math.random(), 0.6);
+    const r = radiusBias * 12 + 0.5;
+
+    const bx = r * Math.sin(phi) * Math.cos(theta);
+    const by = r * Math.sin(phi) * Math.sin(theta);
+    const bz = r * Math.cos(phi);
+
+    basePos[i * 3]     = bx;
+    basePos[i * 3 + 1] = by;
+    basePos[i * 3 + 2] = bz;
+
+    // Start particles near origin (collapsed in DISCOVER)
+    const startR = 0.1 + Math.random() * 0.3;
+    positions[i * 3]     = (Math.random() - 0.5) * startR;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * startR;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * startR;
+
+    phases[i] = Math.random() * Math.PI * 2;
+    sizes[i]  = 0.5 + Math.random() * 1.8;
+
+    // Start very dim
+    colors[i * 3]     = C_DIM.r;
+    colors[i * 3 + 1] = C_DIM.g;
+    colors[i * 3 + 2] = C_DIM.b;
+  }
+
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(positions,  3));
+  pGeo.setAttribute('color',    new THREE.BufferAttribute(colors,     3));
+  pGeo.setAttribute('size',     new THREE.BufferAttribute(sizes,      1));
+
+  const pMat = new THREE.ShaderMaterial({
+    vertexShader: `
+      attribute float size;
+      attribute vec3 color;
+      varying vec3 vColor;
+      varying float vAlpha;
+      uniform float uTime;
+      uniform float uSt;
+      void main() {
+        vColor = color;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        // Depth-based alpha: closer = more visible
+        float depth = clamp(1.0 - length(mvPos.xyz) / 28.0, 0.0, 1.0);
+        vAlpha = depth * clamp(uSt * 1.2, 0.0, 1.0);
+        gl_PointSize = size * (280.0 / -mvPos.z);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main() {
+        float d = length(gl_PointCoord - vec2(0.5));
+        if (d > 0.5) discard;
+        float alpha = smoothstep(0.5, 0.1, d) * vAlpha;
+        gl_FragColor = vec4(vColor, alpha);
+      }
+    `,
+    uniforms: {
+      uTime: { value: 0 },
+      uSt:   { value: 0 }
+    },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexColors: true
+  });
+
+  const particles = new THREE.Points(pGeo, pMat);
+  scene.add(particles);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ORIGIN ORB (the single luminous green point)
+     ════════════════════════════════════════════════════════════════════ */
+  const orbGeo = new THREE.SphereGeometry(0.08, 12, 12);
+  const orbMat = new THREE.MeshBasicMaterial({ color: C_GREEN_HI });
+  const orb = new THREE.Mesh(orbGeo, orbMat);
+  scene.add(orb);
+
+  // Orb glow (additive sprite)
+  const glowTex = makeGlowTexture(128);
+  const glowMat = new THREE.SpriteMaterial({
+    map: glowTex,
+    color: C_GREEN,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const glowSprite = new THREE.Sprite(glowMat);
+  glowSprite.scale.set(2.5, 2.5, 1);
+  scene.add(glowSprite);
+
+  function makeGlowTexture(size) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    g.addColorStop(0,    'rgba(185,239,113,1)');
+    g.addColorStop(0.3,  'rgba(185,239,113,0.5)');
+    g.addColorStop(0.7,  'rgba(185,239,113,0.1)');
+    g.addColorStop(1.0,  'rgba(185,239,113,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(cv);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     CONNECTION LINES (UNDERSTAND)
+     Thin green lines between nearby particles, growing in as st → 1
+     ════════════════════════════════════════════════════════════════════ */
+  const MAX_CONNECTIONS = window.innerWidth < 768 ? 120 : 260;
+  const linePositions = new Float32Array(MAX_CONNECTIONS * 2 * 3);
+  const lineColors    = new Float32Array(MAX_CONNECTIONS * 2 * 3);
+
+  const lineGeo = new THREE.BufferGeometry();
+  lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+  lineGeo.setAttribute('color',    new THREE.BufferAttribute(lineColors,    3));
+
+  const lineMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  const lines = new THREE.LineSegments(lineGeo, lineMat);
+  scene.add(lines);
+
+  // Pre-compute which particles to connect (stable, based on basePos proximity)
+  const connectionPairs = [];
+  const CONNECT_DIST = 4.5;
+  for (let i = 0; i < PARTICLE_COUNT && connectionPairs.length < MAX_CONNECTIONS; i++) {
+    const ax = basePos[i*3], ay = basePos[i*3+1], az = basePos[i*3+2];
+    for (let j = i+1; j < PARTICLE_COUNT && connectionPairs.length < MAX_CONNECTIONS; j++) {
+      const dx = ax - basePos[j*3];
+      const dy = ay - basePos[j*3+1];
+      const dz = az - basePos[j*3+2];
+      const d2 = dx*dx + dy*dy + dz*dz;
+      if (d2 < CONNECT_DIST * CONNECT_DIST) {
+        connectionPairs.push([i, j, d2]);
+      }
+    }
+  }
+  // Sort by distance — closer ones appear first
+  connectionPairs.sort((a, b) => a[2] - b[2]);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     POINTER interaction
+     ════════════════════════════════════════════════════════════════════ */
+  window.addEventListener('mousemove', e => {
+    mouseTarget.x = (e.clientX / innerWidth  - 0.5);
+    mouseTarget.y = -(e.clientY / innerHeight - 0.5);
+  });
+  window.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    mouseTarget.x = (t.clientX / innerWidth  - 0.5) * 0.5;
+    mouseTarget.y = -(t.clientY / innerHeight - 0.5) * 0.5;
+  }, { passive: true });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RESIZE
+     ════════════════════════════════════════════════════════════════════ */
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     SCROLL → st
+     ════════════════════════════════════════════════════════════════════ */
+  function updateStFromScroll() {
+    const docH  = document.documentElement.scrollHeight - innerHeight;
+    if (docH <= 0) return;
+
+    // Acts are the three pin sections
+    const act1 = document.getElementById('discover');
+    const act2 = document.getElementById('understand');
+    const act3 = document.getElementById('explore');
+
+    if (!act1 || !act2 || !act3) return;
+
+    const y     = scrollY;
+    const r1    = act1.getBoundingClientRect();
+    const r2    = act2.getBoundingClientRect();
+    const r3    = act3.getBoundingClientRect();
+
+    const t1 = act1.offsetTop;
+    const t2 = act2.offsetTop;
+    const t3 = act3.offsetTop;
+
+    const h1 = act1.offsetHeight;
+    const h2 = act2.offsetHeight;
+    const h3 = act3.offsetHeight;
+
+    if (y < t1) {
+      stTarget = 0;
+    } else if (y < t2) {
+      stTarget = clamp01((y - t1) / h1);
+    } else if (y < t3) {
+      stTarget = 1 + clamp01((y - t2) / h2);
+    } else {
+      stTarget = 2;
+    }
+  }
+
+  window.addEventListener('scroll', updateStFromScroll, { passive: true });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RENDER LOOP — all animation values from st
+     ════════════════════════════════════════════════════════════════════ */
+  let frame = 0;
+  let prevConnectionCount = 0;
+
+  function render(now) {
+    if (!renderer) return;
+    frame++;
+    const t = now * 0.001;
+
+    // Lerp st toward target (smooth transitions)
+    st = lerp(st, stTarget, 0.04);
+
+    // Smooth mouse
+    mouse.x = lerp(mouse.x, mouseTarget.x, 0.06);
+    mouse.y = lerp(mouse.y, mouseTarget.y, 0.06);
+
+    pMat.uniforms.uTime.value = t;
+    pMat.uniforms.uSt.value   = st;
+
+    /* ── state splits ─────────────────────────────────────────────── */
+    const st0 = clamp01(st);          // 0..1 DISCOVER
+    const st1 = clamp01(st - 1);      // 0..1 UNDERSTAND
+    const st2 = clamp01(st - 2);      // 0..1 → not used (st max is 2)
+
+    // How far into UNDERSTAND + EXPLORE combined
+    const stMid = clamp01(st / 2);    // 0..1 across whole journey
+
+    /* ── origin orb: shrinks away as st → 1 ─────────────────────── */
+    const orbScale = lerp(1, 0, smooth(st0));
+    const orbPulse = 1 + 0.12 * Math.sin(t * 2.4 + 1.2);
+    orb.scale.setScalar(orbScale * orbPulse);
+    glowSprite.scale.set(
+      2.5 * orbScale * (1 + 0.08 * Math.sin(t * 1.6)),
+      2.5 * orbScale * (1 + 0.08 * Math.sin(t * 1.6)),
+      1
+    );
+    orb.material.opacity = orbScale;
+
+    /* ── particles: expand from origin into field ─────────────────── */
+    const pArr = pGeo.attributes.position.array;
+    const cArr = pGeo.attributes.color.array;
+    const sArr = pGeo.attributes.size.array;
+
+    // How expanded are particles? 0 = origin, 1 = full field
+    const expansion = smooth(st0);
+
+    // Number of visible (illuminated) particles scales with st
+    const litCount  = Math.floor(PARTICLE_COUNT * clamp01(st * 0.7 + 0.05));
+    const litCountU = Math.floor(PARTICLE_COUNT * clamp01((st - 0.5) * 0.6 + 0.3));
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const phase = phases[i];
+      const orbit = 0.08 * Math.sin(t * 0.4 + phase);
+      const bob   = 0.06 * Math.sin(t * 0.28 + phase * 1.3);
+
+      // Position: lerp between origin and basePos
+      const bx = basePos[i*3];
+      const by = basePos[i*3+1];
+      const bz = basePos[i*3+2];
+
+      pArr[i*3]     = lerp(0, bx + orbit,  expansion) + mouse.x * (1 - expansion) * 0.4;
+      pArr[i*3+1]   = lerp(0, by + bob,    expansion) + mouse.y * (1 - expansion) * 0.4;
+      pArr[i*3+2]   = lerp(0, bz,          expansion);
+
+      // Extra gentle orbit at rest in UNDERSTAND/EXPLORE
+      if (st > 0.5) {
+        const drift = st1 * 0.04;
+        pArr[i*3]   += drift * Math.sin(t * 0.18 + phase);
+        pArr[i*3+1] += drift * Math.cos(t * 0.14 + phase * 0.8);
+      }
+
+      // Color: dim → green as st increases
+      const lit    = i < litCount;
+      const litU   = i < litCountU;
+      const bright = lit ? clamp01(1 - i / (litCount + 1)) : 0;
+      const greenT = litU ? clamp01(1 - i / (litCountU + 1)) * st1 : 0;
+
+      const base = lerp(C_DIM.r, C_MUTED.r, clamp01(st0 * 2));
+      cArr[i*3]     = lerp(base,        C_GREEN.r, greenT) * (lit ? 1 : 0.2);
+      cArr[i*3+1]   = lerp(C_DIM.g * base / C_DIM.r, C_GREEN.g, greenT) * (lit ? 1 : 0.2);
+      cArr[i*3+2]   = lerp(0.04,        C_GREEN.b, greenT) * (lit ? 1 : 0.2);
+
+      // Size: grow as particles expand
+      sArr[i] = (0.4 + Math.random() * 0.02 + 1.6 * expansion) * (lit ? 1 : 0.35);
+    }
+    pGeo.attributes.position.needsUpdate = true;
+    pGeo.attributes.color.needsUpdate    = true;
+    pGeo.attributes.size.needsUpdate     = true;
+
+    /* ── connection lines: grow in during UNDERSTAND ──────────────── */
+    const lOpacity  = smooth(clamp01(st - 0.4) * 1.6);
+    lineMat.opacity = lOpacity;
+
+    // How many connections to show: 0..MAX based on st1
+    const connShow = Math.floor(connectionPairs.length * smooth(st1));
+
+    // Trigger trace notches when connection count jumps (signature move)
+    const NOTCH_THRESHOLDS = [0.1, 0.22, 0.38, 0.55, 0.72, 0.88];
+    const connFrac = connShow / Math.max(connectionPairs.length, 1);
+    NOTCH_THRESHOLDS.forEach((thresh, idx) => {
+      if (connFrac >= thresh) {
+        spawnTraceNotch(idx, thresh);
+      }
+    });
+
+    const lArr = lineGeo.attributes.position.array;
+    const lcArr = lineGeo.attributes.color.array;
+
+    for (let k = 0; k < MAX_CONNECTIONS; k++) {
+      if (k < connShow && k < connectionPairs.length) {
+        const [ai, bi] = connectionPairs[k];
+        lArr[k*6]     = pArr[ai*3];
+        lArr[k*6+1]   = pArr[ai*3+1];
+        lArr[k*6+2]   = pArr[ai*3+2];
+        lArr[k*6+3]   = pArr[bi*3];
+        lArr[k*6+4]   = pArr[bi*3+1];
+        lArr[k*6+5]   = pArr[bi*3+2];
+
+        // Occasionally pulse a connection bright green
+        const pulse = (Math.sin(t * 1.8 + k * 0.3) > 0.88) ? 1 : 0;
+        const r = lerp(C_MUTED.r * 0.6, C_GREEN.r, pulse * 0.8);
+        const g = lerp(C_MUTED.g * 0.8, C_GREEN.g, pulse * 0.8);
+        const b = lerp(C_MUTED.b * 0.4, C_GREEN.b, pulse * 0.5);
+        lcArr[k*6]   = lcArr[k*6+3] = r;
+        lcArr[k*6+1] = lcArr[k*6+4] = g;
+        lcArr[k*6+2] = lcArr[k*6+5] = b;
+      } else {
+        // Hide unused segments
+        lArr[k*6]=lArr[k*6+1]=lArr[k*6+2]=lArr[k*6+3]=lArr[k*6+4]=lArr[k*6+5]=0;
+        lcArr[k*6]=lcArr[k*6+1]=lcArr[k*6+2]=lcArr[k*6+3]=lcArr[k*6+4]=lcArr[k*6+5]=0;
+      }
+    }
+    lineGeo.attributes.position.needsUpdate = true;
+    lineGeo.attributes.color.needsUpdate    = true;
+    lineGeo.setDrawRange(0, connShow * 2);
+
+    /* ── camera ───────────────────────────────────────────────────── */
+    // DISCOVER: close and still (z=18)
+    // UNDERSTAND: move slightly closer, rotate (z=14, tilt)
+    // EXPLORE: pull WAY back to reveal full field (z=30)
+    const camZ = lerp(lerp(18, 14, smooth(st0)), 30, smooth(st1));
+    const camY = lerp(0, 1.5, smooth(st0)) * Math.sin(t * 0.05);
+
+    // Pointer parallax (gentle)
+    const parallaxStr = lerp(0.8, 0.3, st1);
+    camera.position.x = lerp(camera.position.x, mouse.x * parallaxStr, 0.04);
+    camera.position.y = lerp(camera.position.y, mouse.y * parallaxStr + camY, 0.04);
+    camera.position.z = lerp(camera.position.z, camZ, 0.025);
+
+    // Slow rotation of whole graph during UNDERSTAND
+    particles.rotation.y = lerp(0, t * 0.03, smooth(st0));
+    lines.rotation.y     = particles.rotation.y;
+
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
+
+  /* ── trace notch spawner (signature move) ─────────────────────── */
+  const traceEl = document.querySelector('.fole-trace');
+  const notchesSpawned = new Set();
+
+  function spawnTraceNotch(idx, frac) {
+    if (notchesSpawned.has(idx)) return;
+    notchesSpawned.add(idx);
+
+    const notch = document.createElement('button');
+    notch.className = 'fole-trace__notch';
+    notch.style.left = (frac * 100) + '%';
+    notch.setAttribute('aria-label', `Jump to connection ${idx + 1}`);
+    notch.title = `Connection ${idx + 1}`;
+    traceEl.appendChild(notch);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      notch.classList.add('visible');
+    });
+
+    // Click navigates to appropriate scene
+    const scenes = ['#discover', '#discover', '#understand', '#understand', '#explore', '#explore'];
+    notch.addEventListener('click', () => {
+      const target = document.querySelector(scenes[idx] || '#understand');
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+} // end initWebGL
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCROLL CRAFT ENGINE MOUNT
+   ══════════════════════════════════════════════════════════════════════════ */
+ScrollCraft.mount(document.body);
+</script>
+
+<script>
+/* ─── Non-module JS: chrome interactions ──────────────────────────────── */
+(function () {
+  // Year
+  const yr = document.getElementById('yr');
+  if (yr) yr.textContent = new Date().getFullYear();
+
+  // Header scroll
+  const bar = document.getElementById('site-bar');
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      bar.classList.toggle('scrolled', scrollY > 40);
+      ticking = false;
+    });
+  }, { passive: true });
+
+  // Hamburger
+  const ham  = document.querySelector('.fole-hamburger');
+  const drawer = document.getElementById('mobile-drawer');
+  if (ham && drawer) {
+    ham.addEventListener('click', () => {
+      const open = ham.getAttribute('aria-expanded') === 'true';
+      ham.setAttribute('aria-expanded', !open);
+      drawer.classList.toggle('open', !open);
+      document.body.style.overflow = open ? '' : 'hidden';
+    });
+    drawer.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        ham.setAttribute('aria-expanded', 'false');
+        drawer.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) {
+        ham.setAttribute('aria-expanded', 'false');
+        drawer.classList.remove('open');
+        document.body.style.overflow = '';
+        ham.focus();
+      }
+    });
+  }
+
+  // Scene index dots
+  const dots = document.querySelectorAll('.fole-index__dot');
+  const sceneLabel = document.querySelector('.fole-scene-label');
+  const scenes = ['discover', 'understand', 'explore'];
+  const sceneNames = ['FOLE / 01 — DISCOVER', 'FOLE / 02 — UNDERSTAND', 'FOLE / 03 — EXPLORE'];
+
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.dataset.scene, 10);
+      const target = document.getElementById(scenes[idx]);
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Update dots and label on scroll
+  const traceFill = document.getElementById('trace-fill');
+  let lastDot = -1;
+
+  function updateChrome() {
+    const y = scrollY;
+    const docH = document.documentElement.scrollHeight - innerHeight;
+
+    // Trace fill
+    if (traceFill && docH > 0) {
+      traceFill.style.transform = 'scaleX(' + (y / docH).toFixed(4) + ')';
+    }
+
+    // Which scene dot is active
+    const sect = ['discover', 'understand', 'explore'];
+    let active = 0;
+    sect.forEach((id, idx) => {
+      const el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top < innerHeight * 0.7) active = idx;
+    });
+    if (active !== lastDot) {
+      dots.forEach((d, i) => d.classList.toggle('active', i === active));
+      if (sceneLabel) sceneLabel.textContent = sceneNames[active];
+      lastDot = active;
+    }
+  }
+
+  window.addEventListener('scroll', updateChrome, { passive: true });
+  updateChrome();
+
+  // Keyboard nav: arrow keys move between scenes
+  document.addEventListener('keydown', e => {
+    if (e.target !== document.body && e.target.tagName !== 'CANVAS') return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = Math.min(lastDot + 1, 2);
+      const el = document.getElementById(scenes[next]);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = Math.max(lastDot - 1, 0);
+      const el = document.getElementById(scenes[prev]);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
+  // Scroll hint: tab key moves focus to first interactive element
+  // Focus skip link (accessibility)
+  const skip = document.createElement('a');
+  skip.href = '#activities';
+  skip.textContent = 'Skip to activities';
+  skip.className = 'sc-label';
+  skip.style.cssText = [
+    'position:fixed', 'top:-4rem', 'left:1.5rem', 'z-index:999',
+    'padding:0.75rem 1.25rem', 'background:var(--fole-green)',
+    'color:var(--sc-accent-ink)', 'border-radius:4px',
+    'transition:top 200ms ease-out', 'text-decoration:none',
+    'font-size:0.8rem', 'letter-spacing:0.05em'
+  ].join(';');
+  skip.addEventListener('focus', () => { skip.style.top = '1.5rem'; });
+  skip.addEventListener('blur',  () => { skip.style.top = '-4rem'; });
+  document.body.prepend(skip);
+})();
+</script>
+
+</body>
+</html>
