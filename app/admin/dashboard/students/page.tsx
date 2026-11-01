@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { StudentsManagementView } from "@/components/admin/StudentsManagementView";
 
 export const metadata: Metadata = {
-  title: "Student Accounts — FOLE Admin Control",
+  title: "Student Accounts — ENGIVAULT Admin Control",
   description: "Directory of registered student members and administrative account controls.",
 };
 

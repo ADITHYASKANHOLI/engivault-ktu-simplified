@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   DoorOpen,
   Calendar,
+  Sparkles,
   ArrowRight,
   QrCode,
   ShieldCheck,
@@ -37,12 +38,13 @@ export default async function FoleSpacePage() {
   const availabilityState = status?.state || status?.availabilityState || "unavailable";
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 sm:pt-36 sm:pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80 bg-[#f7f6ef]">
+      <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-[#07111F] dark:to-slate-950">
+        <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col items-start text-left max-w-3xl">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
             {/* Logo Display */}
             <div className="mb-6 transform hover:scale-102 transition-transform duration-300">
               <FoleSpaceLogo size="xl" priority />
@@ -59,26 +61,26 @@ export default async function FoleSpacePage() {
             </div>
 
             {/* Tagline */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-[#e8f0e8] border border-[#c7d8c9] text-[#176b45] text-xs font-mono font-bold tracking-wider uppercase mb-4">
-              <span className="h-1.5 w-1.5 bg-[#176b45]" aria-hidden="true" />
-              <span>LEARN TOGETHER · BUILD TOGETHER</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold tracking-wider uppercase mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Learn Together. Build Together. Grow Together.</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-3xl sm:text-5xl font-black text-[#17231c] tracking-tight mb-4">
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
               A Physical Space for <span className="text-emerald-600 dark:text-emerald-400">Curious Minds</span>
             </h1>
 
             {/* Subtitle */}
-            <p className="text-base sm:text-lg text-[#536157] leading-relaxed mb-8">
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-8">
               Inspired by collaborative hubs like Thinkerspace Calicut, <strong>FOLE SPACE</strong> is the physical sanctuary for students at <strong>College of Engineering Vadakara (CEV)</strong>. Drop in for distraction-free study, work on team builds, and participate in verified student-led workshops.
             </p>
 
             {/* Primary Action Buttons */}
-            <div className="flex flex-wrap items-center justify-start gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/fole-space/open"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all min-h-[48px]"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-md min-h-[48px]"
               >
                 <DoorOpen className="w-4 h-4" />
                 <span>Open Space Check-in</span>
@@ -86,7 +88,7 @@ export default async function FoleSpacePage() {
 
               <Link
                 href="/fole-space/calendar"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md text-sm font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all  min-h-[48px]"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all shadow-xs min-h-[48px]"
               >
                 <Calendar className="w-4 h-4 text-emerald-500" />
                 <span>Events Calendar</span>
@@ -94,7 +96,7 @@ export default async function FoleSpacePage() {
 
               <Link
                 href="/fole-space/my"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-md text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-all min-h-[48px]"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-all min-h-[48px]"
               >
                 <QrCode className="w-4 h-4" />
                 <span>My Tickets</span>
@@ -106,7 +108,7 @@ export default async function FoleSpacePage() {
 
       {/* Two Modes Grid */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-12 max-w-2xl">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             Two Ways to Experience the Space
           </h2>
@@ -117,9 +119,9 @@ export default async function FoleSpacePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Mode 1: Open Space */}
-          <div className="p-8 rounded-md bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div className="p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="w-12 h-12 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mb-6">
                 <DoorOpen className="w-6 h-6" />
               </div>
 
@@ -141,15 +143,15 @@ export default async function FoleSpacePage() {
 
               <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400 mb-8">
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <span>Real-time occupancy vs capacity tracking</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <span>Synchronized server clock countdown display</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <span>Automatic collision protection with scheduled workshops</span>
                 </li>
               </ul>
@@ -157,7 +159,7 @@ export default async function FoleSpacePage() {
 
             <Link
               href="/fole-space/open"
-              className="inline-flex items-center justify-between px-5 py-3 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400 text-sm font-bold text-slate-900 dark:text-white transition-all group"
+              className="inline-flex items-center justify-between px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400 text-sm font-bold text-slate-900 dark:text-white transition-all group"
             >
               <span>View Live Space & Check In</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -165,14 +167,14 @@ export default async function FoleSpacePage() {
           </div>
 
           {/* Mode 2: Events & Sessions */}
-          <div className="p-8 rounded-md bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div className="p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="w-12 h-12 rounded-md bg-[#e8f0e8] dark:bg-emerald-950/80 text-[#176b45] dark:text-[#b7d7c2] flex items-center justify-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-400 flex items-center justify-center mb-6">
                 <Calendar className="w-6 h-6" />
               </div>
 
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#176b45] dark:text-[#b7d7c2]">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
                   Organized Sessions
                 </span>
                 <span className="text-slate-300 dark:text-slate-700">•</span>
@@ -189,15 +191,15 @@ export default async function FoleSpacePage() {
 
               <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400 mb-8">
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-[#176b45]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                   <span>Interactive monthly calendar & agenda view</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-[#176b45]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                   <span>Unguessable digital QR tickets with mobile download</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-md bg-[#176b45]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                   <span>Support for camera QR scanning and virtual check-in</span>
                 </li>
               </ul>
@@ -205,7 +207,7 @@ export default async function FoleSpacePage() {
 
             <Link
               href="/fole-space/events"
-              className="inline-flex items-center justify-between px-5 py-3 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-[#edf2ec] dark:hover:bg-emerald-950/50 hover:text-[#105437] dark:hover:text-[#b7d7c2] text-sm font-bold text-slate-900 dark:text-white transition-all group"
+              className="inline-flex items-center justify-between px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/50 hover:text-cyan-700 dark:hover:text-cyan-400 text-sm font-bold text-slate-900 dark:text-white transition-all group"
             >
               <span>Explore Upcoming Events</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -239,7 +241,7 @@ export default async function FoleSpacePage() {
               <Link
                 key={evt.id}
                 href={`/fole-space/events/${evt.slug}`}
-                className="group p-5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all  flex flex-col justify-between"
+                className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-xs flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
@@ -272,7 +274,7 @@ export default async function FoleSpacePage() {
 
       {/* Verified Organizer Callout */}
       <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-start justify-between gap-6 bg-[#123d2b] p-8 text-white md:flex-row md:items-center">
+        <div className="p-8 rounded-2xl bg-gradient-to-r from-emerald-900 to-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl text-center md:text-left">
             <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-300 uppercase">
               <ShieldCheck className="w-4 h-4" />
@@ -288,7 +290,7 @@ export default async function FoleSpacePage() {
 
           <Link
             href="/fole-space/organizer"
-            className="px-6 py-3 rounded-md bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all  shrink-0"
+            className="px-6 py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all shadow-md shrink-0"
           >
             Access Organizer Hub
           </Link>

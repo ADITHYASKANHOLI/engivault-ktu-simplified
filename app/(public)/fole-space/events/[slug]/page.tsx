@@ -81,7 +81,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const flyerProxyUrl = event.flyer_path ? `/api/space/events/${event.slug}/flyer` : "";
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb / Navigation Bar with Routes Back to Calendar & Open Space Hub */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">

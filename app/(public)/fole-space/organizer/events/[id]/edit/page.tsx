@@ -37,7 +37,7 @@ export default async function EditSpaceEventPage({ params }: EditEventPageProps)
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
           <Link

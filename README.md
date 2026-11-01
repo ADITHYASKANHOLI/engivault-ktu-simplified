@@ -2,9 +2,9 @@
   <img src="public/branding/fole-logo.png" alt="FOLE Logo" width="560" />
 </p>
 
-# FOLE — Academic Learning Platform
+# ENGIVAULT — Academic Learning Platform
 
-**FOLE** is a student-led open learning platform built for engineering students to provide a structured, accessible, and high-fidelity curriculum ecosystem. Developed by **FOLE** (Free Open Learning & Education), a student-led initiative associated with the College of Engineering Vadakara (CEV), the platform unites curriculum lectures, syllabus hierarchies, peer study materials, and community workshops into one cohesive application.
+**ENGIVAULT** is an engineering-focused academic digital vault built for engineering students to provide a structured, accessible, and high-fidelity curriculum ecosystem. Developed by **FOLE** (Free Open Learning & Education), a student-led initiative associated with the College of Engineering Vadakara (CEV), the platform unites curriculum lectures, syllabus hierarchies, peer study materials, and community workshops into one cohesive application.
 
 Guiding Principle: *Learn Together. Build Together. Grow Together.*
 
@@ -12,7 +12,7 @@ Guiding Principle: *Learn Together. Build Together. Grow Together.*
 
 ## 🏛️ Academic Hierarchy
 
-FOLE models engineering education into a scalable, normalized 6-tier hierarchy:
+ENGIVAULT models engineering education into a scalable, normalized 6-tier hierarchy:
 
 ```
 Department / Branch
@@ -37,11 +37,11 @@ The platform is designed for multi-disciplinary engineering education and includ
 
 ## 🔐 Authentication & Access System
 
-FOLE implements a secure, three-mode access architecture with strict separation between public guest browsing, student accounts, and administrative operations:
+ENGIVAULT implements a secure, three-mode access architecture with strict separation between public guest browsing, student accounts, and administrative operations:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            FOLE ACCESS SYSTEM                          │
+│                            ENGIVAULT ACCESS SYSTEM                          │
 ├──────────────────────┬────────────────────────────┬─────────────────────────┤
 │      GUEST MODE      │        STUDENT MODE        │        ADMIN MODE       │
 ├──────────────────────┼────────────────────────────┼─────────────────────────┤
@@ -154,7 +154,7 @@ FOLE implements a secure, three-mode access architecture with strict separation 
 
 ## 📺 YouTube Lecture Architecture
 
-FOLE adopts a high-performance, cost-effective YouTube-first video delivery model:
+ENGIVAULT adopts a high-performance, cost-effective YouTube-first video delivery model:
 
 1. **Centralized Reusable Parser (`lib/utils/youtube.ts`):**
    - Supports all standard YouTube URL patterns:
@@ -337,7 +337,7 @@ ADMIN_ACCESS_CODE="your-admin-access-code"
 
 # Site URL
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_SITE_NAME=FOLE
+NEXT_PUBLIC_SITE_NAME=ENGIVAULT
 
 # Email Forwarding (Resend API)
 RESEND_API_KEY=re_your_api_key
@@ -405,7 +405,7 @@ CONTACT_EMAIL_FROM="FOLE Web <onboarding@resend.dev>"
 3. **Disable Public Sign-Up in Dashboard:**
    - Navigate to **Authentication → Providers → Email** in your Supabase Dashboard.
    - Turn **OFF** the toggle: *"Allow new users to sign up"*.
-   - *Why?* This prevents malicious actors from calling `supabase.auth.signUp()` with the public anon key to bypass username uniqueness, reserved word checks, and rate limits. FOLE creates student accounts server-side via `auth.admin.createUser()` using the service-role client, which continues to operate cleanly with this setting disabled.
+   - *Why?* This prevents malicious actors from calling `supabase.auth.signUp()` with the public anon key to bypass username uniqueness, reserved word checks, and rate limits. ENGIVAULT creates student accounts server-side via `auth.admin.createUser()` using the service-role client, which continues to operate cleanly with this setting disabled.
 
 ### 5. Running the Development Server
 ```bash
@@ -417,7 +417,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🧪 Testing & Verification
 
-FOLE includes a comprehensive automated test suite verifying all critical requirements:
+ENGIVAULT includes a comprehensive automated test suite verifying all critical requirements:
 
 ```bash
 # Run 17-section unit & integration test suite
@@ -487,7 +487,7 @@ node scripts/verify-browser-routes.mjs
 
 ## 🚢 Deploy to Vercel
 
-FOLE is architected and tested as a **Vercel-native serverless application**.
+ENGIVAULT is architected and tested as a **Vercel-native serverless application**.
 
 1. **Connect GitHub Repository:** Import `engivault-ktu-simplified` on [Vercel](https://vercel.com).
 2. **Framework Detection:** Vercel automatically configures the Next.js App Router and Turbopack.

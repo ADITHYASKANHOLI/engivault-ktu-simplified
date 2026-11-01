@@ -2,13 +2,13 @@ import React from "react";
 
 export default function MaterialsLoading() {
   return (
-    <main className="flex-1 pt-24 sm:pt-24 pb-20 bg-[#f7f6ef] dark:bg-slate-950 min-h-screen">
+    <main className="flex-1 pt-24 sm:pt-28 pb-20 bg-[#F7F9FC] dark:bg-slate-950 min-h-screen bg-tech-grid">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Skeleton */}
         <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded animate-pulse mb-6" />
 
         {/* Hero Banner Skeleton */}
-        <div className="rounded-md bg-[#123d2b] p-6 sm:p-10 mb-8 sm:mb-10 animate-pulse border border-slate-800">
+        <div className="rounded-3xl bg-[#07111F] p-6 sm:p-10 mb-8 sm:mb-10 animate-pulse border border-slate-800">
           <div className="h-6 w-48 bg-emerald-950/60 rounded-full mb-4" />
           <div className="h-10 w-3/4 max-w-lg bg-slate-800 rounded-xl mb-3" />
           <div className="h-4 w-2/3 max-w-md bg-slate-800/80 rounded" />

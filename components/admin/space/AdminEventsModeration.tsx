@@ -112,7 +112,7 @@ export function AdminEventsModeration({ initialEvents }: AdminEventsModerationPr
                     <span
                       className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase ${
                         evt.status === "published"
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "bg-blue-50 text-blue-700"
                           : evt.status === "live"
                           ? "bg-emerald-100 text-emerald-800"
                           : evt.status === "cancelled"

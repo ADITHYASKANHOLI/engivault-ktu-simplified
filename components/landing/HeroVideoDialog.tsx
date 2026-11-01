@@ -149,15 +149,15 @@ export function HeroVideoDialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/85 transition-opacity"
+        className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity"
         onClick={handleClose}
         aria-hidden="true"
       />
 
       {/* Dialog Frame */}
-      <div ref={dialogRef} className="relative z-10 w-full max-w-5xl max-h-[calc(100dvh-1.5rem)] rounded-md bg-[#10291f] border border-white/15 shadow-2xl overflow-hidden flex flex-col">
+      <div ref={dialogRef} className="relative z-10 w-full max-w-5xl max-h-[calc(100dvh-1.5rem)] rounded-2xl md:rounded-3xl bg-[#07140e] border border-emerald-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col">
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 border-b border-emerald-950/60 bg-[#10291f]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 border-b border-emerald-950/60 bg-[#050e09]/90 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h2
@@ -182,7 +182,7 @@ export function HeroVideoDialog({
         {/* Video Player Container */}
         <div className="relative w-full aspect-[3024/1730] sm:aspect-[16/9] bg-black flex items-center justify-center overflow-hidden">
           {isLoading && !hasError && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 text-white gap-3">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs text-white gap-3">
               <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
               <span className="text-xs font-mono text-emerald-200">Buffering FOLE Experience...</span>
             </div>

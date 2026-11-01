@@ -382,13 +382,13 @@ function AdminModulesContent() {
             title="Refresh modules from Supabase"
             className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-blue-600" : ""}`} />
           </button>
 
           <button
             onClick={openCreateModal}
             disabled={!selectedSubjectId || loading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 transition-colors shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Create Module</span>
@@ -403,7 +403,7 @@ function AdminModulesContent() {
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/80 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
+            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50/80 font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs"
           >
             {subjects.length === 0 ? (
               <option value="">No subjects found</option>
@@ -419,7 +419,7 @@ function AdminModulesContent() {
 
         {currentSubject && (
           <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
-            <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
             <span>{currentSubject.title}</span>
             <span>•</span>
             <span className="font-bold text-slate-800">{currentSubjectModules.length} modules</span>
@@ -437,7 +437,7 @@ function AdminModulesContent() {
         <div className="divide-y divide-slate-100 p-4">
           {loading ? (
             <div className="py-12 text-center text-slate-400 space-y-2">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" />
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
               <p className="text-xs">Loading modules from database...</p>
             </div>
           ) : !currentSubject ? (
@@ -445,7 +445,7 @@ function AdminModulesContent() {
               <p className="text-xs">Please create a subject first before managing modules.</p>
               <Link
                 href="/admin/dashboard/subjects"
-                className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold hover:underline mt-2"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 font-semibold hover:underline mt-2"
               >
                 <span>Go to Subjects</span>
                 <ArrowRight className="w-3 h-3" />
@@ -464,7 +464,7 @@ function AdminModulesContent() {
               </div>
               <button
                 onClick={openCreateModal}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 shadow-xs"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 shadow-xs"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Module</span>
@@ -483,11 +483,11 @@ function AdminModulesContent() {
                 >
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-800">
                         Order #{m.display_order}
                       </span>
                       <div className="text-sm font-bold text-slate-900 flex items-center gap-2 truncate">
-                        <Layers className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <Layers className="w-4 h-4 text-cyan-600 shrink-0" />
                         <span className="truncate">{m.title}</span>
                       </div>
                     </div>
@@ -527,14 +527,14 @@ function AdminModulesContent() {
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-colors"
                       title="View all lectures in this module"
                     >
-                      <Video className="w-3.5 h-3.5 text-emerald-600" />
+                      <Video className="w-3.5 h-3.5 text-blue-600" />
                       <span>Lectures</span>
                     </Link>
 
                     {/* Create Lecture directly under this module */}
                     <Link
                       href={`/admin/dashboard/lessons?subjectId=${m.subject_id}&moduleId=${m.id}&create=true`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
                       title="Create a new lecture in this module"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -544,7 +544,7 @@ function AdminModulesContent() {
                     {/* Edit Module */}
                     <button
                       onClick={() => openEditModal(m)}
-                      className="p-1.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-slate-200 transition-colors"
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-slate-200 transition-colors"
                       title="Edit Module Details"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -598,7 +598,7 @@ function AdminModulesContent() {
                 <select
                   value={formData.subject_id}
                   onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-slate-50 font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 font-medium"
                 >
                   {subjects.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -618,7 +618,7 @@ function AdminModulesContent() {
                   value={formData.title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="e.g. Module 1 — Linear Algebra & Vector Calculus"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 font-medium text-slate-900"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900"
                 />
               </div>
 
@@ -631,7 +631,7 @@ function AdminModulesContent() {
                   required
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono text-slate-900 bg-slate-50"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono text-slate-900 bg-slate-50"
                 />
               </div>
 
@@ -647,7 +647,7 @@ function AdminModulesContent() {
                     onChange={(e) =>
                       setFormData({ ...formData, display_order: parseInt(e.target.value) || 1 })
                     }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 font-medium text-slate-900"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium text-slate-900"
                   />
                 </div>
 
@@ -661,7 +661,7 @@ function AdminModulesContent() {
                       }
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-700"></div>
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-700"></div>
                     <span className="ml-2.5 text-xs font-semibold text-slate-700">
                       Published
                     </span>
@@ -678,7 +678,7 @@ function AdminModulesContent() {
                   value={formData.short_description}
                   onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
                   placeholder="Topics covered in this syllabus module according to the KTU curriculum..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none text-slate-800"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none text-slate-800"
                 />
               </div>
 
@@ -694,7 +694,7 @@ function AdminModulesContent() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold shadow-xs disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
@@ -796,7 +796,7 @@ export default function AdminModulesPage() {
     <Suspense
       fallback={
         <div className="p-12 text-center text-slate-400 space-y-2">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" />
+          <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
           <p className="text-xs">Loading modules management...</p>
         </div>
       }

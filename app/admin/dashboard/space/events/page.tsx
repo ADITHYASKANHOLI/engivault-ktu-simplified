@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Event Moderation — FOLE Admin",
+  title: "Event Moderation — ENGIVAULT Admin",
   description: "Review and moderate workshops, sessions, and physical space reservations.",
 };
 

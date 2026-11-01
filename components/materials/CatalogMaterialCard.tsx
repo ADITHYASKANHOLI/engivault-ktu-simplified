@@ -70,7 +70,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
     return {
       icon: FileSpreadsheet,
       badge: "Document",
-      color: "text-[#176b45] bg-[#edf2ec] dark:bg-emerald-950/40 border-[#dce2da] dark:border-[#285d43]/60",
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60",
     };
   };
 
@@ -86,7 +86,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
       : `/api/materials/download?id=${material.id}`);
 
   return (
-    <article className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-md p-4 sm:p-5 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex flex-col justify-between h-full">
+    <article className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex flex-col justify-between h-full">
       <div className="space-y-3">
         {/* Header: Type Badge & File Size */}
         <div className="flex items-center justify-between gap-2 flex-wrap">

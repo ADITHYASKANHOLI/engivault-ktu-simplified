@@ -6,12 +6,12 @@ import { Save, CheckCircle2 } from "lucide-react";
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [formData, setFormData] = useState({
-    site_name: "FOLE",
-    headline: "Learn together. Build together.",
-    tagline: "Free Open Learning & Education",
-    contact_email: "folecev@gmail.com",
-    about_text: "FOLE is a student-led learning community at College of Engineering Vadakara. It brings students together to learn, share knowledge and create useful resources.",
-    footer_text: "© 2026 FOLE CEV. Free Open Learning & Education.",
+    site_name: "ENGIVAULT",
+    headline: "Learn Engineering. Build Confidence.",
+    tagline: "KTU Learning. Simplified.",
+    contact_email: "contact@engivault.edu",
+    about_text: "ENGIVAULT is a dedicated KTU engineering study companion providing video lectures, structured module breakdowns, and authentic study notes.",
+    footer_text: "© 2026 ENGIVAULT. All rights reserved. Built for KTU students.",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,7 +47,7 @@ export default function AdminSettingsPage() {
               required
               value={formData.site_name}
               onChange={(e) => setFormData({ ...formData, site_name: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
 
@@ -60,7 +60,7 @@ export default function AdminSettingsPage() {
               required
               value={formData.contact_email}
               onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function AdminSettingsPage() {
             type="text"
             value={formData.headline}
             onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
@@ -85,7 +85,7 @@ export default function AdminSettingsPage() {
             type="text"
             value={formData.tagline}
             onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
@@ -97,7 +97,7 @@ export default function AdminSettingsPage() {
             rows={4}
             value={formData.about_text}
             onChange={(e) => setFormData({ ...formData, about_text: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none"
           />
         </div>
 
@@ -109,7 +109,7 @@ export default function AdminSettingsPage() {
             type="text"
             value={formData.footer_text}
             onChange={(e) => setFormData({ ...formData, footer_text: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 

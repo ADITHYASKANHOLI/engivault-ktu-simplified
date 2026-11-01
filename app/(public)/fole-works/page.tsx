@@ -7,6 +7,7 @@ import {
   Users,
   Mail,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { WorksActivity } from "@/types";
 import { getPublishedWorksActivities } from "@/lib/queries";
@@ -40,61 +41,79 @@ export default async function FoleWorksPage() {
       message: err?.message || "Unknown error",
       timestamp: new Date().toISOString(),
     });
-    fetchError = "We could not load the published activities. Please try reloading.";
+    fetchError = "We were unable to retrieve published activities from the vault. Please try reloading.";
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 sm:pt-36 sm:pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80 bg-[#f7f6ef]">
+      <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-[#07111F] dark:to-slate-950">
         {/* Subtle grid background */}
+        <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col items-start text-left max-w-3xl">
+          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
             {/* Official FOLE WORKS Brand Header */}
-            <div className="mb-6">
+            <div className="mb-6 transform hover:scale-105 transition-transform duration-300">
               <FoleWorksLogo size="xl" showWordmark={false} href={null} priority />
             </div>
 
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm bg-[#e8f0e8] border border-[#c7d8c9] text-[#176b45] text-xs font-semibold tracking-wide uppercase mb-4">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#176b45]" aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold tracking-wider uppercase mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
               <span>FOLE CEV Professional & Operational Wing</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#17231c] tracking-tight mb-4">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
               FOLE <span className="text-emerald-600 dark:text-emerald-400 font-mono">WORKS</span>
             </h1>
 
             {/* Description */}
-            <p className="text-base sm:text-lg text-[#536157] leading-relaxed mb-8">
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-8">
               The practical initiative wing of <strong>Free Open Learning & Education (FOLE CEV)</strong> at{" "}
               <strong>College of Engineering Vadakara</strong>. We organize student-driven technical workshops,
               industry internship programmes, collaborative robotics projects, and professional skill bootcamps.
             </p>
 
-            {/* What FOLE WORKS does */}
-            <div className="mb-8 grid w-full grid-cols-1 gap-x-8 gap-y-4 border-y border-[#dce2da] py-5 text-left sm:grid-cols-3">
-              <div className="flex items-start gap-3">
-                <Cpu className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div><h4 className="text-sm font-semibold text-[#17231c]">Hands-on Labs</h4><p className="mt-1 text-xs leading-5 text-[#647168]">Hardware and software engineering practice.</p></div>
+            {/* Value Pillars */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mb-8 text-left">
+              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Hands-on Labs</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Hardware & software engineering practice</p>
+                </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Briefcase className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div><h4 className="text-sm font-semibold text-[#17231c]">Internships</h4><p className="mt-1 text-xs leading-5 text-[#647168]">Project work with industry mentors.</p></div>
+
+              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Internships</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Project sprints with industry mentors</p>
+                </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Users className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div><h4 className="text-sm font-semibold text-[#17231c]">Peer collaboration</h4><p className="mt-1 text-xs leading-5 text-[#647168]">Student teams working across branches.</p></div>
+
+              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500 shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Peer Collaboration</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Multi-branch student project squads</p>
+                </div>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="flex flex-wrap items-center justify-start gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <a
                 href="#activities"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-bold text-white bg-[#176b45] hover:bg-[#105437] transition-all  min-h-[48px]"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs min-h-[48px]"
               >
                 <span>Explore Activities</span>
                 <ArrowRight className="w-4 h-4" />
@@ -102,7 +121,7 @@ export default async function FoleWorksPage() {
 
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 transition-all min-h-[48px]"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 transition-all min-h-[48px]"
               >
                 <Mail className="w-4 h-4 text-emerald-500" />
                 <span>Contact Organizers</span>
@@ -138,7 +157,7 @@ export default async function FoleWorksPage() {
       {/* Community Collaboration & Contact Banner */}
       <section className="py-12 border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950/60">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 rounded-md ">
+          <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 rounded-3xl shadow-xs">
             <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
               Want to Host or Propose an Initiative?
             </h3>
@@ -146,17 +165,17 @@ export default async function FoleWorksPage() {
               FOLE WORKS supports student and faculty-led initiatives at CEV. If you have an idea for a technical workshop,
               robotics competition, or open-source engineering project, reach out to the team.
             </p>
-            <div className="flex flex-wrap items-center justify-start gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <a
                 href="mailto:folecev@gmail.com"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-xs font-bold text-white bg-[#176b45] hover:bg-[#105437] transition-colors  min-h-[44px]"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors shadow-2xs min-h-[44px]"
               >
                 <Mail className="w-4 h-4" />
                 <span>folecev@gmail.com</span>
               </a>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-1.5 px-4 py-3 rounded-md text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 transition-colors min-h-[44px]"
+                className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 transition-colors min-h-[44px]"
               >
                 <span>Submit Query via Contact Form</span>
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -14,14 +14,9 @@ import {
   getPublishedSubjects,
 } from "@/lib/queries";
 import { LectureCard } from "@/components/lectures/LectureCard";
-import {
-  getAcademicCandidateTerms,
-  matchesAcademicTarget,
-  matchesSubjectQuery,
-} from "@/lib/utils/academic-search";
 
 export const metadata = {
-  title: "Academic Lectures Browser — FOLE",
+  title: "Academic Lectures Browser — ENGIVAULT",
   description:
     "Explore engineering academic lectures organized by department, semester, subject, module, and topic with YouTube video classes.",
 };
@@ -79,49 +74,40 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
   }
 
   if (q) {
-    const rawQ = q.trim();
-    const candidateTerms = getAcademicCandidateTerms(rawQ);
+    const query = q.toLowerCase().trim();
     filtered = filtered.filter((l) => {
-      const parentSub =
-        l.subject ||
-        l.module?.subject ||
-        (l.module?.subject_id ? subjects.find((s) => s.id === l.module?.subject_id) : null);
-
-      const subjectMatch = parentSub ? matchesSubjectQuery(parentSub, rawQ, candidateTerms) : false;
-      const moduleMatch = l.module ? matchesAcademicTarget(l.module.title, rawQ, candidateTerms) : false;
-      const topicMatch = l.topic ? matchesAcademicTarget(l.topic.title, rawQ, candidateTerms) : false;
-      const instructorMatch =
-        matchesAcademicTarget(l.instructor, rawQ, candidateTerms) ||
-        matchesAcademicTarget(l.faculty?.name, rawQ, candidateTerms);
-      const titleMatch = matchesAcademicTarget(l.title, rawQ, candidateTerms);
-      const descMatch = matchesAcademicTarget(l.description || l.short_description, rawQ, candidateTerms);
-
-      return subjectMatch || moduleMatch || topicMatch || instructorMatch || titleMatch || descMatch;
+      const titleMatch = l.title.toLowerCase().includes(query);
+      const descMatch = (l.description || l.short_description || "").toLowerCase().includes(query);
+      const subjectMatch = (l.subject?.title || "").toLowerCase().includes(query) || (l.subject?.code || "").toLowerCase().includes(query);
+      const moduleMatch = (l.module?.title || "").toLowerCase().includes(query);
+      const topicMatch = (l.topic?.title || "").toLowerCase().includes(query);
+      const facultyMatch = (l.faculty?.name || "").toLowerCase().includes(query);
+      return titleMatch || descMatch || subjectMatch || moduleMatch || topicMatch || facultyMatch;
     });
   }
 
   const hasActiveFilters = Boolean(q || dept || sem || subject);
 
   return (
-    <main className="min-h-screen flex-1 bg-[#f7f6ef] pb-24 pt-24">
+    <main className="flex-1 pt-28 pb-24 bg-[#F7F9FC] min-h-screen bg-tech-grid">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Academic Breadcrumbs */}
         <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <Link href="/" className="hover:text-[#176b45] transition-colors">
-            FOLE
+          <Link href="/" className="hover:text-blue-700 transition-colors">
+            EngiVault
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-900 font-semibold">Academic Lectures</span>
           {selectedDept && (
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[#176b45] font-semibold">{selectedDept.name}</span>
+              <span className="text-blue-700 font-semibold">{selectedDept.name}</span>
             </>
           )}
           {selectedSem && (
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[#176b45] font-semibold">Semester {selectedSem.number || selectedSem.semester_number}</span>
+              <span className="text-cyan-700 font-semibold">Semester {selectedSem.number || selectedSem.semester_number}</span>
             </>
           )}
           {selectedSubject && (
@@ -133,23 +119,24 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
         </nav>
 
         {/* Page Banner */}
-        <div className="mb-10 bg-[#123d2b] p-8 text-white sm:p-10">
-          <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[#c7e1ce] text-xs font-mono font-bold">
+        <div className="rounded-3xl bg-gradient-to-br from-[#0A192F] via-[#102A4C] to-[#1E3A8A] text-white p-8 sm:p-10 shadow-xl mb-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-3xl space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-cyan-300 text-xs font-mono font-bold">
               <GraduationCap className="w-3.5 h-3.5" />
-              <span>FREE KTU LEARNING RESOURCES</span>
+              <span>KTU ACADEMIC LECTURE VAULT</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
               Engineering Academic Lectures
             </h1>
-            <p className="text-sm sm:text-base text-white/80 leading-relaxed max-w-2xl">
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl">
               Step-by-step video classes taught by experienced faculty, mapped directly to KTU university syllabus modules and exam topics.
             </p>
           </div>
         </div>
 
         {/* Search & Cascading Filter Controls */}
-        <div className="bg-white border border-[#dce2da] bg-white p-5 sm:p-6 mb-10 space-y-5">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm mb-10 space-y-5">
           {/* Global Search Bar */}
           <form method="GET" className="relative flex items-center">
             <Search className="w-4 h-4 text-slate-400 absolute left-4 pointer-events-none" />
@@ -159,7 +146,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
               defaultValue={q || ""}
               aria-label="Search academic lectures"
               placeholder="Search lectures by topic (e.g. Laplace Transform, Isometric Projection, KVL, Normal Form)..."
-              className="w-full pl-11 pr-24 py-3 rounded-none border border-[#dce2da] bg-[#f7f8f4] text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#176b45] focus:bg-white transition-all "
+              className="w-full pl-11 pr-24 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all shadow-xs"
             />
             {/* Preserve selected filter params in form */}
             {dept && <input type="hidden" name="dept" value={dept} />}
@@ -167,7 +154,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
             {subject && <input type="hidden" name="subject" value={subject} />}
             <button
               type="submit"
-              className="absolute right-2 px-4 py-2 rounded-none bg-[#176b45] hover:bg-[#105437] text-white text-xs font-bold transition-colors"
+              className="absolute right-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition-colors"
             >
               Search
             </button>
@@ -178,7 +165,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
             <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 font-mono mb-2.5">
               <span>Department / Discipline</span>
               {dept && (
-                <Link href={`/lectures?${new URLSearchParams({ ...(sem && { sem }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-[#176b45] hover:underline flex items-center gap-1 normal-case font-sans">
+                <Link href={`/lectures?${new URLSearchParams({ ...(sem && { sem }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-blue-600 hover:underline flex items-center gap-1 normal-case font-sans">
                   <X className="w-3 h-3" /> Clear discipline
                 </Link>
               )}
@@ -208,7 +195,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
                     href={`/lectures?${params.toString()}`}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
                       isActive
-                        ? "bg-[#176b45] text-white"
+                        ? "bg-blue-700 text-white shadow-xs"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
@@ -224,7 +211,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
             <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 font-mono mb-2.5">
               <span>Semester</span>
               {sem && (
-                <Link href={`/lectures?${new URLSearchParams({ ...(dept && { dept }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-[#176b45] hover:underline flex items-center gap-1 normal-case font-sans">
+                <Link href={`/lectures?${new URLSearchParams({ ...(dept && { dept }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-blue-600 hover:underline flex items-center gap-1 normal-case font-sans">
                   <X className="w-3 h-3" /> Clear semester
                 </Link>
               )}
@@ -255,7 +242,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
                     href={`/lectures?${params.toString()}`}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
                       isActive
-                        ? "bg-[#176b45] text-white "
+                        ? "bg-cyan-700 text-white shadow-xs"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
@@ -285,8 +272,8 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
 
         {/* Lectures Grid or Empty State */}
         {filtered.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-md border border-dashed border-[#cbd5cc] max-w-xl mx-auto space-y-4">
-            <div className="w-14 h-14 rounded-sm bg-[#edf2ec] text-[#176b45] flex items-center justify-center mx-auto">
+          <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-300 max-w-xl mx-auto space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mx-auto">
               <Video className="w-7 h-7" />
             </div>
             <h3 className="text-xl font-bold text-slate-900">No lectures found</h3>
@@ -296,7 +283,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
             <div className="pt-2">
               <Link
                 href="/lectures"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm bg-[#176b45] hover:bg-[#105437] text-white text-xs font-bold transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition-colors"
               >
                 <span>Browse All Lectures</span>
               </Link>

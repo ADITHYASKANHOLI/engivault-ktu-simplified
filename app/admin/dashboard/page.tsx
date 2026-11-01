@@ -25,24 +25,24 @@ export default async function AdminDashboardPage() {
       value: stats.totalSubjects,
       sub: `${stats.publishedSubjects} active in catalog`,
       icon: BookOpen,
-      iconColor: "text-emerald-600",
-      iconBg: "bg-emerald-50",
+      iconColor: "text-blue-600",
+      iconBg: "bg-blue-50",
     },
     {
       label: "Syllabus Modules",
       value: stats.totalModules,
       sub: "Curriculum modules",
       icon: Layers,
-      iconColor: "text-emerald-600",
-      iconBg: "bg-emerald-50",
+      iconColor: "text-cyan-600",
+      iconBg: "bg-cyan-50",
     },
     {
       label: "Recorded Lectures",
       value: stats.totalLessons,
       sub: "Video class sessions",
       icon: Video,
-      iconColor: "text-emerald-600",
-      iconBg: "bg-emerald-50",
+      iconColor: "text-indigo-600",
+      iconBg: "bg-indigo-50",
     },
     {
       label: "Study Materials",
@@ -60,21 +60,21 @@ export default async function AdminDashboardPage() {
       description: "Create new courses, edit descriptions, adjust display order, and toggle publishing.",
       href: "/admin/dashboard/subjects",
       icon: BookOpen,
-      color: "text-emerald-700 bg-emerald-50",
+      color: "text-blue-700 bg-blue-50",
     },
     {
       title: "Upload Wizard",
       description: "Attach recorded MP4 lecture videos or PDF note bundles directly to curriculum lessons.",
       href: "/admin/dashboard/uploads",
       icon: UploadCloud,
-      color: "text-emerald-700 bg-emerald-50",
+      color: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Activity & Audit Trail",
       description: "Review comprehensive chronological logs of logins, uploads, edits, and administrative operations.",
       href: "/admin/dashboard/activity",
       icon: Activity,
-      color: "text-emerald-700 bg-emerald-50",
+      color: "text-cyan-700 bg-cyan-50",
     },
   ];
 
@@ -126,14 +126,14 @@ export default async function AdminDashboardPage() {
             <Link
               key={action.title}
               href={action.href}
-              className="group p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-emerald-500/40 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+              className="group p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-blue-500/40 hover:shadow-md transition-all flex flex-col justify-between space-y-4"
             >
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${action.color}`}>
                   <Icon className="w-6 h-6" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
                     {action.title}
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
@@ -142,7 +142,7 @@ export default async function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center gap-1 text-xs font-semibold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
+              <div className="pt-2 flex items-center gap-1 text-xs font-semibold text-blue-700 group-hover:translate-x-0.5 transition-transform">
                 <span>Launch</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
@@ -166,7 +166,7 @@ export default async function AdminDashboardPage() {
             </div>
             <Link
               href="/admin/dashboard/subjects"
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+              className="text-xs font-semibold text-blue-700 hover:text-blue-800 transition-colors"
             >
               Manage All →
             </Link>
@@ -213,7 +213,7 @@ export default async function AdminDashboardPage() {
             </div>
             <Link
               href="/admin/dashboard/activity"
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+              className="text-xs font-semibold text-blue-700 hover:text-blue-800 transition-colors"
             >
               Full Log →
             </Link>
@@ -225,7 +225,7 @@ export default async function AdminDashboardPage() {
                 key={act.id}
                 className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 text-xs"
               >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-cyan-500 mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-900">{act.action}</div>
                   <div className="text-xs text-slate-500 truncate mt-0.5">

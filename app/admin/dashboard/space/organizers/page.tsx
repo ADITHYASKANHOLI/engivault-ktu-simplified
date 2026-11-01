@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Verified Organizers — FOLE Admin",
+  title: "Verified Organizers — ENGIVAULT Admin",
   description: "Authorize student organizers to create events and operate check-in desks.",
 };
 

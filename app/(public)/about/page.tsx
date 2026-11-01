@@ -1,77 +1,89 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle, Users } from "lucide-react";
+import { BookOpen, CheckCircle, ArrowRight, ShieldCheck, Award, Heart } from "lucide-react";
 import { getSiteSettings } from "@/lib/queries";
 
 export const metadata = {
-  title: "About FOLE — Free Open Learning & Education",
-  description: "Learn about FOLE CEV, a student-led community at College of Engineering Vadakara built around open learning, shared knowledge and useful opportunities.",
+  title: "About — ENGIVAULT",
+  description: "Learn about ENGIVAULT's academic mission to simplify KTU engineering subjects with high quality video lectures and revision materials.",
 };
 
 export default async function AboutPage() {
   const settings = await getSiteSettings();
 
   return (
-    <main className="flex-1 bg-[#f7f6ef] pb-20 pt-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <header className="max-w-3xl border-b border-[#dce2da] pb-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#176b45]">About the community</p>
-          <h1 className="fole-heading mt-4 text-4xl leading-tight text-[#17231c] sm:text-6xl">Learning is better when it is shared.</h1>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-[#536157] sm:text-lg">
-            {settings.about_text || "FOLE — Free Open Learning & Education — is a student-led community at College of Engineering Vadakara. It brings students together to learn, share knowledge, create useful resources and make opportunities easier to access."}
+    <main className="flex-1 pt-32 pb-24 bg-[#F7F9FC]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-mono font-semibold">
+            <span>OUR MISSION</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+            KTU Learning. <span className="text-cyan-600">Simplified.</span>
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            {settings.about_text || "ENGIVAULT was built by engineering educators to bridge the gap between heavy university syllabi and student exam success."}
           </p>
-        </header>
+        </div>
 
-        <section className="grid gap-10 py-12 md:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <div className="flex h-11 w-11 items-center justify-center border border-[#dce2da] bg-white text-[#176b45]">
-              <Users className="h-5 w-5" strokeWidth={1.8} />
-            </div>
-            <h2 className="fole-heading mt-5 text-3xl text-[#17231c]">A community built by doing.</h2>
-          </div>
-          <div className="space-y-5 text-sm leading-7 text-[#536157] sm:text-base">
-            <p>
-              FOLE creates room for students to learn with one another, contribute what they know and take part in projects beyond routine coursework. The aim is practical: make learning more open, collaborative and useful.
-            </p>
-            <p>
-              The platform brings together academic resources, community activities and student-led initiatives. Students can explore KTU learning material, discover events and find ways to contribute to the wider campus community.
-            </p>
-            <div className="grid gap-4 border-y border-[#dce2da] py-5 sm:grid-cols-2">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div>
-                  <h3 className="font-semibold text-[#17231c]">Open learning</h3>
-                  <p className="mt-1 text-sm leading-6 text-[#647168]">Study resources organised around the KTU curriculum.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div>
-                  <h3 className="font-semibold text-[#17231c]">Shared opportunities</h3>
-                  <p className="mt-1 text-sm leading-6 text-[#647168]">Events, workshops and projects that invite participation.</p>
-                </div>
+        {/* Narrative Card */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 shadow-sm space-y-6 text-slate-700 leading-relaxed text-sm sm:text-base">
+          <h2 className="text-2xl font-bold text-slate-900">Why ENGIVAULT was built</h2>
+          <p>
+            The APJ Abdul Kalam Technological University (KTU) curriculum is rigorous and conceptually demanding. First-year and branch-specific core subjects such as Engineering Mathematics, Engineering Graphics, and Electrical Engineering often present students with tight semester schedules, rapid lecture pacing, and challenging question patterns.
+          </p>
+          <p>
+            ENGIVAULT organizes the entire KTU syllabus into systematic, module-by-module learning paths. Every single topic is taught from foundational principles right up to university exam questions, accompanied by clean handwritten formula sheets and verified question banks.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-slate-900 text-sm">2019 & 2024 Scheme Focused</div>
+                <div className="text-xs text-slate-500 mt-0.5">Updated precisely according to current university schemes.</div>
+                <a
+                  href="https://ktu.edu.in/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 mt-2"
+                >
+                  <span>Explore the KTU Scheme</span>
+                  <ArrowRight className="w-3 h-3" />
+                </a>
               </div>
             </div>
-            <a href="https://ktu.edu.in/home" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-[#176b45] hover:text-[#105437]">
-              Visit the KTU website <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
-        </section>
 
-        <section className="flex flex-col items-start justify-between gap-6 border-t border-[#dce2da] pt-8 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="fole-heading text-3xl text-[#17231c]">Find your place in FOLE.</h2>
-            <p className="mt-2 text-sm leading-6 text-[#647168]">Start with a subject, join a community activity or explore what students are building.</p>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-slate-900 text-sm">Exam Numerical Problem Walks</div>
+                <div className="text-xs text-slate-500 mt-0.5">Step-by-step solutions to university question papers.</div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/subjects" className="inline-flex min-h-11 items-center gap-2 bg-[#176b45] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#105437]">
-              Explore learning <BookOpen className="h-4 w-4" />
-            </Link>
-            <Link href="/fole-space" className="inline-flex min-h-11 items-center gap-2 border border-[#aebcaf] px-5 text-sm font-semibold text-[#17231c] transition-colors hover:border-[#176b45] hover:bg-white">
-              FOLE SPACE <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <a
+            href="https://ktu.edu.in/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 transition-colors shadow-md"
+          >
+            <span>Explore the KTU Scheme</span>
+            <ArrowRight className="w-4 h-4" />
+          </a>
+          <Link
+            href="/subjects"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-xs"
+          >
+            <span>Explore KTU Curriculum</span>
+            <BookOpen className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     </main>
   );

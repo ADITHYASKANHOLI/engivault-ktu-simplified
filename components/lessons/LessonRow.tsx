@@ -127,7 +127,7 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 pl-3 text-xs font-semibold text-emerald-600 group-hover:underline shrink-0">
+      <div className="flex items-center gap-1.5 pl-3 text-xs font-semibold text-blue-600 group-hover:underline shrink-0">
         <FileText className="w-3.5 h-3.5" />
         <span>View Notes</span>
       </div>

@@ -29,7 +29,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     status: "healthy",
-    app: "FOLE",
+    app: "ENGIVAULT",
     environment: isProd ? (process.env.VERCEL_ENV || "production") : "development",
     database: dbStatus,
     databaseConnected: dbConnected,

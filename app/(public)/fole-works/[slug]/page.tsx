@@ -129,7 +129,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
 
   if (fetchError) {
     return (
-      <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-24 sm:pb-24">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">
         <div className="max-w-xl mx-auto px-4 text-center">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/40 p-8 shadow-xs space-y-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -211,7 +211,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-24 sm:pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-6 flex-wrap">
@@ -263,7 +263,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
                   <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">
                     {activity.activity_type}
                   </span>
-                  <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-[#176b45] dark:text-[#b7d7c2] bg-[#176b45]/10 border border-[#176b45]/30">
+                  <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/30">
                     {activity.delivery_mode === "in_person" ? "In-Person" : activity.delivery_mode === "online" ? "Online" : "Hybrid"}
                   </span>
                 </div>

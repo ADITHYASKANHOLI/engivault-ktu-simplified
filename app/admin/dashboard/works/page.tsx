@@ -97,11 +97,11 @@ export default async function AdminWorksOverviewPage() {
 
         {/* Upcoming */}
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-          <div className="flex items-center justify-between text-emerald-500 mb-2">
+          <div className="flex items-center justify-between text-cyan-500 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider font-mono">Upcoming</span>
             <Calendar className="w-4 h-4" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+          <div className="text-2xl sm:text-3xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
             {metrics.upcoming}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">Scheduled events</div>
@@ -159,7 +159,7 @@ export default async function AdminWorksOverviewPage() {
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/50 shadow-2xs flex items-center justify-between group transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-500">
               <PlusCircle className="w-5 h-5" />
             </div>
             <div>

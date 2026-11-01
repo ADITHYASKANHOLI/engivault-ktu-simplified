@@ -167,7 +167,7 @@ export function TicketCard({
           />
 
           {isCancelled && (
-            <div className="absolute inset-0 bg-white flex flex-col items-center justify-center rounded-xl p-2 text-center">
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-xs flex flex-col items-center justify-center rounded-xl p-2 text-center">
               <AlertCircle className="w-8 h-8 text-red-500 mb-1" />
               <span className="text-xs font-bold text-red-700">Ticket Void</span>
             </div>

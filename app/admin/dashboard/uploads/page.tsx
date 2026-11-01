@@ -477,10 +477,10 @@ export default function AdminUploadsPage() {
       {/* VIEW A: YOUTUBE LECTURE WORKFLOW */}
       {contentType === "video" && (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 space-y-6 shadow-xs">
-          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-950 text-xs space-y-1">
+          <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-950 text-xs space-y-1">
             <div className="font-bold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>FOLE YouTube-First Lecture Workflow</span>
+              <ShieldCheck className="w-4 h-4 text-blue-700" />
+              <span>ENGIVAULT YouTube-First Lecture Architecture</span>
             </div>
             <p className="text-slate-600 leading-relaxed">
               All video lectures are delivered via verified YouTube embeds for instantaneous 16:9 playback, zero server buffering, and maximum bandwidth reliability for students.

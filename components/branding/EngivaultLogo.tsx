@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 
 export interface EngivaultLogoProps {
   /**
-   * "full" displays the complete official FOLE logo artwork.
+   * "full" displays the complete official ENGIVAULT logo artwork freely.
    * "compact" displays a streamlined smaller scale variant for tight mobile or collapsed states.
    */
   variant?: "full" | "compact";
   /**
    * Predefined size presets that scale height while letting width calculate automatically
-   * according to the official artwork aspect ratio.
+   * according to the authentic 16:9 aspect ratio.
    * sm: ~28-36px (compact / mobile)
    * md: ~38-48px (standard header desktop / tablet)
    * lg: ~48-60px (login / splash / footer)
@@ -56,7 +56,7 @@ export function EngivaultLogo({
   const imageWidth = isCompact ? 280 : 1024;
   const imageHeight = isCompact ? 280 : 306;
 
-  // Render the official FOLE logo artwork directly without an enclosing tile or border.
+  // Render the official logo artwork directly with NO enclosing boxes, NO borders, NO background tiles, NO clipping
   const logoImage = (
     <Image
       src={imageSrc}

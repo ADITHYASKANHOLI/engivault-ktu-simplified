@@ -234,7 +234,7 @@ export function WorksShareButton({
           type="button"
           onClick={handleNativeShare}
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold font-mono text-slate-200 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/60 hover:border-emerald-500/50 hover:text-emerald-400  shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[30px]",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold font-mono text-slate-200 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/60 hover:border-emerald-500/50 hover:text-emerald-400 backdrop-blur-md shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[30px]",
             copied && "text-emerald-400 border-emerald-500/60",
             className
           )}
@@ -385,7 +385,7 @@ export function WorksShareButton({
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border border-emerald-500/50 shadow-2xl  animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border border-emerald-500/50 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
           <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
             <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
@@ -400,7 +400,7 @@ export function WorksShareButton({
       {/* Accessible Fallback Dialog for Restricted Contexts */}
       {showFallbackModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60  p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
           onClick={(e) => {
             e.stopPropagation();
             setShowFallbackModal(false);

@@ -27,7 +27,7 @@ export default async function OrganizerHubPage() {
 
   if (!student) {
     return (
-      <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-28 pb-16 flex items-center justify-center px-4">
         <div className="max-w-md w-full p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
           <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
             <ShieldCheck className="w-7 h-7" />
@@ -53,7 +53,7 @@ export default async function OrganizerHubPage() {
 
   if (!isOrganizer) {
     return (
-      <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-28 pb-16 flex items-center justify-center px-4">
         <div className="max-w-md w-full p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
           <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-7 h-7" />
@@ -82,7 +82,7 @@ export default async function OrganizerHubPage() {
   const events = await spaceService.getOrganizerEvents(student.id);
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Header */}
         <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -136,7 +136,7 @@ export default async function OrganizerHubPage() {
               {events.map((evt) => {
                 const statusColors = {
                   draft: "bg-slate-100 text-slate-700 border-slate-200",
-                  published: "bg-[#edf2ec] text-[#176b45] border-[#dce2da]",
+                  published: "bg-blue-50 text-blue-700 border-blue-200",
                   live: "bg-emerald-100 text-emerald-800 border-emerald-300 animate-pulse font-black",
                   completed: "bg-slate-100 text-slate-600 border-slate-200",
                   cancelled: "bg-red-50 text-red-700 border-red-200",

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "FOLE SPACE Reports — FOLE Admin",
+  title: "FOLE SPACE Reports — ENGIVAULT Admin",
   description: "Space attendance analytics, peak usage, and event turnout reports.",
 };
 

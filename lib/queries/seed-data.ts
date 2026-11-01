@@ -15,14 +15,14 @@ import {
 
 export const initialFallbackSiteSettings: SiteSettings = {
   id: "00000000-0000-0000-0000-000000000001",
-  site_name: "FOLE",
-  headline: "Learn together. Build together.",
-  tagline: "Free Open Learning & Education",
+  site_name: "ENGIVAULT",
+  headline: "Learn Engineering. Build Confidence.",
+  tagline: "KTU Learning. Simplified.",
   logo_path: "/branding/fole-logo.png",
   contact_email: "folecev@gmail.com",
   about_text:
-    "FOLE — Free Open Learning & Education — is a student-led community at College of Engineering Vadakara. It brings students together to learn, share knowledge, create useful resources and make opportunities easier to access.",
-  footer_text: "© 2026 FOLE CEV. Free Open Learning & Education.",
+    "ENGIVAULT is a dedicated academic digital vault for engineering students providing structured academic lectures, syllabus units, and authenticated study resources.",
+  footer_text: "© 2026 ENGIVAULT. All rights reserved. KTU Engineering Learning Simplified.",
   social_links: {
     github: "https://github.com",
     linkedin: "https://linkedin.com",
@@ -654,7 +654,7 @@ export const initialFallbackActivity: ActivityLog[] = [
     id: "act-1",
     action: "System Initialized",
     entity_type: "system",
-    metadata: { version: "2.0.0", platform: "FOLE" },
+    metadata: { version: "2.0.0", platform: "ENGIVAULT" },
     created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
   },
   {

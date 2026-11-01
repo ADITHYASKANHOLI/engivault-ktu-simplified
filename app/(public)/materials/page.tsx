@@ -51,7 +51,7 @@ export default async function MaterialsPage() {
   }
 
   return (
-    <main className="min-h-screen flex-1 bg-[#f7f6ef] pb-20 pt-24 sm:pt-24">
+    <main className="flex-1 pt-24 sm:pt-28 pb-20 bg-[#F7F9FC] dark:bg-slate-950 min-h-screen bg-tech-grid">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav
@@ -68,8 +68,9 @@ export default async function MaterialsPage() {
         </nav>
 
         {/* Hero Section */}
-        <div className="mb-8 bg-[#123d2b] p-6 text-white sm:p-10">
-          <div className=" max-w-3xl space-y-3">
+        <div className="rounded-3xl bg-gradient-to-br from-[#07111F] via-[#0B1A2E] to-[#0A2540] text-white p-6 sm:p-10 shadow-xl mb-8 border border-emerald-950/40 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-3xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-xs font-mono font-bold">
               <FileText className="w-3.5 h-3.5" />
               <span>KTU ACADEMIC STUDY VAULT</span>
@@ -85,7 +86,7 @@ export default async function MaterialsPage() {
 
         {/* Error Fallback or Filterable Catalog */}
         {fetchError ? (
-          <div className="p-8 sm:p-12 text-center bg-white dark:bg-slate-900 rounded-md border border-red-200 dark:border-red-900/40 max-w-xl mx-auto space-y-4">
+          <div className="p-8 sm:p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-red-200 dark:border-red-900/40 max-w-xl mx-auto space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-7 h-7" />
             </div>
@@ -98,7 +99,7 @@ export default async function MaterialsPage() {
             <div className="pt-2">
               <Link
                 href="/materials"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#176b45] hover:bg-[#105437] text-white text-xs font-bold transition-all min-h-[44px]"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-600 text-white text-xs font-bold transition-all min-h-[44px]"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Retry Loading</span>

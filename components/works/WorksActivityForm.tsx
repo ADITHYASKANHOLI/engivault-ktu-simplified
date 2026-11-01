@@ -15,6 +15,7 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
+  Sparkles,
 } from "lucide-react";
 import { WorksActivity, WorksCategory, WorksDeliveryMode, WorksActivityStatus } from "@/types";
 import { validateActivityPublicationReadiness } from "@/lib/validation/schemas";
@@ -362,7 +363,7 @@ export function WorksActivityForm({
       <div className="bg-slate-50 dark:bg-slate-950/60 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-<span className="h-1.5 w-1.5 rounded-full bg-[#176b45]" aria-hidden="true" />
+            <Sparkles className="w-4 h-4 text-emerald-500" />
             <h3 className="text-xs font-bold uppercase font-mono tracking-wider text-slate-800 dark:text-slate-200">
               Publication Readiness Checklist
             </h3>

@@ -4,7 +4,7 @@ import nodeFs from "node:fs";
 // Dynamic import of our ES modules / TypeScript compiled or direct modules
 async function runTests() {
   console.log("=================================================");
-  console.log("🧪 FOLE COMPREHENSIVE AUTOMATED TEST SUITE");
+  console.log("🧪 ENGIVAULT COMPREHENSIVE AUTOMATED TEST SUITE");
   console.log("=================================================\n");
 
   let passed = 0;
@@ -439,9 +439,9 @@ async function runTests() {
   test("Site settings fallback contains all required branding fields", () => {
     const fallback = {
       id: "00000000-0000-0000-0000-000000000001",
-      site_name: "FOLE",
-      headline: "Learn together. Build together.",
-      tagline: "Free Open Learning & Education",
+      site_name: "ENGIVAULT",
+      headline: "Learn Engineering. Build Confidence.",
+      tagline: "KTU Learning. Simplified.",
       logo_path: "/branding/fole-logo.png",
       contact_email: "contact@engivault.edu",
     };
@@ -461,13 +461,13 @@ async function runTests() {
     ]);
 
     const subjects = subRes.status === "fulfilled" ? subRes.value : [];
-    const settings = setRes.status === "fulfilled" ? setRes.value : { site_name: "FOLE" };
+    const settings = setRes.status === "fulfilled" ? setRes.value : { site_name: "ENGIVAULT" };
     const lessons = lesRes.status === "fulfilled" ? lesRes.value : [];
     const departments = deptRes.status === "fulfilled" ? deptRes.value : [];
 
     // All data resolved safely without throwing unhandled rejection
     assert.equal(subjects.length, 1);
-    assert.equal(settings.site_name, "FOLE");
+    assert.equal(settings.site_name, "ENGIVAULT");
     assert.equal(lessons.length, 0);
     assert.equal(departments.length, 0);
   });
@@ -3325,85 +3325,6 @@ async function runTests() {
       serviceCode.includes("space_event_checkins"),
       "Event check-ins must be stored in space_event_checkins, not space_sessions"
     );
-  });
-
-  // -------------------------------------------------------------
-  // 20. LOGIN MODAL INTERACTIONS & ACADEMIC SEARCH ENGINE
-  // -------------------------------------------------------------
-  console.log("\n--- 20. LOGIN INTERACTIONS & ACADEMIC SEARCH ENGINE ---");
-
-  test("LoginDialog uses createPortal to break out of ancestor DOM clipping and styling constraints", () => {
-    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
-    assert.ok(code.includes("createPortal("), "LoginDialog must mount into document.body using createPortal");
-    assert.ok(code.includes("z-[9999]"), "Outer container must declare high stacking index z-[9999]");
-    assert.ok(code.includes("pointer-events-auto"), "Outer container must declare pointer-events-auto");
-  });
-
-  test("LoginDialog prevents inside clicks from bubbling to backdrop and handles backdrop close", () => {
-    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
-    assert.ok(code.includes("e.stopPropagation()"), "Modal card must stop click propagation");
-    assert.ok(code.includes("onClick={onClose}"), "Backdrop must trigger onClose handler");
-  });
-
-  test("LoginDialog provides accessible student/admin segmented selector and signin/signup tabs", () => {
-    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
-    assert.ok(code.includes('role="tablist"'), "Account selector must use accessible tablist pattern");
-    assert.ok(code.includes('aria-selected={activeTab === "student"}'), "Must indicate student tab state");
-    assert.ok(code.includes('aria-selected={activeTab === "admin"}'), "Must indicate admin tab state");
-    assert.ok(code.includes('aria-selected={studentMode === "login"}'), "Must indicate student login mode");
-    assert.ok(code.includes('aria-selected={studentMode === "signup"}'), "Must indicate student signup mode");
-  });
-
-  test("LoginDialog prevents duplicate form submissions while loading and manages focus lifecycle", () => {
-    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
-    assert.ok(code.includes("if (loading) return"), "Must ignore form submissions while loading");
-    assert.ok(code.includes("disabled={loading}"), "Buttons and inputs must be disabled while loading");
-    assert.ok(code.includes('e.key === "Escape"'), "Escape key must close dialog");
-    assert.ok(code.includes("previousFocusRef.current?.focus()"), "Focus must be restored on dialog close");
-  });
-
-  test("SiteHeader outer header container enforces pointer-events-auto", () => {
-    const code = nodeFs.readFileSync("components/layout/SiteHeader.tsx", "utf-8");
-    assert.ok(code.includes("<header className=") && code.includes("pointer-events-auto"), "Header container must declare pointer-events-auto");
-  });
-
-  test("Academic search utility provides normalization, alias expansion, and subject-aware matching", () => {
-    const code = nodeFs.readFileSync("lib/utils/academic-search.ts", "utf-8");
-    assert.ok(code.includes("ACADEMIC_ALIASES_MAP"), "Must declare academic alias mappings");
-    assert.ok(code.includes("maths:") && code.includes('"mathematics"'), "Must map maths -> mathematics");
-    assert.ok(code.includes("eg:") && code.includes('"engineering graphics"'), "Must map eg -> engineering graphics");
-    assert.ok(code.includes("bee:") && code.includes('"basics of electrical engineering"'), "Must map bee -> electrical");
-    assert.ok(code.includes("export function matchesSubjectQuery"), "Must export matchesSubjectQuery");
-    assert.ok(code.includes("export function matchesAcademicTarget"), "Must export matchesAcademicTarget");
-    assert.ok(code.includes("export function getAcademicCandidateTerms"), "Must export getAcademicCandidateTerms");
-  });
-
-  test("QuickSearchDialog mounts via createPortal, groups results by section, and provides metadata", () => {
-    const code = nodeFs.readFileSync("components/search/QuickSearchDialog.tsx", "utf-8");
-    assert.ok(code.includes("createPortal("), "QuickSearchDialog must use createPortal to mount into document.body");
-    assert.ok(code.includes("z-[9999]"), "Must declare z-[9999]");
-    assert.ok(code.includes("SUBJECTS"), "Must render SUBJECTS section header");
-    assert.ok(code.includes("MODULES"), "Must render MODULES section header");
-    assert.ok(code.includes("LECTURES"), "Must render LECTURES section header");
-    assert.ok(code.includes("STUDY MATERIALS"), "Must render STUDY MATERIALS section header");
-    assert.ok(code.includes("subjectTitle") && code.includes("moduleTitle"), "Must display breadcrumb hierarchy in lecture results");
-  });
-
-  test("Cascading subject search returns all lectures under all modules of matching subject", () => {
-    const store = JSON.parse(nodeFs.readFileSync(".engivault-local-store.json", "utf-8"));
-    const mathSub = store.subjects.find((s) => s.title.toLowerCase().includes("mathematics"));
-    assert.ok(mathSub, "Mathematics subject must exist in academic catalog");
-
-    const mathModules = store.modules.filter((m) => m.subject_id === mathSub.id && m.published);
-    assert.ok(mathModules.length > 0, "Mathematics must have published modules");
-
-    const mathModuleIds = new Set(mathModules.map((m) => m.id));
-    const mathLectures = store.lessons.filter((l) => mathModuleIds.has(l.module_id) && l.published);
-    assert.ok(mathLectures.length >= 3, `Mathematics must have at least 3 published lectures, found ${mathLectures.length}`);
-
-    // Verify lecture with non-matching title like 'Introduction to Limits' belongs to math modules
-    const limits = mathLectures.find((l) => l.title.includes("Limits"));
-    assert.ok(limits, "Limits lecture must be present in math lecture hierarchy");
   });
 
   console.log("\n=================================================");

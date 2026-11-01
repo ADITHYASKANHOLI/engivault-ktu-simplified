@@ -117,7 +117,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#10291f] text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-[#0B132B] text-slate-300 select-none">
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800/80 flex items-center justify-between shrink-0">
         <Link
@@ -125,7 +125,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
           onClick={onCloseMobile}
           className="flex flex-col gap-2 group focus:outline-none"
         >
-          {/* Official FOLE logo displayed without an enclosing container */}
+          {/* Official Full ENGIVAULT Logo freely displayed without any confining container */}
           <EngivaultLogo
             variant="full"
             size="sm"
@@ -134,7 +134,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
             priority
           />
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold tracking-widest text-emerald-400 uppercase font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/40">
+            <span className="text-[10px] font-bold tracking-widest text-cyan-400 uppercase font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40">
               ADMIN CONTROL
             </span>
           </div>
@@ -189,7 +189,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
       </div>
 
       {/* Bottom Anchored Actions */}
-      <div className="mt-auto p-4 border-t border-slate-800/80 space-y-2 shrink-0 bg-[#10291f]">
+      <div className="mt-auto p-4 border-t border-slate-800/80 space-y-2 shrink-0 bg-[#0B132B]">
         <Link
           href="/"
           target="_blank"

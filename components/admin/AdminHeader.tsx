@@ -21,7 +21,7 @@ export function AdminHeader({ onToggleMobileSidebar }: AdminHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 sm:gap-4 transition-all">
+    <header className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2.5 sm:gap-4 transition-all">
       {/* Left: Mobile Sidebar Toggle & Compact Utility Search */}
       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 max-w-md">
         <button

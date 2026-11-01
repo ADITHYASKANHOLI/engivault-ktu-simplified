@@ -76,7 +76,7 @@ export function FlyerDisplay({
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80  text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold px-3 shadow-lg"
+          className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold px-3 shadow-lg"
           aria-label="View flyer full size"
         >
           <Maximize2 className="w-3.5 h-3.5" />
@@ -87,7 +87,7 @@ export function FlyerDisplay({
       {/* Lightbox / Full-size Modal */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/90  flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setModalOpen(false)}
         >
           <button

@@ -22,11 +22,6 @@ import { createClient as createServerSupabase, isSupabaseConfigured } from "../s
 import { createAdminClient, isSupabaseAdminConfigured } from "../supabase/admin";
 import { getSignedVideoUrl, getSignedMaterialUrl } from "../storage/signed-urls";
 import { extractYouTubeVideoId, getYouTubeThumbnailUrl, getYouTubeWatchUrl } from "../utils/youtube";
-import {
-  getAcademicCandidateTerms,
-  matchesAcademicTarget,
-  matchesSubjectQuery,
-} from "../utils/academic-search";
 export {
   initialFallbackSiteSettings,
   initialFallbackDepartments,
@@ -2418,248 +2413,89 @@ export async function deleteMaterial(id: string): Promise<boolean> {
 // ---------------- Search ----------------
 
 export async function searchContent(queryStr: string): Promise<SearchResultItem[]> {
-  const rawQ = (queryStr || "").trim();
-  if (!rawQ) return [];
+  const q = queryStr.toLowerCase().trim();
+  if (!q) return [];
 
-  const candidateTerms = getAcademicCandidateTerms(rawQ);
-
-  const subjectsMap = new Map<string, SearchResultItem>();
-  const modulesMap = new Map<string, SearchResultItem>();
-  const lessonsMap = new Map<string, SearchResultItem>();
-  const materialsMap = new Map<string, SearchResultItem>();
+  const results: SearchResultItem[] = [];
 
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createServerSupabase();
 
-      // 1. Fetch published subjects
-      const { data: allSubjects, error: subsErr } = await supabase
+      // Search published subjects
+      const { data: subs, error: subsErr } = await supabase
         .from("subjects")
-        .select(`
-          id, title, slug, code, short_description, description,
-          semester_number,
-          departments(name, code)
-        `)
-        .eq("published", true);
+        .select("id, title, slug, code, short_description")
+        .eq("published", true)
+        .or(`title.ilike.%${q}%,code.ilike.%${q}%,short_description.ilike.%${q}%`);
 
       if (subsErr) throw subsErr;
 
-      const matchedSubjectIds = new Set<string>();
-
-      if (allSubjects) {
-        for (const s of allSubjects) {
-          if (matchesSubjectQuery(s, rawQ, candidateTerms)) {
-            matchedSubjectIds.add(s.id);
-            subjectsMap.set(s.id, {
-              id: s.id,
-              type: "subject",
-              title: `${s.title} (${s.code || "KTU"})`,
-              description: s.short_description || s.description || undefined,
-              url: `/subjects/${s.slug}`,
-              badge: "Subject",
-              code: s.code || undefined,
-              semester: s.semester_number || undefined,
-              department: (s.departments as any)?.code || (s.departments as any)?.name || undefined,
-            });
-          }
+      if (subs) {
+        for (const s of subs) {
+          results.push({
+            id: s.id,
+            type: "subject",
+            title: `${s.title} (${s.code || "KTU"})`,
+            description: s.short_description || undefined,
+            url: `/subjects/${s.slug}`,
+            badge: "Subject",
+          });
         }
       }
 
-      // 2. Fetch published modules joined with subjects
-      const { data: allModules, error: modsErr } = await supabase
+      // Search published modules
+      const { data: mods, error: modsErr } = await supabase
         .from("modules")
-        .select(`
-          id, title, slug, short_description, subject_id, display_order,
-          subjects!inner(id, title, slug, code, published, semester_number, departments(name, code))
-        `)
+        .select("id, title, slug, short_description, subject_id, subjects!inner(title, slug, published)")
         .eq("published", true)
         .eq("subjects.published", true)
-        .order("display_order", { ascending: true });
+        .or(`title.ilike.%${q}%,short_description.ilike.%${q}%`);
 
       if (modsErr) throw modsErr;
 
-      const matchedModuleIds = new Set<string>();
-
-      if (allModules) {
-        for (const m of allModules) {
-          const parentSub = m.subjects as any;
-          const isDirectMatch =
-            matchesAcademicTarget(m.title, rawQ, candidateTerms) ||
-            matchesAcademicTarget(m.short_description, rawQ, candidateTerms);
-          const isParentSubjectMatch = matchedSubjectIds.has(m.subject_id);
-
-          if (isDirectMatch || isParentSubjectMatch) {
-            matchedModuleIds.add(m.id);
-
-            // Ensure parent subject is included in results
-            if (!subjectsMap.has(parentSub.id)) {
-              subjectsMap.set(parentSub.id, {
-                id: parentSub.id,
-                type: "subject",
-                title: `${parentSub.title} (${parentSub.code || "KTU"})`,
-                url: `/subjects/${parentSub.slug}`,
-                badge: "Subject",
-                code: parentSub.code || undefined,
-                semester: parentSub.semester_number || undefined,
-                department: parentSub.departments?.code || parentSub.departments?.name || undefined,
-              });
-            }
-
-            modulesMap.set(m.id, {
-              id: m.id,
-              type: "module",
-              title: m.title,
-              description: m.short_description || undefined,
-              url: `/subjects/${parentSub.slug}/${m.slug}`,
-              badge: "Module",
-              subjectTitle: parentSub.title,
-              subjectSlug: parentSub.slug,
-              semester: parentSub.semester_number || undefined,
-              department: parentSub.departments?.code || parentSub.departments?.name || undefined,
-            });
-          }
+      if (mods) {
+        for (const m of mods) {
+          results.push({
+            id: m.id,
+            type: "module",
+            title: m.title,
+            description: m.short_description || undefined,
+            url: `/subjects/${(m.subjects as any).slug}/${m.slug}`,
+            badge: "Module",
+          });
         }
       }
 
-      // 3. Fetch published lessons
-      const { data: allLessons, error: lesErr } = await supabase
+      // Search published lessons
+      const { data: lessons, error: lesErr } = await supabase
         .from("lessons")
-        .select(`
-          id, title, slug, description, module_id, youtube_url, youtube_video_id,
-          duration_seconds, instructor, faculty_id, topic_id,
-          modules!inner(
-            id, title, slug, subject_id,
-            subjects!inner(id, title, slug, code, published, semester_number, departments(name, code))
-          ),
-          topics(title),
-          faculty(name)
-        `)
+        .select("id, title, slug, description, module_id, youtube_url, youtube_video_id, modules!inner(title, slug, published, subject_id, subjects!inner(title, slug, published))")
         .eq("published", true)
         .eq("modules.published", true)
-        .eq("modules.subjects.published", true);
+        .or(`title.ilike.%${q}%,description.ilike.%${q}%`);
 
       if (lesErr) throw lesErr;
 
-      if (allLessons) {
-        for (const l of allLessons) {
+      if (lessons) {
+        for (const l of lessons) {
           const mod = l.modules as any;
-          const sub = mod.subjects as any;
-          const topic = l.topics as any;
-          const faculty = l.faculty as any;
-
-          const isDirectMatch =
-            matchesAcademicTarget(l.title, rawQ, candidateTerms) ||
-            matchesAcademicTarget(l.description, rawQ, candidateTerms) ||
-            matchesAcademicTarget(l.instructor, rawQ, candidateTerms) ||
-            matchesAcademicTarget(faculty?.name, rawQ, candidateTerms) ||
-            matchesAcademicTarget(topic?.title, rawQ, candidateTerms);
-
-          const isParentModuleMatch = matchedModuleIds.has(l.module_id);
-          const isParentSubjectMatch = matchedSubjectIds.has(sub.id);
-
-          if (isDirectMatch || isParentModuleMatch || isParentSubjectMatch) {
-            const watchUrl = getYouTubeWatchUrl((l as any).youtube_url || (l as any).youtube_video_id);
-            const videoId = (l as any).youtube_video_id || extractYouTubeVideoId(watchUrl);
-
-            // Ensure parent subject and module exist in results
-            if (!subjectsMap.has(sub.id)) {
-              subjectsMap.set(sub.id, {
-                id: sub.id,
-                type: "subject",
-                title: `${sub.title} (${sub.code || "KTU"})`,
-                url: `/subjects/${sub.slug}`,
-                badge: "Subject",
-                code: sub.code || undefined,
-                semester: sub.semester_number || undefined,
-                department: sub.departments?.code || sub.departments?.name || undefined,
-              });
-            }
-
-            if (!modulesMap.has(mod.id)) {
-              modulesMap.set(mod.id, {
-                id: mod.id,
-                type: "module",
-                title: mod.title,
-                url: `/subjects/${sub.slug}/${mod.slug}`,
-                badge: "Module",
-                subjectTitle: sub.title,
-                subjectSlug: sub.slug,
-                semester: sub.semester_number || undefined,
-                department: sub.departments?.code || sub.departments?.name || undefined,
-              });
-            }
-
-            lessonsMap.set(l.id, {
-              id: l.id,
-              type: "lesson",
-              title: l.title,
-              description: l.description || undefined,
-              url: `/subjects/${sub.slug}/${mod.slug}/${l.slug}`,
-              badge: "Lecture",
-              subjectTitle: sub.title,
-              subjectSlug: sub.slug,
-              moduleTitle: mod.title,
-              moduleSlug: mod.slug,
-              topicTitle: topic?.title || undefined,
-              instructor: l.instructor || faculty?.name || undefined,
-              youtube_url: watchUrl,
-              youtube_video_id: videoId,
-              duration_seconds: l.duration_seconds || undefined,
-              semester: sub.semester_number || undefined,
-              department: sub.departments?.code || sub.departments?.name || undefined,
-            });
-          }
+          const watchUrl = getYouTubeWatchUrl((l as any).youtube_url || (l as any).youtube_video_id);
+          const videoId = (l as any).youtube_video_id || extractYouTubeVideoId(watchUrl);
+          results.push({
+            id: l.id,
+            type: "lesson",
+            title: l.title,
+            description: l.description || undefined,
+            url: `/subjects/${mod.subjects.slug}/${mod.slug}/${l.slug}`,
+            badge: "Lecture",
+            youtube_url: watchUrl,
+            youtube_video_id: videoId,
+          });
         }
       }
 
-      // 4. Fetch published materials
-      try {
-        const { data: allMats } = await supabase
-          .from("materials")
-          .select(`
-            id, title, description, file_path, file_type, lesson_id, module_id, subject_id,
-            subjects(id, title, slug, code),
-            modules(id, title, slug)
-          `)
-          .eq("published", true)
-          .is("deleted_at", null);
-
-        if (allMats) {
-          for (const mat of allMats) {
-            const sub = mat.subjects as any;
-            const mod = mat.modules as any;
-            const isMatch =
-              matchesAcademicTarget(mat.title, rawQ, candidateTerms) ||
-              matchesAcademicTarget(mat.description, rawQ, candidateTerms) ||
-              (mat.subject_id && matchedSubjectIds.has(mat.subject_id)) ||
-              (mat.module_id && matchedModuleIds.has(mat.module_id));
-
-            if (isMatch) {
-              materialsMap.set(mat.id, {
-                id: mat.id,
-                type: "material",
-                title: mat.title,
-                description: mat.description || undefined,
-                url: `/api/materials/download?id=${mat.id}`,
-                badge: "Study Material",
-                subjectTitle: sub?.title || undefined,
-                subjectSlug: sub?.slug || undefined,
-                moduleTitle: mod?.title || undefined,
-                file_type: (mat as any).file_type || (mat as any).material_type || undefined,
-              });
-            }
-          }
-        }
-      } catch {
-        // Materials retrieval notice
-      }
-
-      return [
-        ...Array.from(subjectsMap.values()),
-        ...Array.from(modulesMap.values()),
-        ...Array.from(lessonsMap.values()),
-        ...Array.from(materialsMap.values()),
-      ];
+      return results;
     } catch (err: any) {
       if (!isLocalFallbackAllowed()) {
         throw new Error(`Failed to search content in Supabase: ${err.message}`);
@@ -2668,170 +2504,59 @@ export async function searchContent(queryStr: string): Promise<SearchResultItem[
     }
   }
 
-  // Fallback in-memory academic search
+  // Fallback search
   const subjects = await getPublishedSubjects();
-  const matchedSubjectIds = new Set<string>();
-
   for (const s of subjects) {
-    if (matchesSubjectQuery(s, rawQ, candidateTerms)) {
-      matchedSubjectIds.add(s.id);
-      subjectsMap.set(s.id, {
+    if (s.title.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.short_description?.toLowerCase().includes(q)) {
+      results.push({
         id: s.id,
         type: "subject",
         title: `${s.title} (${s.code || "KTU"})`,
-        description: s.short_description || s.description || undefined,
+        description: s.short_description || undefined,
         url: `/subjects/${s.slug}`,
         badge: "Subject",
-        code: s.code || undefined,
-        semester: s.semester_number || undefined,
       });
     }
   }
 
-  const publishedModules = fallbackModules.filter((m) => m.published);
-  const matchedModuleIds = new Set<string>();
-
-  for (const mod of publishedModules) {
-    const parentSub = subjects.find((s) => s.id === mod.subject_id);
-    if (!parentSub) continue;
-
-    const isDirectMatch =
-      matchesAcademicTarget(mod.title, rawQ, candidateTerms) ||
-      matchesAcademicTarget(mod.short_description, rawQ, candidateTerms);
-    const isParentSubjectMatch = matchedSubjectIds.has(mod.subject_id);
-
-    if (isDirectMatch || isParentSubjectMatch) {
-      matchedModuleIds.add(mod.id);
-
-      if (!subjectsMap.has(parentSub.id)) {
-        subjectsMap.set(parentSub.id, {
-          id: parentSub.id,
-          type: "subject",
-          title: `${parentSub.title} (${parentSub.code || "KTU"})`,
-          url: `/subjects/${parentSub.slug}`,
-          badge: "Subject",
-          code: parentSub.code || undefined,
-          semester: parentSub.semester_number || undefined,
-        });
-      }
-
-      modulesMap.set(mod.id, {
-        id: mod.id,
-        type: "module",
-        title: mod.title,
-        description: mod.short_description || undefined,
-        url: `/subjects/${parentSub.slug}/${mod.slug}`,
-        badge: "Module",
-        subjectTitle: parentSub.title,
-        subjectSlug: parentSub.slug,
-        semester: parentSub.semester_number || undefined,
-      });
-    }
-  }
-
-  const publishedLessons = fallbackLessons.filter((l) => l.published);
-  for (const les of publishedLessons) {
-    const parentMod = publishedModules.find((m) => m.id === les.module_id);
-    const parentSub = parentMod ? subjects.find((s) => s.id === parentMod.subject_id) : null;
-    if (!parentMod || !parentSub) continue;
-
-    const topic = fallbackTopics.find((t) => t.id === les.topic_id);
-    const isDirectMatch =
-      matchesAcademicTarget(les.title, rawQ, candidateTerms) ||
-      matchesAcademicTarget(les.description, rawQ, candidateTerms) ||
-      matchesAcademicTarget(les.instructor, rawQ, candidateTerms) ||
-      matchesAcademicTarget(topic?.title, rawQ, candidateTerms);
-
-    const isParentModuleMatch = matchedModuleIds.has(les.module_id);
-    const isParentSubjectMatch = matchedSubjectIds.has(parentSub.id);
-
-    if (isDirectMatch || isParentModuleMatch || isParentSubjectMatch) {
-      const watchUrl = getYouTubeWatchUrl(les.youtube_url || les.youtube_video_id);
-      const videoId = les.youtube_video_id || extractYouTubeVideoId(watchUrl);
-
-      if (!subjectsMap.has(parentSub.id)) {
-        subjectsMap.set(parentSub.id, {
-          id: parentSub.id,
-          type: "subject",
-          title: `${parentSub.title} (${parentSub.code || "KTU"})`,
-          url: `/subjects/${parentSub.slug}`,
-          badge: "Subject",
-          code: parentSub.code || undefined,
-          semester: parentSub.semester_number || undefined,
-        });
-      }
-
-      if (!modulesMap.has(parentMod.id)) {
-        modulesMap.set(parentMod.id, {
-          id: parentMod.id,
+  for (const mod of fallbackModules.filter((m) => m.published)) {
+    if (mod.title.toLowerCase().includes(q) || mod.short_description?.toLowerCase().includes(q)) {
+      const parentSubject = subjects.find((s) => s.id === mod.subject_id);
+      if (parentSubject) {
+        results.push({
+          id: mod.id,
           type: "module",
-          title: parentMod.title,
-          url: `/subjects/${parentSub.slug}/${parentMod.slug}`,
+          title: mod.title,
+          description: mod.short_description || undefined,
+          url: `/subjects/${parentSubject.slug}/${mod.slug}`,
           badge: "Module",
-          subjectTitle: parentSub.title,
-          subjectSlug: parentSub.slug,
-          semester: parentSub.semester_number || undefined,
         });
       }
-
-      lessonsMap.set(les.id, {
-        id: les.id,
-        type: "lesson",
-        title: les.title,
-        description: les.description || undefined,
-        url: `/subjects/${parentSub.slug}/${parentMod.slug}/${les.slug}`,
-        badge: "Lecture",
-        subjectTitle: parentSub.title,
-        subjectSlug: parentSub.slug,
-        moduleTitle: parentMod.title,
-        moduleSlug: parentMod.slug,
-        topicTitle: topic?.title || undefined,
-        instructor: les.instructor || undefined,
-        youtube_url: watchUrl,
-        youtube_video_id: videoId,
-        duration_seconds: les.duration_seconds || undefined,
-        semester: parentSub.semester_number || undefined,
-      });
     }
   }
 
-  // Fallback materials
-  for (const mat of fallbackMaterials.filter((m) => m.published)) {
-    const parentSub = mat.subject_id
-      ? subjects.find((s) => s.id === mat.subject_id)
-      : null;
-    const parentMod = mat.module_id
-      ? publishedModules.find((m) => m.id === mat.module_id)
-      : null;
-
-    const isMatch =
-      matchesAcademicTarget(mat.title, rawQ, candidateTerms) ||
-      matchesAcademicTarget(mat.description, rawQ, candidateTerms) ||
-      (mat.subject_id && matchedSubjectIds.has(mat.subject_id)) ||
-      (mat.module_id && matchedModuleIds.has(mat.module_id));
-
-    if (isMatch) {
-      materialsMap.set(mat.id, {
-        id: mat.id,
-        type: "material",
-        title: mat.title,
-        description: mat.description || undefined,
-        url: `/api/materials/download?id=${mat.id}`,
-        badge: "Study Material",
-        subjectTitle: parentSub?.title || undefined,
-        subjectSlug: parentSub?.slug || undefined,
-        moduleTitle: parentMod?.title || undefined,
-        file_type: (mat as any).file_type || (mat as any).material_type || undefined,
-      });
+  for (const les of fallbackLessons.filter((l) => l.published)) {
+    if (les.title.toLowerCase().includes(q) || les.description?.toLowerCase().includes(q)) {
+      const parentModule = fallbackModules.find((m) => m.id === les.module_id && m.published);
+      const parentSubject = parentModule ? subjects.find((s) => s.id === parentModule.subject_id) : null;
+      if (parentSubject && parentModule) {
+        const watchUrl = getYouTubeWatchUrl(les.youtube_url || les.youtube_video_id);
+        const videoId = les.youtube_video_id || extractYouTubeVideoId(watchUrl);
+        results.push({
+          id: les.id,
+          type: "lesson",
+          title: les.title,
+          description: les.description || undefined,
+          url: `/subjects/${parentSubject.slug}/${parentModule.slug}/${les.slug}`,
+          badge: "Lecture",
+          youtube_url: watchUrl,
+          youtube_video_id: videoId,
+        });
+      }
     }
   }
 
-  return [
-    ...Array.from(subjectsMap.values()),
-    ...Array.from(modulesMap.values()),
-    ...Array.from(lessonsMap.values()),
-    ...Array.from(materialsMap.values()),
-  ];
+  return results;
 }
 
 // ---------------- Admin Statistics & Activity ----------------

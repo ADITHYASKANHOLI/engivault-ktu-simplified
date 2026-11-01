@@ -1,15 +1,13 @@
-# FOLE — Architecture & System Design
+# ENGIVAULT — Architecture & System Design
 
-**Platform:** FOLE (repository name and legacy internal identifiers remain `engivault` for compatibility)  
-**Tagline:** Free Open Learning & Education.  
+**Platform:** ENGIVAULT  
+**Tagline:** KTU Learning. Simplified.  
 **Frontend / App Layer:** Next.js 16.4 (App Router, Turbopack, React 19, Tailwind CSS v4)  
 **Edge Routing & Proxy:** Next.js 16 `proxy.ts` (lightweight edge gate)  
 **Backend / Database:** Supabase PostgreSQL with Row Level Security (RLS)  
 **Storage:** Supabase Storage (Private Video & Material Buckets, Public Thumbnails & Branding)  
 **Hosting Target:** Vercel Serverless (Next.js Application) + Supabase (Managed Cloud PostgreSQL & Storage)  
 **Primary Repository:** GitHub `engivault-ktu-simplified` (canonical branch: `main`)  
-
-> Public branding is FOLE. Existing database bucket names, cookies, API paths, package identifiers and source folders that contain `engivault` are implementation identifiers and are intentionally preserved for backward compatibility.
 
 ---
 
@@ -79,7 +77,7 @@
 ## 2. Content Synchronization and CRUD
 
 ### 2.1 Supabase as the Single Source of Truth
-The central tenet of FOLE's data architecture is that **Supabase PostgreSQL is the authoritative, immutable source of truth** for all curriculum records, user identities, and media references:
+The central tenet of ENGIVAULT's data architecture is that **Supabase PostgreSQL is the authoritative, immutable source of truth** for all curriculum records, user identities, and media references:
 - **Subjects**, **Modules**, **Lessons**, **Videos**, **Materials**, and **Profiles** are stored in relational tables with foreign key constraints.
 - No client-side `localStorage`, `sessionStorage`, static mock arrays, or in-memory caches hold authoritative state.
 - Both the public website and the administrative dashboard query the exact same database records.
@@ -164,7 +162,7 @@ Admin UI refreshed & Success Toast displayed
 
 ## 3. Targeted Cache Invalidation Architecture
 
-To prevent stale data without resorting to disabling caching globally, FOLE uses the centralized cache invalidation helpers in `lib/cache/revalidate.ts`.
+To prevent stale data without resorting to disabling caching globally, ENGIVAULT uses the centralized cache invalidation helpers in `lib/cache/revalidate.ts`.
 
 When any curriculum mutation occurs, `revalidateContentHierarchy({ subjectSlug, moduleSlug, lessonSlug })` invalidates:
 1. **Public Homepage:** `/` (refreshes the "Latest Recorded Lectures" and subject stats).

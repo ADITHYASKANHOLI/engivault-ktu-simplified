@@ -116,9 +116,9 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
   const isFree = isNaN(feeAmountNum) || feeAmountNum <= 0;
 
   return (
-    <article className="group relative bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-colors flex flex-col justify-between overflow-hidden">
+    <article className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
       {/* Top Banner Accent */}
-      <div className="h-1.5 w-full bg-[#176b45]" />
+      <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
 
       {/* Activity Flyer Poster (Opens configured platform destination) */}
       <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center p-1">
@@ -138,7 +138,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
               className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-[#17231c] text-slate-400 group-hover:text-emerald-400 transition-colors">
+            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-[#07111F] to-slate-950 text-slate-400 group-hover:text-emerald-400 transition-colors">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-2">
                 <ImageIcon className="w-6 h-6 text-emerald-500" />
               </div>
@@ -154,7 +154,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
           {/* Hover highlight overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
             {hasPlatformLink && (
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold font-mono px-3 py-1.5 rounded-full flex items-center gap-1.5 ">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold font-mono px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xs">
                 <span>Open Platform</span>
                 <ExternalLink className="w-3 h-3 text-emerald-400" />
               </span>
@@ -171,7 +171,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
         <div className="absolute top-3 right-3 pointer-events-none">
           <span
             className={cn(
-              "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono ",
+              "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-md backdrop-blur-md",
               regStatus.variant === "open" && "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40",
               regStatus.variant === "urgent" && "bg-amber-950/80 text-amber-300 border border-amber-500/40 animate-pulse",
               regStatus.variant === "upcoming" && "bg-sky-950/80 text-sky-300 border border-sky-500/40",

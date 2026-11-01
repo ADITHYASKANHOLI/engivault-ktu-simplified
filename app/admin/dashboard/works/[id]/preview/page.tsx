@@ -117,7 +117,7 @@ export default async function AdminWorksPreviewPage({ params }: PreviewPageProps
               <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">
                 {activity.activity_type}
               </span>
-              <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">
+              <span className="px-2.5 py-1 rounded-md text-xs font-semibold font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/30">
                 {activity.delivery_mode.replace("_", " ")}
               </span>
             </div>

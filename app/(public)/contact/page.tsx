@@ -148,7 +148,7 @@ export default function ContactPage() {
   };
 
   return (
-    <main className="flex-1 pt-24 pb-24 bg-[#f7f6ef]">
+    <main className="flex-1 pt-32 pb-24 bg-[#F7F9FC]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Header Section */}
         <div className="text-center space-y-3">
@@ -167,8 +167,8 @@ export default function ContactPage() {
 
         {/* Quick Contact & Mission Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-md bg-white border border-[#dce2da] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-[#edf2ec] text-[#176b45] flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
               <Mail className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -183,8 +183,8 @@ export default function ContactPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-md bg-white border border-[#dce2da] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-[#edf2ec] text-[#176b45] flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -193,8 +193,8 @@ export default function ContactPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-md bg-white border border-[#dce2da] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-[#edf2ec] text-[#176b45] flex items-center justify-center shrink-0">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -205,7 +205,7 @@ export default function ContactPage() {
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-md border border-[#dce2da] p-8 sm:p-12">
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 shadow-sm">
           {isSuccess ? (
             <div className="text-center py-10 space-y-6">
               <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">

@@ -108,7 +108,7 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f6ef] dark:bg-[#101a14] pt-24 pb-16 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Navigation & Title Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
@@ -191,7 +191,7 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
             </span>
             {student && (
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#176b45] inline-block" />
+                <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
                 <span>Your Registration</span>
               </span>
             )}
@@ -275,14 +275,14 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
                           href={`/fole-space/events/${evt.slug}`}
                           className={`block p-1.5 rounded-lg text-xs font-semibold truncate transition-colors ${
                             isReg
-                              ? "bg-[#edf2ec] dark:bg-emerald-950/70 hover:bg-[#e2ece3] dark:hover:bg-emerald-900 border border-[#aebcaf] dark:border-[#285d43] text-emerald-950 dark:text-emerald-200"
+                              ? "bg-blue-50 dark:bg-blue-950/70 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-200"
                               : "bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
                           }`}
                           title={`${evt.title}${isReg ? " (Registered)" : ""}`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full inline-block mr-1.5 ${
-                              isReg ? "bg-[#176b45]" : "bg-emerald-500"
+                              isReg ? "bg-blue-500" : "bg-emerald-500"
                             }`}
                           />
                           <span>
@@ -304,7 +304,7 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
           <div className="p-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center max-w-lg mx-auto mb-12 shadow-sm">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4 text-slate-500">
               {isRegisteredView ? (
-                <Ticket className="w-6 h-6 text-[#176b45] stroke-1" />
+                <Ticket className="w-6 h-6 text-blue-500 stroke-1" />
               ) : (
                 <CalendarIcon className="w-6 h-6 text-slate-400 stroke-1" />
               )}
@@ -367,7 +367,7 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
                   href={`/fole-space/events/${evt.slug}`}
                   className={`block p-5 bg-white dark:bg-slate-900 rounded-2xl border shadow-sm transition-all ${
                     isReg
-                      ? "border-[#aebcaf] dark:border-[#285d43]/80 hover:border-emerald-400"
+                      ? "border-blue-300 dark:border-blue-800/80 hover:border-blue-400"
                       : "border-slate-200 dark:border-slate-800 hover:border-emerald-400"
                   }`}
                 >
@@ -380,7 +380,7 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
 
                   <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1.5 flex items-center gap-1.5">
                     {isReg && (
-                      <CheckCircle2 className="w-4 h-4 text-[#176b45] dark:text-emerald-400 shrink-0 inline-block" />
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 inline-block" />
                     )}
                     <span>{evt.title}</span>
                   </h3>
@@ -395,14 +395,14 @@ export default async function SpaceCalendarPage({ searchParams }: CalendarPagePr
                     <div className="flex items-center gap-2">
                       <span>Capacity: {evt.capacity} seats</span>
                       {isReg && (
-                        <span className="text-[10px] font-bold text-[#176b45] dark:text-emerald-300 bg-[#e8f0e8] dark:bg-emerald-950/80 px-2 py-0.5 rounded-md border border-[#dce2da] dark:border-[#285d43]">
+                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
                           Pass Confirmed
                         </span>
                       )}
                     </div>
                     <span
                       className={`font-bold flex items-center gap-1 ${
-                        isReg ? "text-[#176b45] dark:text-emerald-400" : "text-emerald-600"
+                        isReg ? "text-blue-600 dark:text-blue-400" : "text-emerald-600"
                       }`}
                     >
                       <span>{isReg ? "View Pass" : "View & Register"}</span>

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "FOLE SPACE Management — FOLE Admin",
+  title: "FOLE SPACE Management — ENGIVAULT Admin",
   description: "Space occupancy, master switch, and live active session controls.",
 };
 
@@ -61,7 +61,7 @@ export default async function AdminSpacePage() {
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-600 uppercase tracking-wider mb-1">
             <DoorOpen className="w-3.5 h-3.5" />
-            <span>FOLE SPACE • Student Community</span>
+            <span>Digital Vault • Space Operations</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             FOLE SPACE Overview

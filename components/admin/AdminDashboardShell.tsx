@@ -12,7 +12,7 @@ export function AdminDashboardShell({ children }: AdminDashboardShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-[#f7f6ef] text-slate-900 font-sans">
+    <div className="min-h-screen flex bg-gradient-to-b from-indigo-50/25 via-[#F8FAFC] to-[#F8FAFC] text-slate-900 font-sans">
       {/* Sidebar: Desktop Sticky + Mobile Drawer */}
       <AdminSidebar
         mobileOpen={mobileSidebarOpen}
