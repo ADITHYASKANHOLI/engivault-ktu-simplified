@@ -130,7 +130,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
 
   return (
     <header className="fixed top-3 sm:top-5 md:top-6 inset-x-0 z-50 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-300">
-      <div className="w-full h-14 sm:h-16 px-4 sm:px-6 lg:px-7 rounded-full bg-white/75 dark:bg-[#07140e]/85 backdrop-blur-xl border border-white/60 dark:border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 sm:gap-4 pointer-events-auto">
+      <div className="w-full h-14 sm:h-16 px-4 sm:px-6 lg:px-7 rounded-full bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 sm:gap-4 pointer-events-auto">
         {/* Brand Logo on the Left */}
         <div className="flex items-center shrink-0">
           <Link
@@ -157,8 +157,8 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
                 className={cn(
                   "relative text-xs lg:text-[13px] 2xl:text-sm tracking-tight transition-colors py-2 flex flex-col items-center whitespace-nowrap",
                   active
-                    ? "text-[#050908] dark:text-white font-bold"
-                    : "text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white font-medium"
+                    ? "text-[#050908] font-bold"
+                    : "text-slate-600 hover:text-black font-medium"
                 )}
               >
                 <span>{item.label}</span>
@@ -177,13 +177,13 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
             type="button"
             onClick={() => setSearchDialogOpen(true)}
             aria-label="Search FOLE Curriculum"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 dark:text-slate-200 hover:text-[#00A86B] hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 hover:text-[#00A86B] hover:bg-black/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
           >
             <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
           </button>
 
           {/* Divider */}
-          <div className="h-4 w-px bg-slate-300 dark:bg-white/20 hidden sm:block" />
+          <div className="h-4 w-px bg-slate-300 hidden sm:block" />
 
           {/* Authentication Actions */}
           {auth.role ? (
@@ -200,7 +200,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
               <button
                 type="button"
                 onClick={() => handleOpenLogin("student")}
-                className="min-h-[36px] sm:min-h-[38px] px-4 sm:px-4.5 py-1.5 rounded-full border border-slate-700/50 hover:border-slate-900 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-semibold hover:bg-slate-900/5 dark:hover:bg-white/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer"
+                className="min-h-[36px] sm:min-h-[38px] px-4 sm:px-4.5 py-1.5 rounded-full border border-slate-700/60 hover:border-slate-900 text-slate-800 text-xs sm:text-sm font-semibold hover:bg-slate-900/5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer"
               >
                 Login
               </button>
@@ -220,7 +220,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
             ref={mobileMenuButtonRef}
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="w-10 h-10 flex xl:hidden items-center justify-center rounded-full text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+            className="w-10 h-10 flex xl:hidden items-center justify-center rounded-full text-slate-800 hover:bg-black/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-drawer"

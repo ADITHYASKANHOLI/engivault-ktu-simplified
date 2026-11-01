@@ -76,9 +76,8 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
           sizes="100vw"
         />
 
-        {/* Soft atmospheric gradient transitions for optimal legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/60 to-transparent lg:w-[60%] pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050908] via-transparent to-transparent h-44 bottom-0 pointer-events-none" />
+        {/* Atmospheric depth: gentle bottom transition into the dark feature bar */}
+        <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-[#050908]/90 via-[#050908]/40 to-transparent pointer-events-none" />
       </div>
 
       {/* Top-Left Authentic Halftone Dot Pattern */}
@@ -175,13 +174,14 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
                 aberration={3}
                 frost={0.5}
                 tint={0.2}
+                className="bg-black/45 hover:bg-black/60 border border-white/20 rounded-full backdrop-blur-md shadow-lg shadow-black/25 transition-all"
                 aria-label="Watch FOLE Intro Video"
-                contentClassName="gap-2.5 px-5 sm:px-7 py-3 sm:py-3.5"
+                contentClassName="gap-2.5 px-5 sm:px-7 py-3 sm:py-3.5 text-white"
               >
                 <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/20 flex items-center justify-center">
                   <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white ml-0.5" />
                 </div>
-                <span className="text-xs sm:text-sm">Watch Video</span>
+                <span className="text-xs sm:text-sm font-semibold text-white tracking-wide">Watch Video</span>
               </LiquidGlassButton>
             </div>
           </div>
