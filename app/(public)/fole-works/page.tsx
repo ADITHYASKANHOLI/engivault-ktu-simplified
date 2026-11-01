@@ -78,7 +78,7 @@ export default async function FoleWorksPage() {
             <div className="mb-8 grid w-full grid-cols-1 gap-x-8 gap-y-4 border-y border-[#dce2da] py-5 text-left sm:grid-cols-3">
               <div className="flex items-start gap-3">
                 <Cpu className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />
-                <div><h4 className="text-sm font-semibold text-[#17231c]">Hands-on labs</h4><p className="mt-1 text-xs leading-5 text-[#647168]">Hardware and software engineering practice.</p></div>
+                <div><h4 className="text-sm font-semibold text-[#17231c]">Hands-on Labs</h4><p className="mt-1 text-xs leading-5 text-[#647168]">Hardware and software engineering practice.</p></div>
               </div>
               <div className="flex items-start gap-3">
                 <Briefcase className="mt-0.5 h-5 w-5 shrink-0 text-[#176b45]" />

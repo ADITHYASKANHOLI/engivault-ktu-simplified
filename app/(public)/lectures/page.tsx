@@ -14,6 +14,11 @@ import {
   getPublishedSubjects,
 } from "@/lib/queries";
 import { LectureCard } from "@/components/lectures/LectureCard";
+import {
+  getAcademicCandidateTerms,
+  matchesAcademicTarget,
+  matchesSubjectQuery,
+} from "@/lib/utils/academic-search";
 
 export const metadata = {
   title: "Academic Lectures Browser — FOLE",
@@ -74,15 +79,24 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
   }
 
   if (q) {
-    const query = q.toLowerCase().trim();
+    const rawQ = q.trim();
+    const candidateTerms = getAcademicCandidateTerms(rawQ);
     filtered = filtered.filter((l) => {
-      const titleMatch = l.title.toLowerCase().includes(query);
-      const descMatch = (l.description || l.short_description || "").toLowerCase().includes(query);
-      const subjectMatch = (l.subject?.title || "").toLowerCase().includes(query) || (l.subject?.code || "").toLowerCase().includes(query);
-      const moduleMatch = (l.module?.title || "").toLowerCase().includes(query);
-      const topicMatch = (l.topic?.title || "").toLowerCase().includes(query);
-      const facultyMatch = (l.faculty?.name || "").toLowerCase().includes(query);
-      return titleMatch || descMatch || subjectMatch || moduleMatch || topicMatch || facultyMatch;
+      const parentSub =
+        l.subject ||
+        l.module?.subject ||
+        (l.module?.subject_id ? subjects.find((s) => s.id === l.module?.subject_id) : null);
+
+      const subjectMatch = parentSub ? matchesSubjectQuery(parentSub, rawQ, candidateTerms) : false;
+      const moduleMatch = l.module ? matchesAcademicTarget(l.module.title, rawQ, candidateTerms) : false;
+      const topicMatch = l.topic ? matchesAcademicTarget(l.topic.title, rawQ, candidateTerms) : false;
+      const instructorMatch =
+        matchesAcademicTarget(l.instructor, rawQ, candidateTerms) ||
+        matchesAcademicTarget(l.faculty?.name, rawQ, candidateTerms);
+      const titleMatch = matchesAcademicTarget(l.title, rawQ, candidateTerms);
+      const descMatch = matchesAcademicTarget(l.description || l.short_description, rawQ, candidateTerms);
+
+      return subjectMatch || moduleMatch || topicMatch || instructorMatch || titleMatch || descMatch;
     });
   }
 

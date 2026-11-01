@@ -243,6 +243,17 @@ export interface SearchResultItem {
   badge?: string;
   youtube_url?: string | null;
   youtube_video_id?: string | null;
+  subjectTitle?: string;
+  subjectSlug?: string;
+  moduleTitle?: string;
+  moduleSlug?: string;
+  topicTitle?: string;
+  semester?: number | string | null;
+  department?: string | null;
+  instructor?: string | null;
+  code?: string;
+  duration_seconds?: number | null;
+  file_type?: string | null;
 }
 
 /**

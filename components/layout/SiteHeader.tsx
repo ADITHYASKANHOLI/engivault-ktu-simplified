@@ -129,7 +129,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#dce2da] bg-[#f7f6ef] px-0">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#dce2da] bg-[#f7f6ef] px-0 pointer-events-auto">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
         {/* Brand Logo on the Left */}
         <div className="flex items-center shrink-0">
