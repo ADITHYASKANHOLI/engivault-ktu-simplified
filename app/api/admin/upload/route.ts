@@ -199,9 +199,86 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 2. JSON-based Signed Upload URL generation
+  // 2. JSON-based Signed Upload URL generation or Post-Upload Verification
   try {
     const body = await request.json();
+
+    // Staging / Post-upload verification path
+    if (body?.action === "verify" || body?.action === "finalize") {
+      const targetBucket = body.bucket as string;
+      const storagePath = (body.storage_path || body.storagePath) as string;
+      const originalFilename = body.filename || body.original_filename || "";
+
+      if (!targetBucket || !ALLOWED_BUCKETS.includes(targetBucket as any)) {
+        return NextResponse.json({ error: "Invalid storage bucket specified." }, { status: 400 });
+      }
+
+      if (!storagePath || storagePath.includes("..") || storagePath.startsWith("/") || storagePath.includes("\\")) {
+        return NextResponse.json({ error: "Invalid storage path." }, { status: 400 });
+      }
+
+      if (isSupabaseConfigured()) {
+        const supabase = createAdminClient();
+        const { data: fileBlob, error: downloadError } = await supabase.storage
+          .from(targetBucket)
+          .download(storagePath);
+
+        if (downloadError || !fileBlob) {
+          return NextResponse.json({ error: "Storage object not found for verification." }, { status: 404 });
+        }
+
+        const arrayBuffer = await fileBlob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        let validationCheck: { valid: boolean; error?: string } = { valid: false };
+
+        if (targetBucket === "engivault-materials") {
+          if (buffer.length > 104857600) {
+            await supabase.storage.from(targetBucket).remove([storagePath]);
+            return NextResponse.json({ error: "File exceeds 100MB limit for study materials." }, { status: 400 });
+          }
+          validationCheck = validateMaterialBytes(buffer, originalFilename);
+        } else if (targetBucket === "engivault-thumbnails" || targetBucket === "engivault-branding") {
+          if (buffer.length > 10 * 1024 * 1024) {
+            await supabase.storage.from(targetBucket).remove([storagePath]);
+            return NextResponse.json({ error: "Image exceeds 10MB limit." }, { status: 400 });
+          }
+          validationCheck = validateImageBytes(buffer);
+        } else if (targetBucket === "engivault-videos") {
+          if (buffer.length > 5368709120) {
+            await supabase.storage.from(targetBucket).remove([storagePath]);
+            return NextResponse.json({ error: "Video exceeds 5GB limit." }, { status: 400 });
+          }
+          validationCheck = validateVideoBytes(buffer);
+        }
+
+        if (!validationCheck.valid) {
+          // Immediately purge invalid / malicious file
+          await supabase.storage.from(targetBucket).remove([storagePath]);
+          return NextResponse.json(
+            { error: validationCheck.error || "Uploaded file failed binary validation." },
+            { status: 400 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          verified: true,
+          bucket: targetBucket,
+          storagePath,
+        });
+      }
+
+      // Offline / fallback verification
+      return NextResponse.json({
+        success: true,
+        verified: true,
+        bucket: targetBucket,
+        storagePath,
+        mode: "local-simulation",
+      });
+    }
+
     const result = uploadAuthorizeSchema.safeParse(body);
 
     if (!result.success) {

@@ -3,7 +3,8 @@
 --
 -- Remediations Applied:
 -- 1. [BOLA / IDOR] rpc_space_checkout: Enforce user_id ownership check on self checkouts.
--- 2. [Search Path Hijacking] public.is_admin(): Fixed search_path = public, pg_temp.
+-- 2. [Search Path Hijacking] public.is_admin(): Fixed search_path = public, pg_temp
+--    and isolated backend helper in app_private schema with public facade.
 -- 3. [Search Path Hijacking] public.handle_updated_at(): Fixed search_path = public, pg_temp.
 -- 4. [Audit Log Tampering] public.activity_logs: Revoke public/client insert/mutation privileges.
 --    Drop "System can insert activity logs" policy so authenticated users cannot inject logs.
@@ -80,9 +81,13 @@ revoke all on function public.rpc_space_checkout(uuid, uuid, text) from public, 
 grant execute on function public.rpc_space_checkout(uuid, uuid, text) to service_role;
 
 -- ------------------------------------------------------------------------------
--- 2. Search Path Hijacking Fix: Harden public.is_admin()
+-- 2. Search Path & Schema Isolation: Harden is_admin()
 -- ------------------------------------------------------------------------------
-create or replace function public.is_admin()
+create schema if not exists app_private;
+revoke all on schema app_private from public, anon, authenticated;
+grant usage on schema app_private to service_role, authenticated, anon;
+
+create or replace function app_private.is_admin()
 returns boolean
 language plpgsql
 security definer
@@ -93,6 +98,21 @@ begin
     select 1 from public.profiles
     where id = auth.uid() and role = 'admin'
   );
+end;
+$$;
+
+revoke all on function app_private.is_admin() from public;
+grant execute on function app_private.is_admin() to anon, authenticated, service_role;
+
+-- Public facade function to preserve compatibility with all existing RLS policies
+create or replace function public.is_admin()
+returns boolean
+language plpgsql
+security definer
+set search_path = public, app_private, pg_temp
+as $$
+begin
+  return app_private.is_admin();
 end;
 $$;
 

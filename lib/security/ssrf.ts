@@ -1,4 +1,6 @@
 import dns from "node:dns/promises";
+import https from "node:https";
+import http from "node:http";
 import { isIP } from "node:net";
 
 export const MAX_IMAGE_FETCH_SIZE = 5 * 1024 * 1024; // 5MB
@@ -112,65 +114,71 @@ export function isPrivateOrBlockedIp(ip: string): boolean {
   const version = isIP(ip);
   if (version === 4) return isPrivateOrBlockedIPv4(ip);
   if (version === 6) return isPrivateOrBlockedIPv6(ip);
-  return true; // Not a valid IP
+  return true; // Malformed / not a valid IP is blocked
 }
 
 /**
- * Hostnames allowed to be fetched for activity flyers / poster thumbnails.
+ * Returns the exact set of approved remote hostnames for flyer and image fetching.
+ * Removes all wildcards (*.supabase.co, *.vercel.app) to prevent cross-tenant SSRF.
  */
-const ALLOWED_FLYER_DOMAINS = [
-  "images.unsplash.com",
-  "img.youtube.com",
-  "i.ytimg.com",
-];
+export function getApprovedRemoteHostnames(): Set<string> {
+  const approved = new Set<string>([
+    "images.unsplash.com",
+    "img.youtube.com",
+    "i.ytimg.com",
+  ]);
 
-/**
- * Checks whether a hostname matches the flyer domain allowlist.
- */
-export function isAllowedFlyerDomain(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
-
-  // Supabase storage domains (*.supabase.co)
-  if (lower.endsWith(".supabase.co") || lower === "supabase.co") {
-    return true;
-  }
-
-  // Explicit allowed image CDNs
-  if (ALLOWED_FLYER_DOMAINS.includes(lower)) {
-    return true;
-  }
-
-  // Configured site URL domain (e.g. engivault-ktu-simplified.vercel.app)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) {
+  // Exact configured Supabase project hostname only
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl) {
     try {
-      const siteHost = new URL(siteUrl).hostname.toLowerCase();
-      if (lower === siteHost) return true;
+      approved.add(new URL(supabaseUrl).hostname.toLowerCase());
     } catch {}
   }
 
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    const vHost = vercelUrl.toLowerCase();
-    if (lower === vHost || lower.endsWith(".vercel.app")) return true;
+  // Exact configured site hostname only
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (siteUrl) {
+    try {
+      approved.add(new URL(siteUrl).hostname.toLowerCase());
+    } catch {}
   }
 
-  return false;
+  // Exact configured Vercel deployment hostname only
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    try {
+      const vHost = vercelUrl.startsWith("http") ? new URL(vercelUrl).hostname : vercelUrl;
+      approved.add(vHost.toLowerCase());
+    } catch {}
+  }
+
+  return approved;
+}
+
+/**
+ * Checks whether a hostname matches the exact approved flyer domains.
+ */
+export function isAllowedFlyerDomain(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  const approved = getApprovedRemoteHostnames();
+  return approved.has(lower);
 }
 
 /**
  * Validates a remote URL against SSRF vulnerabilities:
  * - Scheme: HTTPS strictly required (HTTP allowed ONLY for non-production localhost).
  * - No user/password in URL.
- * - Hostname allowlist verification.
+ * - Exact hostname allowlist verification (no broad wildcards).
  * - DNS resolution: Resolves hostname and validates all returned IP addresses.
  */
 export async function validateUrlForSsrf(
   urlString: string,
-  options?: { enforceDomainAllowlist?: boolean }
+  options?: { enforceDomainAllowlist?: boolean; allowLoopbackForTesting?: boolean }
 ): Promise<{ valid: boolean; error?: string; url?: URL; resolvedIp?: string }> {
   try {
     const url = new URL(urlString);
+    const allowLoopback = process.env.NODE_ENV === "test" && options?.allowLoopbackForTesting === true;
 
     // Protocol check
     const isHttps = url.protocol === "https:";
@@ -200,7 +208,7 @@ export async function validateUrlForSsrf(
       hostname === "metadata.google.internal" ||
       hostname === "instance-data"
     ) {
-      if (process.env.NODE_ENV === "production" || hostname !== "localhost") {
+      if ((process.env.NODE_ENV === "production" || hostname !== "localhost") && !allowLoopback) {
         return { valid: false, error: `Access to internal host '${hostname}' is blocked.` };
       }
     }
@@ -208,11 +216,13 @@ export async function validateUrlForSsrf(
     // Direct IP address in URL check
     if (isIP(hostname)) {
       if (isPrivateOrBlockedIp(hostname)) {
-        return { valid: false, error: `Access to private/reserved IP address '${hostname}' is prohibited.` };
+        if (!(allowLoopback && (hostname === "127.0.0.1" || hostname === "::1"))) {
+          return { valid: false, error: `Access to private/reserved IP address '${hostname}' is prohibited.` };
+        }
       }
     }
 
-    // Domain allowlist check
+    // Domain allowlist check (exact matches only)
     if (options?.enforceDomainAllowlist !== false) {
       if (!isAllowedFlyerDomain(hostname)) {
         return {
@@ -232,10 +242,12 @@ export async function validateUrlForSsrf(
 
         for (const record of records) {
           if (isPrivateOrBlockedIp(record.address)) {
-            return {
-              valid: false,
-              error: `Host '${hostname}' resolves to restricted IP: ${record.address}`,
-            };
+            if (!(allowLoopback && (record.address === "127.0.0.1" || record.address === "::1"))) {
+              return {
+                valid: false,
+                error: `Host '${hostname}' resolves to restricted IP: ${record.address}`,
+              };
+            }
           }
         }
 
@@ -303,12 +315,13 @@ export function verifyImageMagicBytes(buffer: Buffer): { valid: boolean; content
 }
 
 /**
- * Safely fetches a remote image URL with full SSRF protections:
+ * Safely fetches a remote image URL with full SSRF defenses:
  * - Pre-flight URL & DNS validation
- * - Enforces redirects: "error" (prevents open-redirect SSRF)
- * - Strict timeout (default 5000ms)
- * - Maximum byte count check (default 5MB)
- * - Magic byte inspection (JPEG/PNG/WebP only)
+ * - DNS Pinning to the validated IP address, with TLS SNI and Host header preserved
+ * - Strict prohibition of redirects (HTTP 3xx causes immediate error)
+ * - Response byte limit enforced during streaming before memory allocation
+ * - Socket timeout enforcement
+ * - Binary magic-byte inspection (JPEG/PNG/WebP only)
  */
 export async function safeFetchImage(
   urlString: string,
@@ -316,6 +329,8 @@ export async function safeFetchImage(
     maxSizeBytes?: number;
     timeoutMs?: number;
     enforceDomainAllowlist?: boolean;
+    allowLoopbackForTesting?: boolean;
+    _transport?: (options: any, callback: (res: any) => void) => any;
   }
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const maxBytes = options?.maxSizeBytes ?? MAX_IMAGE_FETCH_SIZE;
@@ -323,58 +338,129 @@ export async function safeFetchImage(
 
   const validation = await validateUrlForSsrf(urlString, {
     enforceDomainAllowlist: options?.enforceDomainAllowlist !== false,
+    allowLoopbackForTesting: options?.allowLoopbackForTesting,
   });
 
   if (!validation.valid || !validation.url) {
     throw new Error(`SSRF Validation Block: ${validation.error || "Untrusted remote target."}`);
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const targetUrl = validation.url;
+  const pinnedIp = validation.resolvedIp;
+  const isHttps = targetUrl.protocol === "https:";
 
-  try {
-    const response = await fetch(validation.url.toString(), {
+  return new Promise<{ buffer: Buffer; contentType: string }>((resolve, reject) => {
+    let completed = false;
+    let receivedBytes = 0;
+    const chunks: Buffer[] = [];
+
+    // Custom DNS lookup agent pinning connection to pre-validated IP
+    const agent = isHttps
+      ? new https.Agent({
+          lookup: (_hostname, _opts, cb) => {
+            if (pinnedIp && isIP(pinnedIp)) {
+              cb(null, pinnedIp, isIP(pinnedIp));
+            } else {
+              dns.lookup(_hostname).then((res) => cb(null, res.address, res.family)).catch((err) => (cb as any)(err));
+            }
+          },
+        })
+      : new http.Agent({
+          lookup: (_hostname, _opts, cb) => {
+            if (pinnedIp && isIP(pinnedIp)) {
+              cb(null, pinnedIp, isIP(pinnedIp));
+            } else {
+              dns.lookup(_hostname).then((res) => cb(null, res.address, res.family)).catch((err) => (cb as any)(err));
+            }
+          },
+        });
+
+    const requestOptions = {
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || (isHttps ? 443 : 80),
+      path: targetUrl.pathname + targetUrl.search,
       method: "GET",
+      agent,
       headers: {
         "User-Agent": "FOLE-Secure-Image-Proxy/1.0",
         Accept: "image/jpeg, image/png, image/webp",
+        Host: targetUrl.hostname,
       },
-      redirect: "error", // Disallow redirects completely to prevent redirect-based SSRF
-      signal: controller.signal,
+      servername: targetUrl.hostname, // Preserves TLS SNI extension for certificate verification
+      timeout: timeoutMs,
+    };
+
+    const transportFn = options?._transport || (isHttps ? https.request.bind(https) : http.request.bind(http));
+
+    const req = transportFn(requestOptions, (res: any) => {
+      // 1. Strict Redirect Rejection: Never follow redirects
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400) {
+        req.destroy(new Error(`SSRF Protection: HTTP redirect status ${res.statusCode} is strictly prohibited.`));
+        return;
+      }
+
+      if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+        req.destroy(new Error(`Remote image server responded with status: ${res.statusCode}`));
+        return;
+      }
+
+      // 2. Pre-validate declared Content-Length
+      const declaredLength = res.headers["content-length"];
+      if (declaredLength) {
+        const parsed = parseInt(declaredLength, 10);
+        if (!isNaN(parsed) && parsed > maxBytes) {
+          req.destroy(new Error(`Remote image declared Content-Length (${parsed} bytes) exceeds maximum limit (${maxBytes} bytes).`));
+          return;
+        }
+      }
+
+      // 3. Stream data with byte-cap enforcement BEFORE memory buffering
+      res.on("data", (chunk: Buffer) => {
+        receivedBytes += chunk.length;
+        if (receivedBytes > maxBytes) {
+          req.destroy(new Error(`Oversized response: Payload exceeded maximum allowed size of ${maxBytes} bytes.`));
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      res.on("end", () => {
+        if (completed) return;
+        completed = true;
+
+        const buffer = Buffer.concat(chunks);
+
+        // 4. Validate binary magic bytes
+        const magicCheck = verifyImageMagicBytes(buffer);
+        if (!magicCheck.valid) {
+          reject(new Error("Remote resource failed binary verification: Not a valid raster image (JPEG, PNG, or WebP)."));
+          return;
+        }
+
+        resolve({
+          buffer,
+          contentType: magicCheck.contentType,
+        });
+      });
+
+      res.on("error", (err: Error) => {
+        if (completed) return;
+        completed = true;
+        reject(err);
+      });
     });
 
-    if (!response.ok) {
-      throw new Error(`Remote image server responded with status: ${response.status}`);
-    }
+    req.on("timeout", () => {
+      req.destroy(new Error(`Image fetch timed out after ${timeoutMs}ms.`));
+    });
 
-    // Pre-validate declared Content-Length
-    const declaredLength = response.headers.get("content-length");
-    if (declaredLength) {
-      const parsedLength = parseInt(declaredLength, 10);
-      if (!isNaN(parsedLength) && parsedLength > maxBytes) {
-        throw new Error(`Remote image exceeds maximum permitted size of ${maxBytes} bytes`);
-      }
-    }
+    req.on("error", (err: Error) => {
+      if (completed) return;
+      completed = true;
+      reject(err);
+    });
 
-    // Read bytes while enforcing maximum size limit
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > maxBytes) {
-      throw new Error(`Remote image payload exceeded maximum allowed size of ${maxBytes} bytes`);
-    }
-
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Verify magic bytes
-    const magicCheck = verifyImageMagicBytes(buffer);
-    if (!magicCheck.valid) {
-      throw new Error("Remote resource is not a valid raster image (JPEG, PNG, or WebP).");
-    }
-
-    return {
-      buffer,
-      contentType: magicCheck.contentType,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
+    req.end();
+  });
 }

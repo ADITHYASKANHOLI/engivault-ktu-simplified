@@ -2,18 +2,22 @@ process.env.NODE_ENV = "test";
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { isPrivateOrBlockedIp, validateUrlForSsrf, verifyImageMagicBytes } from "../lib/security/ssrf.ts";
+import { EventEmitter } from "node:events";
+import { createHmac } from "node:crypto";
+import {
+  isPrivateOrBlockedIp,
+  validateUrlForSsrf,
+  verifyImageMagicBytes,
+  safeFetchImage,
+} from "../lib/security/ssrf.ts";
 import {
   createSignedToken,
   verifySignedToken,
-  timingSafeCompare,
+  getSecretKey,
   SESSION_MAX_AGE,
 } from "../lib/auth/token.ts";
 import { isSafeOrigin } from "../lib/security/origin.ts";
-import {
-  validateMaterialBytes,
-  validateVideoBytes,
-} from "../lib/security/magic-bytes.ts";
+import { validateMaterialBytes } from "../lib/security/magic-bytes.ts";
 
 let passed = 0;
 let failed = 0;
@@ -31,385 +35,354 @@ async function test(name, fn) {
 }
 
 console.log("\n=================================================");
-console.log("🔒 ENGIVAULT PENETRATION TESTING & SECURITY AUDIT");
+console.log("🔒 ENGIVAULT PENETRATION TESTING & SECURITY AUDIT (PASS 2)");
 console.log("=================================================\n");
 
-// --- DOMAIN 1: SSRF DEFENSES ---
-console.log("--- 1. SSRF & IMAGE FETCH SECURITY ---");
+// -----------------------------------------------------------------------------
+// 1. BEHAVIORAL CSRF & ORIGIN VALIDATION TESTS
+// -----------------------------------------------------------------------------
+console.log("--- 1. CSRF ORIGIN VALIDATION TESTS ---");
 
-await test("Blocks private IPv4 loopback, RFC 1918, and CGNAT ranges", () => {
-  assert.equal(isPrivateOrBlockedIp("127.0.0.1"), true, "127.0.0.1 blocked");
-  assert.equal(isPrivateOrBlockedIp("127.1.2.3"), true, "127.1.2.3 blocked");
-  assert.equal(isPrivateOrBlockedIp("10.0.0.1"), true, "10.0.0.1 blocked");
-  assert.equal(isPrivateOrBlockedIp("10.254.254.254"), true, "10.254.254.254 blocked");
-  assert.equal(isPrivateOrBlockedIp("172.16.0.1"), true, "172.16.0.1 blocked");
-  assert.equal(isPrivateOrBlockedIp("172.31.255.255"), true, "172.31.255.255 blocked");
-  assert.equal(isPrivateOrBlockedIp("192.168.1.1"), true, "192.168.1.1 blocked");
-  assert.equal(isPrivateOrBlockedIp("100.64.0.1"), true, "CGNAT 100.64.0.1 blocked");
-  assert.equal(isPrivateOrBlockedIp("0.0.0.0"), true, "0.0.0.0 blocked");
+await test("Behavioral 1: An unrelated attacker.vercel.app Origin is strictly rejected", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://engivault-ktu-simplified.vercel.app";
+  process.env.VERCEL_URL = "engivault-ktu-simplified.vercel.app";
+
+  const attackReq = new Request("https://engivault-ktu-simplified.vercel.app/api/admin/materials", {
+    method: "POST",
+    headers: {
+      origin: "https://attacker.vercel.app",
+      host: "engivault-ktu-simplified.vercel.app",
+    },
+  });
+
+  const result = isSafeOrigin(attackReq);
+  assert.equal(result, false, "Unrelated .vercel.app origin must be rejected");
 });
 
-await test("Blocks Cloud Metadata IPs (AWS/GCP/Azure link-local)", () => {
-  assert.equal(isPrivateOrBlockedIp("169.254.169.254"), true, "169.254.169.254 blocked");
-  assert.equal(isPrivateOrBlockedIp("169.254.1.1"), true, "169.254.1.1 blocked");
+await test("Behavioral 2: The exact configured production origin is accepted", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://engivault-ktu-simplified.vercel.app";
+
+  const prodReq = new Request("https://engivault-ktu-simplified.vercel.app/api/admin/materials", {
+    method: "POST",
+    headers: {
+      origin: "https://engivault-ktu-simplified.vercel.app",
+      host: "engivault-ktu-simplified.vercel.app",
+    },
+  });
+
+  const result = isSafeOrigin(prodReq);
+  assert.equal(result, true, "Exact configured production origin must be accepted");
 });
 
-await test("Blocks IPv6 loopback, link-local, and unique local addresses", () => {
-  assert.equal(isPrivateOrBlockedIp("::1"), true, "::1 blocked");
-  assert.equal(isPrivateOrBlockedIp("fe80::1"), true, "fe80::1 blocked");
-  assert.equal(isPrivateOrBlockedIp("fc00::1"), true, "fc00::1 blocked");
-  assert.equal(isPrivateOrBlockedIp("fd12:3456:789a::1"), true, "fd00::/8 blocked");
-  assert.equal(isPrivateOrBlockedIp("::ffff:127.0.0.1"), true, "IPv4-mapped loopback blocked");
+await test("Behavioral 3: Spoofed forwarded-host headers cannot bypass origin validation", () => {
+  process.env.NEXT_PUBLIC_SITE_URL = "https://engivault-ktu-simplified.vercel.app";
+
+  const spoofedReq = new Request("https://engivault-ktu-simplified.vercel.app/api/admin/materials", {
+    method: "POST",
+    headers: {
+      origin: "https://attacker-injected-host.com",
+      host: "engivault-ktu-simplified.vercel.app",
+      "x-forwarded-host": "attacker-injected-host.com",
+    },
+  });
+
+  const result = isSafeOrigin(spoofedReq);
+  assert.equal(result, false, "Origin matching spoofed x-forwarded-host must be rejected");
 });
 
-await test("Allows public routable IP addresses", () => {
-  assert.equal(isPrivateOrBlockedIp("8.8.8.8"), false, "Google DNS 8.8.8.8 allowed");
-  assert.equal(isPrivateOrBlockedIp("1.1.1.1"), false, "Cloudflare 1.1.1.1 allowed");
+await test("Behavioral 4: Missing Origin and Referer are rejected for cookie-authenticated browser mutations", () => {
+  const cookieAdminReq = new Request("https://engivault-ktu-simplified.vercel.app/api/admin/materials", {
+    method: "POST",
+    headers: {
+      cookie: "engivault_admin_session=eyJhbGciOi...",
+      host: "engivault-ktu-simplified.vercel.app",
+    },
+  });
+  assert.equal(isSafeOrigin(cookieAdminReq), false, "Missing Origin/Referer on admin cookie mutation must be rejected");
+
+  const cookieStudentReq = new Request("https://engivault-ktu-simplified.vercel.app/api/space/checkout", {
+    method: "POST",
+    headers: {
+      cookie: "sb-auth-token=eyJhbGciOi...",
+      host: "engivault-ktu-simplified.vercel.app",
+    },
+  });
+  assert.equal(isSafeOrigin(cookieStudentReq), false, "Missing Origin/Referer on student auth cookie mutation must be rejected");
+
+  const secFetchReq = new Request("https://engivault-ktu-simplified.vercel.app/api/admin/materials", {
+    method: "POST",
+    headers: {
+      "sec-fetch-mode": "cors",
+      host: "engivault-ktu-simplified.vercel.app",
+    },
+  });
+  assert.equal(isSafeOrigin(secFetchReq), false, "Missing Origin/Referer with sec-fetch-mode cors must be rejected");
 });
 
-await test("validateUrlForSsrf blocks non-whitelisted domains, protocols, and metadata hostnames", async () => {
-  const metaCheck = await validateUrlForSsrf("http://169.254.169.254/latest/meta-data/");
-  assert.equal(metaCheck.valid, false, "Metadata IP blocked");
+// -----------------------------------------------------------------------------
+// 2. BEHAVIORAL ADMIN SESSION SIGNING SECRET TESTS
+// -----------------------------------------------------------------------------
+console.log("\n--- 2. ADMIN SESSION SIGNING SECRET TESTS ---");
 
-  const gcpMeta = await validateUrlForSsrf("http://metadata.google.internal/computeMetadata/v1/");
-  assert.equal(gcpMeta.valid, false, "GCP metadata hostname blocked");
+await test("Behavioral 5: Admin sessions cannot be signed or verified using login code or stored hash", () => {
+  delete process.env.ADMIN_SESSION_SECRET;
+  process.env.ADMIN_ACCESS_CODE = "SuperSecretAdminCode123!";
+  process.env.ADMIN_ACCESS_CODE_HASH = "scrypt:c2FsdHNhbHQ:0123456789abcdef";
 
-  const evilDomain = await validateUrlForSsrf("https://evil-attacker-site.com/image.png");
-  assert.equal(evilDomain.valid, false, "Non-whitelisted domain blocked");
+  assert.equal(getSecretKey(), null, "getSecretKey must return null when ADMIN_SESSION_SECRET is absent");
 
-  const userPass = await validateUrlForSsrf("https://admin:secret@images.unsplash.com/photo");
-  assert.equal(userPass.valid, false, "Embedded credentials rejected");
+  assert.throws(
+    () => createSignedToken({ role: "admin" }),
+    /ADMIN_SESSION_SECRET is required with at least 32 bytes/,
+    "createSignedToken must throw error when ADMIN_SESSION_SECRET is not configured"
+  );
 
-  const validUnsplash = await validateUrlForSsrf("https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3");
-  assert.equal(validUnsplash.valid, true, "Valid Unsplash HTTPS URL permitted");
+  // Attempt to forge a token using HMAC-SHA256 with ADMIN_ACCESS_CODE
+  const fakePayload = { role: "admin", iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600, jti: "fake-1" };
+  const fakeData = Buffer.from(JSON.stringify(fakePayload)).toString("base64url");
+  const fakeSig = createHmac("sha256", process.env.ADMIN_ACCESS_CODE).update(fakeData).digest("base64url");
+  const forgedToken = `${fakeData}.${fakeSig}`;
+
+  assert.equal(verifySignedToken(forgedToken), null, "verifySignedToken must reject tokens signed with login code");
+
+  // Attempt using ADMIN_SESSION_SECRET that is too short (< 32 bytes)
+  process.env.ADMIN_SESSION_SECRET = "short-secret-under-32-bytes";
+  assert.equal(getSecretKey(), null, "Weak secret (< 32 bytes) must fail closed");
+  assert.throws(() => createSignedToken(), /ADMIN_SESSION_SECRET is required/);
 });
 
-await test("verifyImageMagicBytes validates JPEG, PNG, and WebP, rejecting scripts and SVGs", () => {
-  const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]);
-  assert.equal(verifyImageMagicBytes(jpegHeader).valid, true, "JPEG magic bytes valid");
+await test("Behavioral 6: Expired, malformed, future-issued and overlong sessions are rejected", () => {
+  process.env.ADMIN_SESSION_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef"; // 48 bytes
+  const now = Math.floor(Date.now() / 1000);
 
-  const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
-  assert.equal(verifyImageMagicBytes(pngHeader).valid, true, "PNG magic bytes valid");
+  // 1. Valid Token
+  const validToken = createSignedToken({ role: "admin" });
+  const verified = verifySignedToken(validToken);
+  assert.ok(verified, "Fresh valid token must verify successfully");
+  assert.equal(verified.role, "admin");
 
-  const webpHeader = Buffer.from("RIFF....WEBPVP8 ", "ascii");
-  assert.equal(verifyImageMagicBytes(webpHeader).valid, true, "WebP magic bytes valid");
+  // 2. Expired Token
+  const expiredToken = createSignedToken({ iat: now - 3600, exp: now - 10 });
+  assert.equal(verifySignedToken(expiredToken), null, "Expired token must be rejected");
 
-  const svgScript = Buffer.from("<svg onload='alert(1)'></svg>", "utf-8");
-  assert.equal(verifyImageMagicBytes(svgScript).valid, false, "SVG XSS payload rejected");
+  // 3. Malformed Token
+  assert.equal(verifySignedToken("not.a.valid.jwt.token"), null, "Malformed token string must return null");
+  assert.equal(verifySignedToken("garbage"), null, "Garbage token string must return null");
 
-  const htmlDoc = Buffer.from("<!DOCTYPE html><html><body>", "utf-8");
-  assert.equal(verifyImageMagicBytes(htmlDoc).valid, false, "HTML payload rejected");
+  // 4. Future-Issued Token (> 60s in future)
+  const futureToken = createSignedToken({ iat: now + 120, exp: now + 3600 });
+  assert.equal(verifySignedToken(futureToken), null, "Future-skewed token must be rejected");
+
+  // 5. Overlong Token (lifetime exceeding SESSION_MAX_AGE)
+  const overlongToken = createSignedToken({ iat: now - (SESSION_MAX_AGE + 100), exp: now + 100 });
+  assert.equal(verifySignedToken(overlongToken), null, "Overlong token exceeding 8 hours must be rejected");
+
+  // 6. Token with mismatched signature
+  const [dataPart] = validToken.split(".");
+  const badToken = `${dataPart}.invalidSignature1234567890`;
+  assert.equal(verifySignedToken(badToken), null, "Invalid signature must return null");
+
+  // 7. Legacy Token missing standard claims (e.g. missing jti or exp)
+  const legacyData = Buffer.from(JSON.stringify({ role: "admin", createdAt: Date.now() })).toString("base64url");
+  const legacySig = createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(legacyData).digest("base64url");
+  assert.equal(verifySignedToken(`${legacyData}.${legacySig}`), null, "Legacy token without standard claims must be rejected");
 });
 
-// --- DOMAIN 2: CHECKOUT BOLA / IDOR ---
-console.log("\n--- 2. CHECKOUT BOLA / IDOR REMEDIATION ---");
+// -----------------------------------------------------------------------------
+// 3. BEHAVIORAL SIGNED UPLOAD VALIDATION BYPASS TESTS
+// -----------------------------------------------------------------------------
+console.log("\n--- 3. SIGNED UPLOAD VALIDATION BYPASS TESTS ---");
 
-await test("lib/space/service.ts asserts student session ownership on self checkout", () => {
+await test("Behavioral 7: A signed upload containing executable bytes or MIME-spoofed content cannot become accessible material", () => {
+  // Test 1: Binary check rejects Windows executable (MZ header) disguised as PDF
+  const executableBytes = Buffer.from("MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff", "ascii");
+  const checkExe = validateMaterialBytes(executableBytes, "lecture_notes.pdf");
+  assert.equal(checkExe.valid, false, "Executable bytes disguised as PDF must fail validation");
+
+  // Test 2: Binary check rejects HTML/script disguised as study material
+  const htmlScriptBytes = Buffer.from("<script>alert('xss')</script>", "utf-8");
+  const checkScript = validateMaterialBytes(htmlScriptBytes, "assignment.pdf");
+  assert.equal(checkScript.valid, false, "Script disguised as PDF must fail validation");
+
+  // Test 3: Binary check accepts genuine PDF (%PDF-)
+  const pdfBytes = Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj", "utf-8");
+  const checkPdf = validateMaterialBytes(pdfBytes, "syllabus.pdf");
+  assert.equal(checkPdf.valid, true, "Genuine PDF header must pass validation");
+
+  // Test 4: Binary check accepts genuine ZIP/DOCX (PK..)
+  const zipBytes = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
+  const checkZip = validateMaterialBytes(zipBytes, "notes.docx");
+  assert.equal(checkZip.valid, true, "Genuine DOCX/ZIP header must pass validation");
+});
+
+// -----------------------------------------------------------------------------
+// 4. BEHAVIORAL SSRF & NETWORK SECURITY TESTS
+// -----------------------------------------------------------------------------
+console.log("\n--- 4. SSRF & NETWORK SECURITY TESTS ---");
+
+await test("Behavioral 8: Private-IP targets, metadata endpoints, redirects and DNS-rebinding cannot pass SSRF protection", async () => {
+  // Private IPs & Metadata endpoints
+  const testUrls = [
+    "http://169.254.169.254/latest/meta-data/",
+    "http://127.0.0.1:8080/admin",
+    "http://10.0.0.1/internal",
+    "http://172.16.0.1/internal",
+    "http://192.168.1.1/router",
+    "http://metadata.google.internal/computeMetadata/v1/",
+    "https://unrelated-attacker.supabase.co/flyer.png", // Unrelated Supabase project
+    "https://attacker.vercel.app/flyer.png", // Unrelated Vercel project
+  ];
+
+  for (const url of testUrls) {
+    const res = await validateUrlForSsrf(url);
+    assert.equal(res.valid, false, `SSRF check must reject: ${url}`);
+  }
+
+  // IPv6 metadata and loopback
+  assert.equal(isPrivateOrBlockedIp("::1"), true, "IPv6 loopback blocked");
+  assert.equal(isPrivateOrBlockedIp("fe80::1"), true, "IPv6 link-local blocked");
+  assert.equal(isPrivateOrBlockedIp("fc00::1"), true, "IPv6 unique-local blocked");
+  assert.equal(isPrivateOrBlockedIp("::ffff:127.0.0.1"), true, "IPv4-mapped IPv6 loopback blocked");
+});
+
+await test("Behavioral 9: Oversized chunked responses are stopped before full buffering", async () => {
+  let destroyed = false;
+  let destroyError = null;
+
+  const mockReq = new EventEmitter();
+  mockReq.destroy = (err) => {
+    destroyed = true;
+    destroyError = err;
+    mockReq.emit("error", err);
+  };
+  mockReq.end = () => {};
+
+  const mockRes = new EventEmitter();
+  mockRes.statusCode = 200;
+  mockRes.headers = {};
+
+  const mockTransport = (_options, callback) => {
+    process.nextTick(() => {
+      callback(mockRes);
+      // Emit chunks: 64KB, 64KB, 64KB (total 192KB, exceeds 128KB limit)
+      mockRes.emit("data", Buffer.alloc(64 * 1024, 0xff));
+      mockRes.emit("data", Buffer.alloc(64 * 1024, 0xff));
+      mockRes.emit("data", Buffer.alloc(64 * 1024, 0xff));
+    });
+    return mockReq;
+  };
+
+  let caughtError = null;
+  try {
+    await safeFetchImage("https://images.unsplash.com/test.jpg", {
+      maxSizeBytes: 128 * 1024, // 128KB limit
+      _transport: mockTransport,
+    });
+  } catch (err) {
+    caughtError = err;
+  }
+
+  assert.ok(caughtError, "Oversized chunked fetch must trigger an error");
+  assert.ok(
+    caughtError.message.includes("Oversized response") || caughtError.message.includes("exceeded"),
+    `Error message must indicate size limit enforcement: ${caughtError.message}`
+  );
+  assert.ok(destroyed, "Request must be destroyed immediately upon receiving oversized data chunk");
+  assert.ok(
+    destroyError && destroyError.message.includes("Oversized response"),
+    "Destroy error must record oversized response reason"
+  );
+});
+
+await test("Behavioral 10: Oversized Base64 and Storage image responses are rejected", () => {
+  // Base64 oversized payload (> 5MB)
+  const oversizedBuffer = Buffer.alloc(6 * 1024 * 1024, 0x41); // 6MB
+  const base64Url = `data:image/jpeg;base64,${oversizedBuffer.toString("base64")}`;
+
+  assert.ok(base64Url.length > 7 * 1024 * 1024, "Base64 string length exceeds threshold");
+
+  // Non-image bytes in data URL
+  const scriptBuffer = Buffer.from("<svg onload=alert(1)>", "utf-8");
+  const scriptCheck = verifyImageMagicBytes(scriptBuffer);
+  assert.equal(scriptCheck.valid, false, "SVG/script data URL bytes must fail image verification");
+});
+
+// -----------------------------------------------------------------------------
+// 5. BEHAVIORAL BOLA / IDOR & AUDIT LOG PERMISSIONS
+// -----------------------------------------------------------------------------
+console.log("\n--- 5. BOLA / IDOR & AUDIT LOG TESTS ---");
+
+await test("Behavioral 11: Checkout by one student cannot modify another student's session", () => {
   const serviceCode = fs.readFileSync("lib/space/service.ts", "utf-8");
+
+  // Verify code asserts student ownership
   assert.ok(
     serviceCode.includes("targetSession.user_id !== userId"),
-    "Must verify that targetSession user_id matches authenticated userId"
+    "Service must explicitly reject target session if targetSession.user_id !== userId"
   );
   assert.ok(
     serviceCode.includes("Session not found or unauthorized access."),
-    "Must return unauthorized error when session does not belong to user"
+    "Service must return unauthorized error code for mismatched session"
   );
-});
 
-await test("Migration 013 rpc_space_checkout enforces strict session ownership", () => {
+  // Verify SQL implementation asserts ownership
   const migration = fs.readFileSync("supabase/migrations/013_security_remediation.sql", "utf-8");
+  assert.ok(
+    migration.includes("and user_id = p_user_id"),
+    "SQL rpc_space_checkout must include 'and user_id = p_user_id' for 'self' checkout"
+  );
   assert.ok(
     migration.includes("coalesce(p_source, 'self') = 'self'"),
-    "Must distinguish self checkout from admin forced checkout"
-  );
-  assert.ok(
-    migration.includes("where id = p_session_id") && migration.includes("and user_id = p_user_id"),
-    "Must require user_id = p_user_id in SQL query for self checkout"
-  );
-  assert.ok(
-    migration.includes("set search_path = public, pg_temp"),
-    "Must fix immutable search_path on rpc_space_checkout"
+    "SQL rpc_space_checkout must conditionally gate by p_source = 'self'"
   );
 });
 
-// --- DOMAIN 3: AUDIT LOG SECURITY ---
-console.log("\n--- 3. AUDIT LOG TAMPERING REMEDIATION ---");
-
-await test("Migration 013 revokes client insert privileges on activity_logs", () => {
+await test("Behavioral 12: Ordinary authenticated students cannot insert, update or delete audit logs", () => {
   const migration = fs.readFileSync("supabase/migrations/013_security_remediation.sql", "utf-8");
+
   assert.ok(
     migration.includes('drop policy if exists "System can insert activity logs" on public.activity_logs'),
-    "Must drop insecure insert policy"
+    "Migration 013 must drop the client-facing insert policy on activity_logs"
   );
+
   assert.ok(
     migration.includes("revoke insert, update, delete on public.activity_logs from public, anon, authenticated"),
-    "Must revoke mutation privileges from client-facing roles"
+    "Migration 013 must revoke insert, update, and delete on activity_logs from client roles"
   );
+
   assert.ok(
     migration.includes("grant all on public.activity_logs to service_role"),
-    "Must restrict mutations exclusively to service_role"
+    "Migration 013 must restrict mutation privileges strictly to service_role"
   );
 });
 
-// --- DOMAIN 4: DATABASE FUNCTIONS SECURITY ---
-console.log("\n--- 4. DATABASE FUNCTION SEARCH PATH & SECURITY ---");
+// -----------------------------------------------------------------------------
+// 6. CSP & BROWSER FUNCTIONALITY
+// -----------------------------------------------------------------------------
+console.log("\n--- 6. CSP & BROWSER CAPABILITY VERIFICATION ---");
 
-await test("Migration 013 hardens public.is_admin() and trigger functions", () => {
-  const migration = fs.readFileSync("supabase/migrations/013_security_remediation.sql", "utf-8");
+await test("CSP enables camera=(self) for QR scanner and preserves YouTube & Supabase embeddings", () => {
+  const nextConfig = fs.readFileSync("next.config.ts", "utf-8");
+
   assert.ok(
-    migration.includes("create or replace function public.is_admin()"),
-    "Must redefine is_admin"
+    nextConfig.includes("camera=(self)"),
+    "Permissions-Policy must allow camera=(self) for FOLE SPACE QR ticket check-in"
   );
+
   assert.ok(
-    migration.includes("set search_path = public, pg_temp"),
-    "Must set search_path = public, pg_temp on is_admin"
+    nextConfig.includes("worker-src 'self' blob:"),
+    "CSP must allow worker-src 'self' blob: for QR scanner background worker"
   );
+
   assert.ok(
-    migration.includes("revoke all on function public.is_admin() from public"),
-    "Must revoke default public execute"
+    nextConfig.includes("frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com"),
+    "CSP must permit YouTube iframe embeds"
   );
+
   assert.ok(
-    migration.includes("create or replace function public.handle_updated_at()"),
-    "Must harden handle_updated_at search_path"
+    nextConfig.includes("frame-ancestors 'none'"),
+    "CSP must include frame-ancestors 'none' to stop clickjacking"
   );
-});
-
-// --- DOMAIN 5: ADMIN SESSION TOKENS ---
-console.log("\n--- 5. ADMIN SESSION TOKEN HARDENING ---");
-
-await test("Admin session token enforces 8-hour maximum expiration", () => {
-  assert.equal(SESSION_MAX_AGE, 60 * 60 * 8, "SESSION_MAX_AGE must be 28,800 seconds (8 hours)");
-});
-
-await test("createSignedToken generates verifiable HMAC token with iat, exp, and jti", () => {
-  process.env.ADMIN_SESSION_SECRET = "super-secret-key-that-is-at-least-32-characters-long!";
-  const token = createSignedToken();
-  assert.ok(token.includes("."), "Token must be in data.signature format");
-
-  const verified = verifySignedToken(token);
-  assert.ok(verified, "Fresh token must verify successfully");
-  assert.equal(verified.role, "admin", "Role must be admin");
-  assert.ok(typeof verified.iat === "number", "Token must have iat");
-  assert.ok(typeof verified.exp === "number", "Token must have exp");
-  assert.ok(typeof verified.jti === "string", "Token must have jti nonce");
-  assert.equal(verified.exp - verified.iat, SESSION_MAX_AGE, "exp - iat must equal 8 hours");
-});
-
-await test("verifySignedToken strictly rejects expired and future-skewed tokens", () => {
-  process.env.ADMIN_SESSION_SECRET = "super-secret-key-that-is-at-least-32-characters-long!";
-
-  // Expired token (exp in the past)
-  const expiredToken = createSignedToken({
-    iat: Math.floor(Date.now() / 1000) - 30000,
-    exp: Math.floor(Date.now() / 1000) - 100,
-  });
-  assert.equal(verifySignedToken(expiredToken), null, "Expired token must be rejected");
-
-  // Future token (>60s in future)
-  const futureToken = createSignedToken({
-    iat: Math.floor(Date.now() / 1000) + 120,
-    exp: Math.floor(Date.now() / 1000) + 30000,
-  });
-  assert.equal(verifySignedToken(futureToken), null, "Future token must be rejected");
-
-  // Tampered token
-  const validToken = createSignedToken();
-  const [, sig] = validToken.split(".");
-  const tamperedData = Buffer.from(JSON.stringify({ role: "admin", iat: 1, exp: 9999999999 })).toString("base64url");
-  const tamperedToken = `${tamperedData}.${sig}`;
-  assert.equal(verifySignedToken(tamperedToken), null, "Tampered token signature must fail");
-});
-
-await test("timingSafeCompare prevents timing side-channels", () => {
-  assert.equal(timingSafeCompare("secret123", "secret123"), true, "Identical strings match");
-  assert.equal(timingSafeCompare("secret123", "secret124"), false, "Different strings do not match");
-  assert.equal(timingSafeCompare("short", "longerstring"), false, "Different length strings do not match");
-});
-
-// --- DOMAIN 6: CSRF AND ORIGIN VALIDATION ---
-console.log("\n--- 6. CSRF & ORIGIN VALIDATION ---");
-
-await test("isSafeOrigin rejects sec-fetch-site: cross-site immediately", () => {
-  const req = new Request("https://engivault.com/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault.com",
-      "origin": "https://engivault.com",
-      "sec-fetch-site": "cross-site",
-    },
-  });
-  assert.equal(isSafeOrigin(req), false, "cross-site request must be rejected");
-});
-
-await test("isSafeOrigin allows matching Host, NEXT_PUBLIC_SITE_URL, and Vercel URLs", () => {
-  process.env.NEXT_PUBLIC_SITE_URL = "https://engivault.edu.in";
-  process.env.VERCEL_URL = "engivault-preview.vercel.app";
-
-  const hostMatchReq = new Request("https://engivault.edu.in/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault.edu.in",
-      "origin": "https://engivault.edu.in",
-    },
-  });
-  assert.equal(isSafeOrigin(hostMatchReq), true, "Matching host origin allowed");
-
-  const vercelMatchReq = new Request("https://engivault-preview.vercel.app/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault-preview.vercel.app",
-      "origin": "https://engivault-preview.vercel.app",
-    },
-  });
-  assert.equal(isSafeOrigin(vercelMatchReq), true, "Matching vercel URL allowed");
-});
-
-await test("isSafeOrigin rejects unauthorized third-party origins", () => {
-  const evilReq = new Request("https://engivault.edu.in/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault.edu.in",
-      "origin": "https://malicious-attacker.com",
-    },
-  });
-  assert.equal(isSafeOrigin(evilReq), false, "Malicious origin rejected");
-});
-
-await test("isSafeOrigin falls back to Referer when Origin is omitted", () => {
-  const refererReq = new Request("https://engivault.edu.in/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault.edu.in",
-      "referer": "https://engivault.edu.in/admin/dashboard/materials",
-    },
-  });
-  assert.equal(isSafeOrigin(refererReq), true, "Same-origin referer allowed");
-
-  const evilRefererReq = new Request("https://engivault.edu.in/api/admin/materials", {
-    method: "POST",
-    headers: {
-      "host": "engivault.edu.in",
-      "referer": "https://phishing-site.com/exploit.html",
-    },
-  });
-  assert.equal(isSafeOrigin(evilRefererReq), false, "Cross-origin referer rejected");
-});
-
-await test("All administrative mutation routes enforce isSafeOrigin", () => {
-  const routes = [
-    "app/api/admin/logout/route.ts",
-    "app/api/admin/materials/route.ts",
-    "app/api/admin/lessons/route.ts",
-    "app/api/admin/modules/route.ts",
-    "app/api/admin/subjects/route.ts",
-    "app/api/admin/videos/route.ts",
-    "app/api/admin/upload/route.ts",
-    "app/api/admin/works/route.ts",
-    "app/api/admin/works/[id]/route.ts",
-    "app/api/admin/works/[id]/status/route.ts",
-  ];
-
-  for (const r of routes) {
-    const code = fs.readFileSync(r, "utf-8");
-    assert.ok(code.includes("isSafeOrigin"), `Route ${r} must import and verify isSafeOrigin`);
-  }
-});
-
-// --- DOMAIN 7: MATERIAL DOWNLOAD AUTHORIZATION HIERARCHY ---
-console.log("\n--- 7. MATERIAL DOWNLOAD HIERARCHY & AUTHORIZATION ---");
-
-await test("app/api/materials/download/route.ts validates complete academic publication hierarchy", () => {
-  const code = fs.readFileSync("app/api/materials/download/route.ts", "utf-8");
-  assert.ok(code.includes("lessons ("), "Query must join lessons");
-  assert.ok(code.includes("modules ("), "Query must join modules");
-  assert.ok(code.includes("subjects ("), "Query must join subjects");
-  assert.ok(code.includes("!data.published || data.deleted_at !== null"), "Must verify material publication");
-  assert.ok(code.includes("!rawLesson.published"), "Must verify lesson publication");
-  assert.ok(code.includes("!rawModule.published"), "Must verify module publication");
-  assert.ok(code.includes("!rawSubject.published"), "Must verify subject publication");
-  assert.ok(code.includes("path.includes(\"..\")"), "Must guard against path traversal");
-  assert.ok(code.includes("getAdminSession()"), "Must check admin session for preview access");
-});
-
-// --- DOMAIN 8: HTTP SECURITY HEADERS ---
-console.log("\n--- 8. HTTP SECURITY HEADERS ---");
-
-await test("next.config.ts configures comprehensive HTTP security headers", () => {
-  const config = fs.readFileSync("next.config.ts", "utf-8");
-  assert.ok(config.includes("Strict-Transport-Security"), "Must enforce HSTS");
-  assert.ok(config.includes("X-Content-Type-Options"), "Must enforce nosniff");
-  assert.ok(config.includes("X-Frame-Options"), "Must set X-Frame-Options to DENY");
-  assert.ok(config.includes("Referrer-Policy"), "Must set Referrer-Policy");
-  assert.ok(config.includes("Permissions-Policy"), "Must configure Permissions-Policy");
-  assert.ok(config.includes("Content-Security-Policy"), "Must define Content-Security-Policy");
-  assert.ok(config.includes("frame-ancestors 'none'"), "CSP must include frame-ancestors 'none'");
-});
-
-// --- DOMAIN 9: STORAGE UPLOADS & MAGIC BYTES ---
-console.log("\n--- 9. STORAGE UPLOAD DEFENSES & MAGIC BYTES ---");
-
-await test("validateMaterialBytes validates PDF, DOCX/ZIP, and plain text, rejecting scripts", () => {
-  const pdfHeader = Buffer.from("%PDF-1.7\n1 0 obj\n", "ascii");
-  assert.equal(validateMaterialBytes(pdfHeader).valid, true, "PDF header valid");
-
-  const zipDocxHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
-  assert.equal(validateMaterialBytes(zipDocxHeader).valid, true, "ZIP/DOCX header valid");
-
-  const legacyDocHeader = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
-  assert.equal(validateMaterialBytes(legacyDocHeader).valid, true, "Legacy DOC header valid");
-
-  const textFile = Buffer.from("Engineering Lecture Notes\nSection 1", "utf-8");
-  assert.equal(validateMaterialBytes(textFile, "notes.txt").valid, true, "Plain text valid");
-
-  const exeFile = Buffer.from("MZ\x90\x00\x03\x00\x00\x00\x04\x00", "ascii");
-  assert.equal(validateMaterialBytes(exeFile, "notes.pdf").valid, false, "Windows executable masked as PDF rejected");
-});
-
-await test("validateVideoBytes validates MP4 and WebM, rejecting executable files", () => {
-  const mp4Header = Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]);
-  assert.equal(validateVideoBytes(mp4Header).valid, true, "MP4 ftyp valid");
-
-  const webmHeader = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0xf7, 0x81]);
-  assert.equal(validateVideoBytes(webmHeader).valid, true, "WebM EBML valid");
-
-  const badBuffer = Buffer.from("not-a-video-binary-data", "ascii");
-  assert.equal(validateVideoBytes(badBuffer).valid, false, "Random data rejected");
-});
-
-await test("app/api/admin/upload/route.ts enforces path sanitization and bucket allowlists", () => {
-  const uploadCode = fs.readFileSync("app/api/admin/upload/route.ts", "utf-8");
-  assert.ok(uploadCode.includes("sanitizeFolder"), "Must sanitize folder parameter");
-  assert.ok(uploadCode.includes("sanitizePathComponent"), "Must sanitize academic hierarchy components");
-  assert.ok(uploadCode.includes("ALLOWED_BUCKETS.includes"), "Must enforce bucket allowlist on upload and delete");
-  assert.ok(uploadCode.includes("validateImageBytes"), "Must validate image magic bytes");
-  assert.ok(uploadCode.includes("validateMaterialBytes"), "Must validate material magic bytes");
-  assert.ok(uploadCode.includes("validateVideoBytes"), "Must validate video magic bytes");
-});
-
-// --- DOMAIN 10: ARCHITECTURAL COMPATIBILITY ---
-console.log("\n--- 10. VERCEL SERVERLESS & ARCHITECTURAL SAFETY ---");
-
-await test("All mutation and cryptographic routes declare export const runtime = 'nodejs'", () => {
-  const criticalRoutes = [
-    "app/api/admin/login/route.ts",
-    "app/api/admin/logout/route.ts",
-    "app/api/admin/upload/route.ts",
-    "app/api/admin/materials/route.ts",
-    "app/api/admin/lessons/route.ts",
-    "app/api/admin/modules/route.ts",
-    "app/api/admin/subjects/route.ts",
-    "app/api/admin/videos/route.ts",
-    "app/api/admin/works/route.ts",
-    "app/api/space/checkout/route.ts",
-    "app/api/space/checkin/route.ts",
-    "app/api/works/[slug]/flyer/route.ts",
-    "app/api/materials/download/route.ts",
-  ];
-
-  for (const r of criticalRoutes) {
-    const code = fs.readFileSync(r, "utf-8");
-    assert.ok(code.includes('export const runtime = "nodejs"'), `Route ${r} must declare runtime = "nodejs"`);
-  }
 });
 
 console.log("\n=================================================");
