@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -52,6 +53,11 @@ export function LoginDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sync initial tab when opening
   useEffect(() => {
@@ -225,24 +231,27 @@ export function LoginDialog({
     }
   };
 
-  return (
+  if (!isOpen || !mounted) return null;
+
+  const dialogContent = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[9999] pointer-events-auto flex items-center justify-center p-4 sm:p-6"
     >
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 pointer-events-auto cursor-pointer"
         aria-hidden="true"
       />
 
       {/* Modal Dialog Card */}
       <div
         ref={dialogRef}
-        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-5 sm:p-7 space-y-5 z-10 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 fade-in duration-150"
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-5 sm:p-7 space-y-5 z-10 text-slate-900 dark:text-slate-100 animate-in zoom-in-95 fade-in duration-150 pointer-events-auto"
       >
         {/* Header with Title and Close Button */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -275,7 +284,7 @@ export function LoginDialog({
               setError(null);
             }}
             className={cn(
-              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer",
               activeTab === "student"
                 ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -293,7 +302,7 @@ export function LoginDialog({
               setError(null);
             }}
             className={cn(
-              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+              "flex-1 min-h-11 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer",
               activeTab === "admin"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -350,15 +359,17 @@ export function LoginDialog({
             ) : (
               <div className="space-y-4">
                 {/* Sub-toggle: Sign In vs Create Account */}
-                <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs">
+                <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs" role="tablist" aria-label="Student action">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={studentMode === "login"}
                     onClick={() => {
                       setStudentMode("login");
                       setError(null);
                     }}
                     className={cn(
-                      "min-h-11 pb-2 font-semibold transition-colors mr-4 border-b-2",
+                      "min-h-11 pb-2 font-semibold transition-colors mr-4 border-b-2 cursor-pointer",
                       studentMode === "login"
                         ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
                         : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -368,12 +379,14 @@ export function LoginDialog({
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={studentMode === "signup"}
                     onClick={() => {
                       setStudentMode("signup");
                       setError(null);
                     }}
                     className={cn(
-                      "min-h-11 pb-2 font-semibold transition-colors border-b-2",
+                      "min-h-11 pb-2 font-semibold transition-colors border-b-2 cursor-pointer",
                       studentMode === "signup"
                         ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
                         : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -443,7 +456,7 @@ export function LoginDialog({
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg cursor-pointer"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -459,7 +472,7 @@ export function LoginDialog({
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -515,7 +528,7 @@ export function LoginDialog({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg cursor-pointer"
                   aria-label={showPassword ? "Hide access code" : "Show access code"}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -526,7 +539,7 @@ export function LoginDialog({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-slate-900 hover:bg-emerald-700 active:bg-emerald-800 dark:bg-slate-800 dark:hover:bg-emerald-600 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white bg-slate-900 hover:bg-emerald-700 active:bg-emerald-800 dark:bg-slate-800 dark:hover:bg-emerald-600 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             >
               {loading ? (
                 <>
@@ -548,7 +561,7 @@ export function LoginDialog({
           <button
             type="button"
             onClick={onClose}
-            className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors"
+            className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium transition-colors cursor-pointer"
           >
             Continue as guest
           </button>
@@ -556,4 +569,6 @@ export function LoginDialog({
       </div>
     </div>
   );
+
+  return createPortal(dialogContent, document.body);
 }

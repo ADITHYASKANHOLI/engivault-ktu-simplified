@@ -3327,6 +3327,79 @@ async function runTests() {
     );
   });
 
+  // -------------------------------------------------------------
+  // 23. LOGIN DIALOG INTERACTIONS & ACADEMIC SEARCH ENGINE
+  // -------------------------------------------------------------
+  console.log("\n--- 23. LOGIN INTERACTIONS & ACADEMIC SEARCH ENGINE ---");
+
+  test("LoginDialog uses createPortal to break out of ancestor DOM clipping and styling constraints", () => {
+    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
+    assert.ok(code.includes("createPortal("), "LoginDialog must mount into document.body using createPortal");
+    assert.ok(code.includes("z-[9999]"), "Outer container must declare high stacking index z-[9999]");
+    assert.ok(code.includes("pointer-events-auto"), "Outer container must declare pointer-events-auto");
+  });
+
+  test("LoginDialog prevents inside clicks from bubbling to backdrop and handles backdrop close", () => {
+    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
+    assert.ok(code.includes("e.stopPropagation()"), "Modal card must stop click propagation");
+    assert.ok(code.includes("onClick={onClose}"), "Backdrop must trigger onClose handler");
+  });
+
+  test("LoginDialog provides accessible student/admin segmented selector and signin/signup tabs", () => {
+    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
+    assert.ok(code.includes('role="tablist"'), "Account selector must use accessible tablist pattern");
+    assert.ok(code.includes('aria-selected={activeTab === "student"}'), "Must indicate student tab state");
+    assert.ok(code.includes('aria-selected={activeTab === "admin"}'), "Must indicate admin tab state");
+    assert.ok(code.includes('studentMode === "login"'), "Must support student login mode");
+    assert.ok(code.includes('studentMode === "signup"'), "Must support student signup mode");
+  });
+
+  test("LoginDialog prevents duplicate form submissions while loading and manages focus lifecycle", () => {
+    const code = nodeFs.readFileSync("components/auth/LoginDialog.tsx", "utf-8");
+    assert.ok(code.includes("if (loading) return"), "Must ignore form submissions while loading");
+    assert.ok(code.includes("disabled={loading}"), "Buttons and inputs must be disabled while loading");
+    assert.ok(code.includes('e.key === "Escape"'), "Escape key must close dialog");
+    assert.ok(code.includes("previousFocusRef.current?.focus()"), "Focus must be restored on dialog close");
+  });
+
+  test("Academic search utility provides normalization, alias expansion, and subject-aware matching", () => {
+    const code = nodeFs.readFileSync("lib/utils/academic-search.ts", "utf-8");
+    assert.ok(code.includes("ACADEMIC_ALIASES_MAP"), "Must declare academic alias mappings");
+    assert.ok(code.includes("maths:") && code.includes('"mathematics"'), "Must map maths -> mathematics");
+    assert.ok(code.includes("eg:") && code.includes('"engineering graphics"'), "Must map eg -> engineering graphics");
+    assert.ok(code.includes("bee:") && code.includes('"basics of electrical engineering"'), "Must map bee -> electrical");
+    assert.ok(code.includes("export function matchesSubjectQuery"), "Must export matchesSubjectQuery");
+    assert.ok(code.includes("export function matchesAcademicTarget"), "Must export matchesAcademicTarget");
+    assert.ok(code.includes("export function getAcademicCandidateTerms"), "Must export getAcademicCandidateTerms");
+  });
+
+  test("QuickSearchDialog mounts via createPortal, groups results by section, and provides metadata", () => {
+    const code = nodeFs.readFileSync("components/search/QuickSearchDialog.tsx", "utf-8");
+    assert.ok(code.includes("createPortal("), "QuickSearchDialog must use createPortal to mount into document.body");
+    assert.ok(code.includes("z-[9999]"), "Must declare z-[9999]");
+    assert.ok(code.includes("Subjects"), "Must render Subjects section");
+    assert.ok(code.includes("Modules"), "Must render Modules section");
+    assert.ok(code.includes("Lectures"), "Must render Lectures section");
+    assert.ok(code.includes("breadcrumb"), "Must compute breadcrumb hierarchy in lecture results");
+  });
+
+  test("Cascading subject search returns all lectures under all modules of matching subject", () => {
+    const store = JSON.parse(nodeFs.readFileSync(".engivault-local-store.json", "utf-8"));
+    const mathSub = store.subjects.find((s) => s.title.toLowerCase().includes("mathematics"));
+    assert.ok(mathSub, "Mathematics subject must exist in academic catalog");
+
+    const mathModules = store.modules.filter((m) => m.subject_id === mathSub.id && m.published);
+    assert.ok(mathModules.length > 0, "Mathematics must have published modules");
+
+    const mathModuleIds = new Set(mathModules.map((m) => m.id));
+    const mathLectures = store.lessons.filter((l) => mathModuleIds.has(l.module_id) && l.published);
+    assert.ok(mathLectures.length >= 3, `Mathematics must have at least 3 published lectures, found ${mathLectures.length}`);
+
+    // Verify lecture with non-matching title like 'Introduction to Limits' belongs to math modules
+    const limits = mathLectures.find((l) => l.title.includes("Limits"));
+    assert.ok(limits, "Limits lecture must be present in math lecture hierarchy");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

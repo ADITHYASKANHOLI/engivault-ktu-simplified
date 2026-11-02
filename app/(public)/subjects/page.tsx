@@ -2,6 +2,7 @@ import React from "react";
 import { BookOpen, Search } from "lucide-react";
 import { getPublishedSubjects } from "@/lib/queries";
 import { SubjectGrid } from "@/components/subjects/SubjectGrid";
+import { matchesSubjectQuery } from "@/lib/utils/academic-search";
 
 export const metadata = {
   title: "Engineering Subjects Catalog — ENGIVAULT",
@@ -18,13 +19,7 @@ export default async function SubjectsPage({
   let subjects = await getPublishedSubjects();
 
   if (q) {
-    const query = q.toLowerCase().trim();
-    subjects = subjects.filter(
-      (s) =>
-        s.title.toLowerCase().includes(query) ||
-        s.code?.toLowerCase().includes(query) ||
-        s.short_description?.toLowerCase().includes(query)
-    );
+    subjects = subjects.filter((s) => matchesSubjectQuery(s, q));
   }
 
   return (

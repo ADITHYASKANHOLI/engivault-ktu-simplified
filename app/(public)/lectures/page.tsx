@@ -14,6 +14,10 @@ import {
   getPublishedSubjects,
 } from "@/lib/queries";
 import { LectureCard } from "@/components/lectures/LectureCard";
+import {
+  matchesSubjectQuery,
+  matchesAcademicTarget,
+} from "@/lib/utils/academic-search";
 
 export const metadata = {
   title: "Academic Lectures Browser — ENGIVAULT",
@@ -74,15 +78,23 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
   }
 
   if (q) {
-    const query = q.toLowerCase().trim();
     filtered = filtered.filter((l) => {
-      const titleMatch = l.title.toLowerCase().includes(query);
-      const descMatch = (l.description || l.short_description || "").toLowerCase().includes(query);
-      const subjectMatch = (l.subject?.title || "").toLowerCase().includes(query) || (l.subject?.code || "").toLowerCase().includes(query);
-      const moduleMatch = (l.module?.title || "").toLowerCase().includes(query);
-      const topicMatch = (l.topic?.title || "").toLowerCase().includes(query);
-      const facultyMatch = (l.faculty?.name || "").toLowerCase().includes(query);
-      return titleMatch || descMatch || subjectMatch || moduleMatch || topicMatch || facultyMatch;
+      const parentSub =
+        l.subject ||
+        (l.module?.subject_id
+          ? subjects.find((s) => s.id === l.module?.subject_id)
+          : null) ||
+        (l.module as any)?.subject ||
+        (l.module as any)?.subjects;
+
+      const subMatch = parentSub ? matchesSubjectQuery(parentSub, q) : false;
+      const titleMatch = matchesAcademicTarget(l.title, q);
+      const descMatch = matchesAcademicTarget(l.description || l.short_description || "", q);
+      const moduleMatch = matchesAcademicTarget(l.module?.title || "", q);
+      const topicMatch = matchesAcademicTarget(l.topic?.title || "", q);
+      const facultyMatch = matchesAcademicTarget(l.faculty?.name || (l as any).instructor || "", q);
+
+      return subMatch || titleMatch || descMatch || moduleMatch || topicMatch || facultyMatch;
     });
   }
 
