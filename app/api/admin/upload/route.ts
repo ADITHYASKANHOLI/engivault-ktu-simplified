@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
+import { isSafeOrigin } from "@/lib/security/origin";
 import { uploadAuthorizeSchema } from "@/lib/validation/schemas";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
 import { logActivity } from "@/lib/queries";
+import {
+  validateImageBytes,
+  validateMaterialBytes,
+  validateVideoBytes,
+} from "@/lib/security/magic-bytes";
 
 const ALLOWED_BUCKETS = [
   "engivault-videos",
@@ -13,7 +19,35 @@ const ALLOWED_BUCKETS = [
 
 export const runtime = "nodejs";
 
+function sanitizePathComponent(val: string | null | undefined): string | null {
+  if (!val) return null;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed.includes("..") || trimmed.includes("/") || trimmed.includes("\\")) {
+    return null;
+  }
+  if (!/^[a-zA-Z0-9_\-]+$/.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
+function sanitizeFolder(folder: string | null | undefined): string | null {
+  if (!folder) return null;
+  const trimmed = folder.trim();
+  if (!trimmed || trimmed.includes("..") || trimmed.includes("\\") || trimmed.startsWith("/")) {
+    return null;
+  }
+  if (!/^[a-zA-Z0-9_\-]+(\/[a-zA-Z0-9_\-]+)*$/.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
 export async function POST(request: NextRequest) {
+  if (!isSafeOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,112 +60,70 @@ export async function POST(request: NextRequest) {
     try {
       const formData = await request.formData();
       const file = formData.get("file") as File | null;
-      const bucket = (formData.get("bucket") as string) || "engivault-videos";
-      const subject_id = (formData.get("subject_id") as string) || "";
-      const module_id = (formData.get("module_id") as string) || "";
-      const lesson_id = (formData.get("lesson_id") as string) || "";
-      const folder = (formData.get("folder") as string) || "";
+      const rawBucket = (formData.get("bucket") as string) || "engivault-videos";
+      const rawSubjectId = (formData.get("subject_id") as string) || "";
+      const rawModuleId = (formData.get("module_id") as string) || "";
+      const rawLessonId = (formData.get("lesson_id") as string) || "";
+      const rawFolder = (formData.get("folder") as string) || "";
 
       if (!file) {
         return NextResponse.json({ error: "No file provided for upload" }, { status: 400 });
       }
 
-      if (!ALLOWED_BUCKETS.includes(bucket as any)) {
-        return NextResponse.json({ error: `Invalid target bucket: ${bucket}` }, { status: 400 });
+      if (!ALLOWED_BUCKETS.includes(rawBucket as any)) {
+        return NextResponse.json({ error: `Invalid target bucket: ${rawBucket}` }, { status: 400 });
       }
+      const bucket = rawBucket as (typeof ALLOWED_BUCKETS)[number];
 
-      // Validate video MIME types if target is engivault-videos
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Binary Magic Bytes Validation & Size Constraints
       if (bucket === "engivault-videos") {
-        const mime = file.type?.toLowerCase() || "";
-        const name = file.name.toLowerCase();
-        const isValidVideo =
-          mime.startsWith("video/") ||
-          name.endsWith(".mp4") ||
-          name.endsWith(".webm") ||
-          name.endsWith(".mov") ||
-          name.endsWith(".mkv");
-
-        if (!isValidVideo) {
-          return NextResponse.json(
-            { error: "Invalid video format. Supported formats: MP4, WebM, QuickTime (.mov), MKV." },
-            { status: 400 }
-          );
-        }
-
         if (file.size > 5368709120) {
           return NextResponse.json({ error: "File exceeds 5GB maximum upload limit." }, { status: 400 });
         }
-      }
-
-      // Validate material MIME types if target is engivault-materials
-      if (bucket === "engivault-materials") {
-        const mime = file.type?.toLowerCase() || "";
-        const name = file.name.toLowerCase();
-        const isValidDoc =
-          mime.includes("pdf") ||
-          mime.includes("document") ||
-          mime.includes("presentation") ||
-          mime.includes("text") ||
-          mime.includes("msword") ||
-          mime.includes("zip") ||
-          mime.includes("octet-stream") ||
-          name.endsWith(".pdf") ||
-          name.endsWith(".doc") ||
-          name.endsWith(".docx") ||
-          name.endsWith(".ppt") ||
-          name.endsWith(".pptx") ||
-          name.endsWith(".txt") ||
-          name.endsWith(".zip");
-
-        if (!isValidDoc) {
-          return NextResponse.json(
-            { error: "Invalid document format. Supported formats: PDF, DOC, DOCX, PPT, PPTX, TXT, ZIP." },
-            { status: 400 }
-          );
+        const check = validateVideoBytes(buffer);
+        if (!check.valid) {
+          return NextResponse.json({ error: check.error || "Invalid video format." }, { status: 400 });
         }
-
+      } else if (bucket === "engivault-materials") {
         if (file.size > 104857600) {
           return NextResponse.json({ error: "File exceeds 100MB maximum upload limit for study materials." }, { status: 400 });
         }
-      }
-
-      // Validate image MIME types if target is engivault-thumbnails or engivault-branding
-      if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
-        const mime = file.type?.toLowerCase() || "";
-        const name = file.name.toLowerCase();
-        const isValidImg =
-          mime.startsWith("image/") ||
-          mime === "image/jpeg" ||
-          mime === "image/png" ||
-          mime === "image/webp" ||
-          name.endsWith(".jpg") ||
-          name.endsWith(".jpeg") ||
-          name.endsWith(".png") ||
-          name.endsWith(".webp") ||
-          name.endsWith(".svg");
-
-        if (!isValidImg) {
-          return NextResponse.json(
-            { error: "Invalid image format. Supported formats: JPEG, PNG, WebP." },
-            { status: 400 }
-          );
+        const check = validateMaterialBytes(buffer, file.name);
+        if (!check.valid) {
+          return NextResponse.json({ error: check.error || "Invalid document format." }, { status: 400 });
         }
-
+      } else if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
         if (file.size > 10 * 1024 * 1024) {
           return NextResponse.json({ error: "Image file exceeds 10MB maximum upload limit." }, { status: 400 });
         }
+        const mime = file.type?.toLowerCase() || "";
+        const allowedImageMimes = ["image/jpeg", "image/png", "image/webp"];
+        if (mime && !allowedImageMimes.includes(mime)) {
+          return NextResponse.json({ error: "Invalid image format. Allowed: image/jpeg, image/png, image/webp" }, { status: 400 });
+        }
+        const check = validateImageBytes(buffer);
+        if (!check.valid) {
+          return NextResponse.json({ error: check.error || "Invalid image format." }, { status: 400 });
+        }
       }
 
-      // Sanitize filename and generate collision-resistant storage path
-      const safeFilename = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+      // Path Sanitization & Traversal Prevention
+      const safeFolder = sanitizeFolder(rawFolder);
+      const safeSubjectId = sanitizePathComponent(rawSubjectId) || "general";
+      const safeModuleId = sanitizePathComponent(rawModuleId) || "general";
+      const safeLessonId = sanitizePathComponent(rawLessonId) || "general";
+
+      const basename = (file.name || "unnamed").split(/[/\\]/).pop() || "unnamed";
+      const safeFilename = basename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
       const uniquePrefix = crypto.randomUUID();
-      const basePath = folder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}`);
+      const basePath = safeFolder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${safeSubjectId}/${safeModuleId}/${safeLessonId}`);
       const storagePath = `${basePath}/${uniquePrefix}-${safeFilename}`;
 
       if (isSupabaseConfigured()) {
         const supabase = createAdminClient();
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
 
         const { error: uploadError } = await supabase.storage
           .from(bucket)
@@ -175,7 +167,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Local fallback mode: simulate upload and provide base64 data URL for images so they preview immediately
+      // Local fallback simulation mode
       await logActivity("File Upload Simulated (Fallback)", "upload", {
         bucket,
         filename: file.name,
@@ -185,8 +177,7 @@ export async function POST(request: NextRequest) {
 
       let publicUrl = storagePath;
       if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        const base64 = buffer.toString("base64");
         publicUrl = `data:${file.type || "image/png"};base64,${base64}`;
       }
 
@@ -222,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     const { bucket, filename, file_size, subject_id, module_id, lesson_id, mime_type } = result.data;
 
-    // Validate video MIME types if target is engivault-videos
+    // Validate size and MIME rules per bucket
     if (bucket === "engivault-videos") {
       const mime = (mime_type || "").toLowerCase();
       const name = filename.toLowerCase();
@@ -245,7 +236,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate material MIME types if target is engivault-materials
     if (bucket === "engivault-materials") {
       const mime = (mime_type || "").toLowerCase();
       const name = filename.toLowerCase();
@@ -256,7 +246,6 @@ export async function POST(request: NextRequest) {
         mime.includes("text") ||
         mime.includes("msword") ||
         mime.includes("zip") ||
-        mime.includes("octet-stream") ||
         name.endsWith(".pdf") ||
         name.endsWith(".doc") ||
         name.endsWith(".docx") ||
@@ -277,7 +266,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate thumbnail/flyer MIME types if target is engivault-thumbnails or engivault-branding
     if (bucket === "engivault-thumbnails" || bucket === "engivault-branding") {
       const mime = (mime_type || "").toLowerCase();
       const name = filename.toLowerCase();
@@ -286,12 +274,11 @@ export async function POST(request: NextRequest) {
         name.endsWith(".jpg") ||
         name.endsWith(".jpeg") ||
         name.endsWith(".png") ||
-        name.endsWith(".webp") ||
-        name.endsWith(".svg");
+        name.endsWith(".webp");
 
-      if (!isValidImg) {
+      if (!isValidImg || name.endsWith(".svg") || mime.includes("svg")) {
         return NextResponse.json(
-          { error: "Invalid image format. Supported formats: JPEG, PNG, WebP." },
+          { error: "Invalid image format. Only raster images (JPEG, PNG, WebP) are permitted." },
           { status: 400 }
         );
       }
@@ -301,10 +288,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const safeFilename = filename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
+    const safeFolder = sanitizeFolder(result.data.folder);
+    const safeSubjectId = sanitizePathComponent(subject_id) || "general";
+    const safeModuleId = sanitizePathComponent(module_id) || "general";
+    const safeLessonId = sanitizePathComponent(lesson_id) || "general";
+
+    const basename = filename.split(/[/\\]/).pop() || "unnamed";
+    const safeFilename = basename.toLowerCase().replace(/[^a-z0-9.-]/g, "_");
     const uniquePrefix = crypto.randomUUID();
-    const folder = result.data.folder || "";
-    const basePath = folder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${subject_id || "general"}/${module_id || "general"}/${lesson_id || "general"}`);
+    const basePath = safeFolder || (bucket === "engivault-thumbnails" ? "works-flyers" : `${safeSubjectId}/${safeModuleId}/${safeLessonId}`);
     const storagePath = `${basePath}/${uniquePrefix}-${safeFilename}`;
 
     if (!isSupabaseConfigured()) {
@@ -364,6 +356,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isSafeOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -386,6 +382,16 @@ export async function DELETE(request: NextRequest) {
 
     if (!bucket || !path) {
       return NextResponse.json({ error: "Bucket and path are required" }, { status: 400 });
+    }
+
+    // Validate bucket allowlist
+    if (!ALLOWED_BUCKETS.includes(bucket as any)) {
+      return NextResponse.json({ error: "Invalid target bucket." }, { status: 400 });
+    }
+
+    // Prevent path traversal
+    if (path.includes("..") || path.startsWith("/") || path.includes("\\")) {
+      return NextResponse.json({ error: "Invalid storage path." }, { status: 400 });
     }
 
     if (isSupabaseConfigured()) {

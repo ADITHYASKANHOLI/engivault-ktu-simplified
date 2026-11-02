@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
+import { isSafeOrigin } from "@/lib/security/origin";
 import { videoSchema } from "@/lib/validation/schemas";
 import { getAllVideos, createVideo, deleteVideo, getLessonById, getModuleById } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
@@ -22,6 +23,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSafeOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,6 +66,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isSafeOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

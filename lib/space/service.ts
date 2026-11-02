@@ -296,18 +296,40 @@ export async function checkOutOpenSpace(
   const admin = createAdminClient();
   let targetSessionId = sessionId;
 
-  if (!targetSessionId && userId) {
-    const { data: active } = await admin
-      .from("space_sessions")
-      .select("id")
-      .eq("user_id", userId)
-      .is("checked_out_at", null)
-      .eq("status", "active")
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
+  if (source === "self") {
+    if (!userId || userId === "00000000-0000-0000-0000-000000000000") {
+      return { success: false, error: "Authentication required to check out." };
+    }
 
-    if (active) {
-      targetSessionId = active.id;
+    if (sessionId) {
+      // Validate that the specified session belongs strictly to the authenticated student
+      const { data: targetSession, error: checkError } = await admin
+        .from("space_sessions")
+        .select("id, user_id")
+        .eq("id", sessionId)
+        .maybeSingle();
+
+      if (checkError && isMissingSpaceSchemaError(checkError)) {
+        return { success: false, error: FOLE_SPACE_SETUP_REQUIRED_MESSAGE, code: FOLE_SPACE_NOT_CONFIGURED_CODE };
+      }
+
+      if (!targetSession || targetSession.user_id !== userId) {
+        return { success: false, error: "Session not found or unauthorized access." };
+      }
+      targetSessionId = targetSession.id;
+    } else {
+      const { data: active } = await admin
+        .from("space_sessions")
+        .select("id")
+        .eq("user_id", userId)
+        .is("checked_out_at", null)
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (active) {
+        targetSessionId = active.id;
+      }
     }
   }
 

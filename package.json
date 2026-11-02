@@ -10,7 +10,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/test-engivault.mjs"
+    "test": "node scripts/test-engivault.mjs && node scripts/security-audit-test.mjs",
+    "test:security": "node scripts/security-audit-test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

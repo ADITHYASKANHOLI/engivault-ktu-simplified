@@ -1,7 +1,10 @@
-import { scryptSync, timingSafeEqual, createHmac } from "node:crypto";
+import { scryptSync, timingSafeEqual, createHmac, randomUUID } from "node:crypto";
 
 export const COOKIE_NAME = "engivault_admin_session";
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+export const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours (28,800 seconds)
+
+let hasWarnedMissingSecret = false;
+let hasWarnedShortSecret = false;
 
 /**
  * Returns the HMAC signing secret for session tokens.
@@ -9,15 +12,31 @@ export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
  * Fails closed (returns null) if no secret is configured.
  */
 export function getSecretKey(): string | null {
-  const secret =
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.ADMIN_ACCESS_CODE ||
-    process.env.ADMIN_ACCESS_CODE_HASH;
-
-  if (!secret || typeof secret !== "string" || secret.trim() === "") {
-    return null;
+  const primarySecret = process.env.ADMIN_SESSION_SECRET;
+  if (primarySecret && typeof primarySecret === "string" && primarySecret.trim().length > 0) {
+    const trimmed = primarySecret.trim();
+    if (trimmed.length < 32 && !hasWarnedShortSecret) {
+      hasWarnedShortSecret = true;
+      console.warn(
+        "[SECURITY WARNING] ADMIN_SESSION_SECRET should be at least 32 characters long for cryptographic resilience."
+      );
+    }
+    return trimmed;
   }
-  return secret.trim();
+
+  // Fallback to ADMIN_ACCESS_CODE or ADMIN_ACCESS_CODE_HASH with an administrative security notice
+  const fallback = process.env.ADMIN_ACCESS_CODE || process.env.ADMIN_ACCESS_CODE_HASH;
+  if (fallback && typeof fallback === "string" && fallback.trim().length > 0) {
+    if (!hasWarnedMissingSecret && process.env.NODE_ENV !== "test") {
+      hasWarnedMissingSecret = true;
+      console.warn(
+        "[SECURITY NOTICE] ADMIN_SESSION_SECRET is not configured. Falling back to ADMIN_ACCESS_CODE. Set ADMIN_SESSION_SECRET (32+ chars) in production."
+      );
+    }
+    return fallback.trim();
+  }
+
+  return null;
 }
 
 /**
@@ -47,7 +66,7 @@ export function getSafeRedirectUrl(
 }
 
 /**
- * Constant-time comparison between two strings to prevent timing side-channel attacks
+ * Constant-time comparison between two strings to prevent timing side-channel attacks.
  */
 export function timingSafeCompare(a: string, b: string): boolean {
   try {
@@ -116,25 +135,52 @@ export function verifyAdminAccessCode(code: string, storedHash?: string): boolea
   return false;
 }
 
+export interface AdminTokenPayload {
+  role: "admin";
+  iat: number; // Unix timestamp in seconds
+  exp: number; // Unix timestamp in seconds
+  jti: string; // Cryptographic nonce
+  createdAt?: number; // Backwards compatibility (milliseconds)
+}
+
 /**
- * Creates a signed session token. Fails closed if signing secret is missing.
+ * Creates a cryptographically signed HMAC session token.
+ * Contains standard claims (iat, exp, jti, role) and fails closed if secret is missing.
  */
-export function createSignedToken(payload: { role: "admin"; createdAt: number }): string {
+export function createSignedToken(payload?: Partial<AdminTokenPayload>): string {
   const secret = getSecretKey();
   if (!secret) {
     throw new Error("Admin session signing secret is not configured on the server.");
   }
-  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const fullPayload: AdminTokenPayload = {
+    role: "admin",
+    iat: payload?.iat ?? nowSec,
+    exp: payload?.exp ?? (nowSec + SESSION_MAX_AGE),
+    jti: payload?.jti ?? randomUUID(),
+    createdAt: payload?.createdAt ?? Date.now(),
+  };
+
+  const data = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
   const signature = createHmac("sha256", secret).update(data).digest("base64url");
   return `${data}.${signature}`;
 }
 
 /**
- * Verifies and decodes a signed session token. Fails closed if secret is missing or invalid.
+ * Verifies and decodes a signed session token:
+ * - Constant-time signature verification
+ * - Role assertion
+ * - Expiration check (maximum 8 hours)
+ * - Clock skew verification
  */
-export function verifySignedToken(token: string): { role: "admin"; createdAt: number } | null {
+export function verifySignedToken(token: string): AdminTokenPayload | null {
   try {
-    const [data, signature] = token.split(".");
+    if (!token || typeof token !== "string") return null;
+
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+    const [data, signature] = parts;
     if (!data || !signature) return null;
 
     const secret = getSecretKey();
@@ -150,9 +196,35 @@ export function verifySignedToken(token: string): { role: "admin"; createdAt: nu
     }
 
     const payload = JSON.parse(Buffer.from(data, "base64url").toString());
-    // Expiration check (7 days)
-    if (Date.now() - payload.createdAt > SESSION_MAX_AGE * 1000) {
+    if (!payload || typeof payload !== "object" || payload.role !== "admin") {
       return null;
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
+
+    // Check expiration: exp (seconds) or legacy createdAt (ms)
+    if (typeof payload.exp === "number") {
+      if (nowSec > payload.exp) {
+        return null;
+      }
+    } else if (typeof payload.createdAt === "number") {
+      if (nowMs - payload.createdAt > SESSION_MAX_AGE * 1000) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    // Clock skew check on iat (reject tokens issued >60s in the future)
+    if (typeof payload.iat === "number") {
+      if (payload.iat > nowSec + 60) {
+        return null;
+      }
+      // Enforce lifetime cannot exceed maximum session window from iat
+      if (nowSec - payload.iat > SESSION_MAX_AGE) {
+        return null;
+      }
     }
 
     return payload;

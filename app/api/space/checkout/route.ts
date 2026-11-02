@@ -26,7 +26,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const sessionId = typeof body?.session_id === "string" ? body.session_id : undefined;
+  const sessionId = typeof body?.session_id === "string" ? body.session_id.trim() : undefined;
+
+  if (sessionId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+    return NextResponse.json({ error: "Invalid session ID format." }, { status: 400 });
+  }
 
   const ip = getClientIp(request);
   const rateLimitKey = hashIdentifier(`space-checkout:${student.id}:${ip}`);

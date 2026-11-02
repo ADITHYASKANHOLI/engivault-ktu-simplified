@@ -235,13 +235,23 @@ export const siteSettingsSchema = z.object({
 
 export const uploadAuthorizeSchema = z.object({
   bucket: z.enum(["engivault-videos", "engivault-materials", "engivault-thumbnails", "engivault-branding"]),
-  filename: z.string().min(1),
+  filename: z
+    .string()
+    .min(1)
+    .max(255)
+    .refine((fn) => !fn.includes("..") && !fn.includes("/") && !fn.includes("\\"), {
+      message: "Filename must not contain path traversal characters",
+    }),
   mime_type: z.string().min(1),
   file_size: z.number().int().positive(),
   subject_id: uuidSchema.optional().nullable().or(z.literal("")),
   module_id: uuidSchema.optional().nullable().or(z.literal("")),
   lesson_id: uuidSchema.optional().nullable().or(z.literal("")),
-  folder: z.string().optional().nullable(),
+  folder: z
+    .string()
+    .regex(/^[a-zA-Z0-9_\-]+(\/[a-zA-Z0-9_\-]+)*$/, "Invalid folder path structure")
+    .optional()
+    .nullable(),
 });
 
 export const worksSupportingResourceSchema = z.object({

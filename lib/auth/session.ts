@@ -23,15 +23,19 @@ export async function getAdminSession(): Promise<{ role: "admin" } | null> {
 }
 
 /**
- * Sets the admin session cookie
+ * Sets the admin session cookie with hardened flags:
+ * - HttpOnly (prevents JavaScript access / XSS theft)
+ * - Secure in production and on Vercel deployments
+ * - SameSite=Lax (mitigates CSRF)
+ * - Strict 8-hour Max-Age
  */
 export async function setAdminSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
-  const token = createSignedToken({ role: "admin", createdAt: Date.now() });
+  const token = createSignedToken({ role: "admin" });
 
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" || process.env.VERCEL === "1",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE,

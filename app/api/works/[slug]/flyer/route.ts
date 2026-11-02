@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorksActivityBySlug } from "@/lib/queries";
 import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/admin";
+import { safeFetchImage, verifyImageMagicBytes } from "@/lib/security/ssrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ interface RouteParams {
  * - Resolves the activity by validated slug.
  * - Confirms the activity is strictly published and not soft-deleted.
  * - Serves original image bytes with correct Content-Type and CDN cache headers.
+ * - Enforces robust SSRF protection, domain allowlisting, and magic-byte raster validation.
  * - Provides a reliable, permanent URL for Open Graph crawlers and social share cards.
  * - Returns 404 for draft, archived, or non-existent activities.
  */
@@ -56,49 +58,76 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       if (match) {
         const mimeType = match[1];
         const buffer = Buffer.from(match[2], "base64");
-        return new NextResponse(buffer, {
+        const magicCheck = verifyImageMagicBytes(buffer);
+        if (!magicCheck.valid) {
+          return NextResponse.json({ error: "Invalid embedded image data format" }, { status: 400 });
+        }
+        return new NextResponse(new Uint8Array(buffer), {
           headers: {
             ...cacheHeaders,
-            "Content-Type": mimeType,
+            "Content-Type": magicCheck.contentType || mimeType,
             "Content-Length": buffer.length.toString(),
           },
         });
       }
     }
 
-    // Case 2: Public absolute HTTP/HTTPS URL (e.g. Supabase Storage public URL or CDN)
+    // Case 2: Supabase Storage public URL — route directly to storage SDK rather than outbound HTTP fetch
+    const supabaseStorageMarker = "/storage/v1/object/public/engivault-thumbnails/";
+    if (coverImage.includes(supabaseStorageMarker) && isSupabaseConfigured()) {
+      const relativePath = decodeURIComponent(coverImage.split(supabaseStorageMarker)[1] || "");
+      if (relativePath && !relativePath.includes("..")) {
+        const supabase = createAdminClient();
+        const { data, error } = await supabase.storage
+          .from("engivault-thumbnails")
+          .download(relativePath);
+
+        if (!error && data) {
+          const arrayBuffer = await data.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const magicCheck = verifyImageMagicBytes(buffer);
+          return new NextResponse(new Uint8Array(buffer), {
+            headers: {
+              ...cacheHeaders,
+              "Content-Type": magicCheck.valid ? magicCheck.contentType : (data.type || "image/jpeg"),
+              "Content-Length": buffer.length.toString(),
+            },
+          });
+        }
+      }
+    }
+
+    // Case 3: Public absolute HTTP/HTTPS URL (SSRF protected)
     if (coverImage.startsWith("http://") || coverImage.startsWith("https://")) {
       try {
-        const imgRes = await fetch(coverImage, {
-          headers: {
-            "User-Agent": "FOLE-Web-Flyer-Proxy/1.0",
-          },
+        const { buffer, contentType } = await safeFetchImage(coverImage, {
+          maxSizeBytes: 5 * 1024 * 1024,
+          timeoutMs: 5000,
+          enforceDomainAllowlist: true,
         });
 
-        if (!imgRes.ok) {
-          console.warn(`[FOLE WORKS] Remote flyer fetch returned status ${imgRes.status} for slug: ${slug}`);
-          return NextResponse.json({ error: "Remote flyer not accessible" }, { status: 404 });
-        }
-
-        const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-        const arrayBuffer = await imgRes.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        return new NextResponse(buffer, {
+        return new NextResponse(new Uint8Array(buffer), {
           headers: {
             ...cacheHeaders,
             "Content-Type": contentType,
             "Content-Length": buffer.length.toString(),
           },
         });
-      } catch (fetchErr) {
-        console.error(`[FOLE WORKS] Failed to fetch remote flyer for slug: ${slug}`, fetchErr);
-        return NextResponse.json({ error: "Failed to stream flyer" }, { status: 502 });
+      } catch (fetchErr: any) {
+        console.warn(`[FOLE WORKS] SSRF or image fetch blocked for slug '${slug}':`, fetchErr?.message);
+        return NextResponse.json(
+          { error: "Remote flyer image could not be safely retrieved" },
+          { status: 404 }
+        );
       }
     }
 
-    // Case 3: Storage path relative to engivault-thumbnails bucket
+    // Case 4: Storage path relative to engivault-thumbnails bucket
     if (isSupabaseConfigured()) {
+      if (coverImage.includes("..") || coverImage.startsWith("/")) {
+        return NextResponse.json({ error: "Invalid flyer storage path" }, { status: 400 });
+      }
+
       const supabase = createAdminClient();
       const { data, error } = await supabase.storage
         .from("engivault-thumbnails")
@@ -111,12 +140,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       const arrayBuffer = await data.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const mimeType = data.type || "image/jpeg";
+      const magicCheck = verifyImageMagicBytes(buffer);
 
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           ...cacheHeaders,
-          "Content-Type": mimeType,
+          "Content-Type": magicCheck.valid ? magicCheck.contentType : (data.type || "image/jpeg"),
           "Content-Length": buffer.length.toString(),
         },
       });
