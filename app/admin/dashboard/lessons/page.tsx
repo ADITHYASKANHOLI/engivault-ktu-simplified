@@ -1,31 +1,30 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
-  Edit2,
   Trash2,
-  Globe,
-  EyeOff,
-  Video as VideoIcon,
   X,
   Filter,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   Loader2,
   RefreshCw,
   Play,
   Search,
   BookOpen,
-  User,
   GraduationCap,
+  ArrowUpDown,
+  Check,
+  Layers,
 } from "lucide-react";
+import { Reorder } from "motion/react";
+import { SortableLessonRow } from "@/components/admin/lessons/SortableLessonRow";
+import { SortableLessonCard } from "@/components/admin/lessons/SortableLessonCard";
 import { YoutubeIcon } from "@/components/icons/YoutubeIcon";
 import { Subject, Module, Lesson, Department, Semester, Topic, Faculty } from "@/types";
-import { slugify, formatDuration } from "@/lib/utils";
+import { slugify } from "@/lib/utils";
 import {
   extractYouTubeVideoId,
   getYouTubeEmbedUrl,
@@ -70,6 +69,13 @@ function AdminLessonsContent() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Manual Drag-and-Drop Video Reordering State
+  const [orderedLessons, setOrderedLessons] = useState<Lesson[]>([]);
+  const [isSavingOrder, setIsSavingOrder] = useState<boolean>(false);
+  const [orderSaveStatus, setOrderSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const lastPersistedOrderRef = useRef<string[]>([]);
+  const isSavingOrderRef = useRef<boolean>(false);
 
   // Exact Add Lecture UX Form State
   const [formData, setFormData] = useState({
@@ -385,7 +391,7 @@ function AdminLessonsContent() {
         duration_seconds: Number(formData.duration_seconds) || 1200,
         description: formData.description.trim() || null,
         published: formData.published,
-        youtube_url: `https://www.youtube.com/watch?v=${detectedYtId}`,
+        youtube_url: getYouTubeWatchUrl(detectedYtId) || `https://www.youtube.com/watch?v=${detectedYtId}`,
         youtube_video_id: detectedYtId,
         thumbnail_path: getYouTubeThumbnailUrl(detectedYtId, "hqdefault"),
       };
@@ -524,6 +530,136 @@ function AdminLessonsContent() {
     }
     return true;
   });
+
+  // Determine if drag-and-drop reordering is active:
+  // Reordering requires:
+  // 1. Lessons belong to a single module (prevent cross-module corruption).
+  // 2. More than 1 lesson to reorder.
+  // 3. No active text search query (operates on the canonical module sequence).
+  const distinctModuleIds = Array.from(new Set(filteredLessons.map((l) => l.module_id)));
+  const canReorder = distinctModuleIds.length === 1 && filteredLessons.length > 1 && !searchQuery.trim();
+  const activeModule = canReorder ? modules.find((m) => m.id === distinctModuleIds[0]) : null;
+
+  // Modules that contain lessons in the current view
+  const availableModulesWithLessons = modules.filter((m) =>
+    lessons.some(
+      (l) =>
+        l.module_id === m.id &&
+        (selectedSubjectId === "all" || m.subject_id === selectedSubjectId) &&
+        (selectedDepartmentId === "all" || m.subject?.department_id === selectedDepartmentId)
+    )
+  );
+
+  // Sync orderedLessons with filteredLessons whenever filteredLessons changes
+  useEffect(() => {
+    setOrderedLessons(filteredLessons);
+    lastPersistedOrderRef.current = filteredLessons.map((l) => l.id);
+  }, [filteredLessons]);
+
+  // Handle optimistic drag reorder update
+  const handleReorder = (newOrder: Lesson[]) => {
+    setOrderedLessons(newOrder);
+  };
+
+  // Commit reordered sequence to the database upon drag completion
+  const handleCommitReorder = async (finalList?: Lesson[]) => {
+    const listToCommit = finalList || orderedLessons;
+    const newIds = listToCommit.map((l) => l.id);
+    const lastIds = lastPersistedOrderRef.current;
+
+    // Verify whether order has actually changed
+    if (newIds.length === lastIds.length && newIds.every((id, idx) => id === lastIds[idx])) {
+      return;
+    }
+
+    if (isSavingOrderRef.current) return;
+    isSavingOrderRef.current = true;
+    setIsSavingOrder(true);
+    setOrderSaveStatus("saving");
+
+    try {
+      const targetModuleId = listToCommit[0]?.module_id;
+      const res = await fetch("/api/admin/lessons/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleId: targetModuleId,
+          items: newIds,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to persist new video order.");
+      }
+
+      lastPersistedOrderRef.current = newIds;
+      setOrderSaveStatus("saved");
+
+      // Update parent lessons state
+      setLessons((prev) => {
+        const orderMap = new Map(newIds.map((id, idx) => [id, idx + 1]));
+        return prev
+          .map((l) => {
+            if (orderMap.has(l.id)) {
+              const seq = orderMap.get(l.id)!;
+              return {
+                ...l,
+                display_order: seq,
+                lesson_number: seq,
+                order_index: seq,
+              };
+            }
+            return l;
+          })
+          .sort((a, b) => {
+            if (a.module_id === targetModuleId && b.module_id === targetModuleId) {
+              return (a.display_order ?? 0) - (b.display_order ?? 0);
+            }
+            return 0;
+          });
+      });
+
+      setFeedback({
+        type: "success",
+        message: "Video sequence updated and saved to database successfully.",
+      });
+      setTimeout(() => setOrderSaveStatus("idle"), 3000);
+      clearFeedbackAfterDelay();
+    } catch (err: any) {
+      console.error("Reorder save error:", err);
+      // Revert to last confirmed order
+      const rollbackMap = new Map(lastIds.map((id, idx) => [id, idx]));
+      const restored = [...listToCommit].sort(
+        (a, b) => (rollbackMap.get(a.id) ?? 0) - (rollbackMap.get(b.id) ?? 0)
+      );
+      setOrderedLessons(restored);
+      setOrderSaveStatus("error");
+      setFeedback({
+        type: "error",
+        message: err.message || "Failed to persist video sequence. Reverted to previous order.",
+      });
+      setTimeout(() => setOrderSaveStatus("idle"), 4000);
+      clearFeedbackAfterDelay();
+    } finally {
+      setIsSavingOrder(false);
+      isSavingOrderRef.current = false;
+    }
+  };
+
+  // Keyboard and accessible button move
+  const handleMoveItem = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedLessons.length) return;
+
+    const nextList = [...orderedLessons];
+    const item = nextList[index];
+    nextList[index] = nextList[targetIndex];
+    nextList[targetIndex] = item;
+
+    setOrderedLessons(nextList);
+    await handleCommitReorder(nextList);
+  };
 
   return (
     <div className="space-y-6">
@@ -700,6 +836,74 @@ function AdminLessonsContent() {
         </div>
       </div>
 
+      {/* Reorder Status & Module Focus Banner */}
+      {canReorder ? (
+        <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5 text-blue-950 font-medium">
+            <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs shrink-0">
+              <ArrowUpDown className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-bold text-slate-900">
+                Manual Video Reordering Active
+              </div>
+              <p className="text-slate-600 text-[11px] mt-0.5">
+                Drag the grip handle or use arrow controls to reposition videos in{" "}
+                <span className="font-bold text-blue-700">{activeModule?.title || "this module"}</span>.
+                The sequence saves automatically to the database.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {isSavingOrder ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100/80 text-blue-800 font-bold text-[11px]">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <span>Saving sequence...</span>
+              </span>
+            ) : orderSaveStatus === "saved" ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100/80 text-emerald-800 font-bold text-[11px]">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Sequence saved</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-500 font-mono">
+                {orderedLessons.length} videos sortable
+              </span>
+            )}
+          </div>
+        </div>
+      ) : selectedModuleId === "all" && availableModulesWithLessons.length > 0 ? (
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2.5 text-xs shadow-xs">
+          <div className="flex items-center gap-2 text-slate-700 font-semibold">
+            <Layers className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>Select an Academic Module to Enable Video Drag-and-Drop Reordering:</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {availableModulesWithLessons.map((m) => {
+              const count = lessons.filter((l) => l.module_id === m.id).length;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedModuleId(m.id);
+                    if (selectedSubjectId === "all" && m.subject_id) {
+                      setSelectedSubjectId(m.subject_id);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-blue-500 hover:text-blue-700 text-slate-800 font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <span>{m.title}</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                    {count} {count === 1 ? "video" : "videos"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {/* Main Table Content */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
@@ -727,273 +931,110 @@ function AdminLessonsContent() {
         ) : (
           <>
             {/* Mobile Record Cards for Lessons */}
-            <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredLessons.map((l) => {
-                const rawUrl = l.youtube_url || l.youtubeUrl || null;
-                const ytVideoId = l.youtube_video_id || (rawUrl ? extractYouTubeVideoId(rawUrl) : null);
-                const thumb = l.thumbnail_path || (ytVideoId ? getYouTubeThumbnailUrl(ytVideoId, "default") : null);
-                const tableWatchUrl = getYouTubeWatchUrl(ytVideoId || rawUrl);
-
-                return (
-                  <div key={l.id} className="p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-11 rounded-lg overflow-hidden shrink-0 bg-slate-900 relative border border-slate-200 dark:border-slate-800 shadow-xs">
-                        {thumb ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={thumb} alt={l.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-500">
-                            <VideoIcon className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            Lec #{l.lesson_number ?? 1}
-                          </span>
-                          {l.published ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                              <Globe className="w-2.5 h-2.5" />
-                              Published
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                              <EyeOff className="w-2.5 h-2.5" />
-                              Draft
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-bold text-slate-900 dark:text-white text-sm mt-1 leading-snug break-words">
-                          {l.title}
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* Academic Context */}
-                    <div className="text-xs text-slate-600 dark:text-slate-300 space-y-0.5 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <div className="font-semibold text-slate-900 dark:text-white truncate">
-                        {l.module?.subject?.title || "Subject"}
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {l.module?.title || "Module"}
-                        {l.topic && ` • Topic: ${l.topic.title}`}
-                      </div>
-                      {(l.instructor || l.faculty?.name) && (
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
-                          <User className="w-3 h-3 text-slate-400" />
-                          <span>{l.instructor || l.faculty?.name}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mobile Actions with touch target compliance (>= 44px) */}
-                    <div className="flex items-center gap-2 pt-1">
-                      {tableWatchUrl && (
-                        <a
-                          href={tableWatchUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 transition-colors"
-                        >
-                          <YoutubeIcon className="w-4 h-4 text-red-600" />
-                          <span>YouTube</span>
-                        </a>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(l)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDeleteModalLesson(l)}
-                        className="w-11 h-11 inline-flex items-center justify-center rounded-xl text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition-colors shrink-0"
-                        aria-label={`Delete ${l.title}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="block md:hidden">
+              {canReorder ? (
+                <Reorder.Group
+                  axis="y"
+                  values={orderedLessons}
+                  onReorder={handleReorder}
+                  className="divide-y divide-slate-100"
+                >
+                  {orderedLessons.map((l, index) => (
+                    <SortableLessonCard
+                      key={l.id}
+                      lesson={l}
+                      index={index}
+                      total={orderedLessons.length}
+                      canReorder={canReorder}
+                      onMoveUp={() => handleMoveItem(index, "up")}
+                      onMoveDown={() => handleMoveItem(index, "down")}
+                      onEdit={openEditModal}
+                      onDelete={setDeleteModalLesson}
+                      onDragEnd={handleCommitReorder}
+                    />
+                  ))}
+                </Reorder.Group>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {filteredLessons.map((l, index) => (
+                    <SortableLessonCard
+                      key={l.id}
+                      lesson={l}
+                      index={index}
+                      total={filteredLessons.length}
+                      canReorder={false}
+                      onMoveUp={() => {}}
+                      onMoveDown={() => {}}
+                      onEdit={openEditModal}
+                      onDelete={setDeleteModalLesson}
+                      onDragEnd={() => {}}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Desktop Table */}
+            {/* Desktop Table with Sortable Drag Handles */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="p-4">Lecture</th>
-                  <th className="p-4">Academic Hierarchy</th>
-                  <th className="p-4">Faculty / Instructor</th>
-                  <th className="p-4">Video Status</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Updated</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredLessons.map((l) => {
-                  const rawUrl = l.youtube_url || l.youtubeUrl || null;
-                  const ytVideoId = l.youtube_video_id || (rawUrl ? extractYouTubeVideoId(rawUrl) : null);
-                  const thumb = l.thumbnail_path || (ytVideoId ? getYouTubeThumbnailUrl(ytVideoId, "default") : null);
-
-                  return (
-                    <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Lecture Column */}
-                      <td className="p-4 font-bold text-slate-900">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-8 rounded-lg overflow-hidden shrink-0 bg-slate-900 relative border border-slate-200 shadow-xs">
-                            {thumb ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={thumb}
-                                alt={l.title}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-500">
-                                <VideoIcon className="w-4 h-4" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                                Lec #{l.lesson_number ?? 1}
-                              </span>
-                              <span className="font-semibold text-slate-900 hover:text-blue-700 line-clamp-1">
-                                {l.title}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                              {formatDuration(l.duration_seconds || 1200)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Academic Hierarchy */}
-                      <td className="p-4 text-slate-600">
-                        <div className="space-y-0.5">
-                          <div className="font-semibold text-slate-800">
-                            {l.module?.subject?.title || "Subject"}
-                          </div>
-                          <div className="text-[11px] text-slate-500">
-                            {l.module?.title || "Module"}
-                          </div>
-                          {l.topic && (
-                            <div className="text-[10px] text-blue-700 font-medium">
-                              Topic: {l.topic.title}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Faculty / Instructor */}
-                      <td className="p-4 text-slate-700">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-medium text-slate-800">
-                            {l.instructor || l.faculty?.name || "Faculty Instructor"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Video Status */}
-                      <td className="p-4">
-                        {ytVideoId ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-red-50 text-red-700 border border-red-200">
-                            <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
-                            <span>YOUTUBE LINKED</span>
-                          </span>
-                        ) : l.video ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-800">
-                            MP4 ATTACHED
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-600">
-                            NO VIDEO
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-4">
-                        {l.published ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Globe className="w-3 h-3 text-emerald-600" />
-                            Published
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
-                            <EyeOff className="w-3 h-3 text-slate-400" />
-                            Draft
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Updated */}
-                      <td className="p-4 text-slate-400 font-mono text-[11px]">
-                        {new Date(l.updated_at).toLocaleDateString()}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="p-4 text-right space-x-1 whitespace-nowrap">
-                        {(() => {
-                          const tableWatchUrl = getYouTubeWatchUrl(ytVideoId || rawUrl);
-                          return tableWatchUrl ? (
-                            <a
-                              href={tableWatchUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Watch lecture on YouTube (opens in new tab)"
-                              className="inline-flex p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <YoutubeIcon className="w-4 h-4" />
-                            </a>
-                          ) : null;
-                        })()}
-                        {l.module?.subject?.slug && l.module?.slug && (
-                          <Link
-                            href={`/subjects/${l.module.subject.slug}/${l.module.slug}/${l.slug}`}
-                            target="_blank"
-                            title="View student player page"
-                            className="inline-flex p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Link>
-                        )}
-                        <button
-                          onClick={() => openEditModal(l)}
-                          title="Edit lecture"
-                          className="inline-flex p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteModalLesson(l)}
-                          title="Delete lecture"
-                          className="inline-flex p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
+                  <tr>
+                    <th className="p-4 w-20 text-center">Order</th>
+                    <th className="p-4">Lecture</th>
+                    <th className="p-4">Academic Hierarchy</th>
+                    <th className="p-4">Faculty / Instructor</th>
+                    <th className="p-4">Video Status</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Updated</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                {canReorder ? (
+                  <Reorder.Group
+                    as="tbody"
+                    axis="y"
+                    values={orderedLessons}
+                    onReorder={handleReorder}
+                    className="divide-y divide-slate-100 text-slate-700"
+                  >
+                    {orderedLessons.map((l, index) => (
+                      <SortableLessonRow
+                        key={l.id}
+                        lesson={l}
+                        index={index}
+                        total={orderedLessons.length}
+                        canReorder={canReorder}
+                        onMoveUp={() => handleMoveItem(index, "up")}
+                        onMoveDown={() => handleMoveItem(index, "down")}
+                        onEdit={openEditModal}
+                        onDelete={setDeleteModalLesson}
+                        onDragEnd={handleCommitReorder}
+                      />
+                    ))}
+                  </Reorder.Group>
+                ) : (
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {filteredLessons.map((l, index) => (
+                      <SortableLessonRow
+                        key={l.id}
+                        lesson={l}
+                        index={index}
+                        total={filteredLessons.length}
+                        canReorder={false}
+                        onMoveUp={() => {}}
+                        onMoveDown={() => {}}
+                        onEdit={openEditModal}
+                        onDelete={setDeleteModalLesson}
+                        onDragEnd={() => {}}
+                      />
+                    ))}
+                  </tbody>
+                )}
+              </table>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ========================================================================= */}
       {/* EXACT ADD / EDIT LECTURE MODAL                                            */}

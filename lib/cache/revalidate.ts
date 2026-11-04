@@ -54,6 +54,7 @@ export function revalidateLesson(subjectSlug?: string, moduleSlug?: string, less
     if (subjectSlug && moduleSlug && lessonSlug) {
       revalidatePath(`/subjects/${subjectSlug}/${moduleSlug}/${lessonSlug}`);
     }
+    revalidatePath("/lectures");
     revalidatePath("/admin/dashboard/lessons");
     revalidatePath("/admin/dashboard/videos");
     revalidatePath("/admin/dashboard/materials");
@@ -70,6 +71,7 @@ export function revalidateContentHierarchy(params: {
   try {
     revalidatePath("/");
     revalidatePath("/subjects");
+    revalidatePath("/lectures");
     if (params.subjectSlug) {
       revalidatePath(`/subjects/${params.subjectSlug}`);
       if (params.moduleSlug) {

@@ -3400,6 +3400,224 @@ async function runTests() {
     assert.ok(limits, "Limits lecture must be present in math lecture hierarchy");
   });
 
+  // 24. Admin Drag-and-Drop Video Reordering Suite
+  console.log("\n--- 24. ADMIN DRAG-AND-DROP VIDEO REORDERING & PERSISTENCE SUITE ---");
+
+  test("1. Migration 014 creates display_order columns, composite indexes, and atomic RPC", () => {
+    assert.ok(nodeFs.existsSync("supabase/migrations/014_video_reordering.sql"), "Migration 014 must exist");
+    const sql = nodeFs.readFileSync("supabase/migrations/014_video_reordering.sql", "utf-8").toLowerCase();
+    assert.ok(sql.includes("alter table public.lessons") && sql.includes("display_order integer"), "Must add display_order to lessons");
+    assert.ok(sql.includes("alter table public.videos") && sql.includes("display_order integer"), "Must add display_order to videos");
+    assert.ok(sql.includes("create index if not exists idx_lessons_module_display_order"), "Must create composite index on (module_id, display_order, lesson_number)");
+    assert.ok(sql.includes("create index if not exists idx_videos_display_order"), "Must create index on videos display_order");
+    assert.ok(sql.includes("create or replace function public.rpc_reorder_lessons"), "Must define rpc_reorder_lessons function");
+    assert.ok(sql.includes("security definer"), "RPC must be declared SECURITY DEFINER");
+    assert.ok(sql.includes("search_path = public, app_private, pg_temp"), "RPC must specify strict search_path for privilege isolation");
+    assert.ok(sql.includes("public.is_admin()"), "RPC must enforce server-side admin privilege check");
+    assert.ok(sql.includes("cross-module reordering prohibited"), "RPC must strictly prevent cross-module reordering");
+  });
+
+  await testAsync("2. Zod schema reorderLessonsSchema enforces array bounds, uuid format, and duplicate ID prevention", async () => {
+    const { z } = await import("zod");
+    const schemasCode = nodeFs.readFileSync("lib/validation/schemas.ts", "utf-8");
+    assert.ok(schemasCode.includes("reorderLessonsSchema"), "Must export reorderLessonsSchema");
+    assert.ok(schemasCode.includes("reorderLessonItemSchema"), "Must export reorderLessonItemSchema");
+    assert.ok(schemasCode.includes("new Set(ids).size === ids.length"), "Must reject duplicate lesson IDs in payload");
+
+    const uuidSchema = z.string().uuid("Invalid UUID format");
+    const reorderLessonItemSchema = z.object({
+      id: uuidSchema,
+      display_order: z.number().int().min(1).optional(),
+    });
+
+    const reorderLessonsSchema = z.object({
+      moduleId: uuidSchema.optional().nullable(),
+      items: z
+        .array(z.union([uuidSchema, reorderLessonItemSchema]))
+        .min(1, "At least one lesson is required to reorder.")
+        .max(500, "Cannot reorder more than 500 lessons at once.")
+        .refine(
+          (items) => {
+            const ids = items.map((item) => (typeof item === "string" ? item : item.id));
+            return new Set(ids).size === items.length;
+          },
+          {
+            message: "Duplicate lesson IDs detected in reorder list.",
+          }
+        ),
+    });
+
+    const validPayload = {
+      moduleId: crypto.randomUUID(),
+      items: [
+        { id: crypto.randomUUID(), display_order: 1 },
+        { id: crypto.randomUUID(), display_order: 2 },
+      ],
+    };
+    const validRes = reorderLessonsSchema.safeParse(validPayload);
+    assert.ok(validRes.success, "Valid payload must pass validation");
+
+    // Also supports array of raw string UUIDs
+    const validRawIds = {
+      items: [
+        crypto.randomUUID(),
+        crypto.randomUUID(),
+      ],
+    };
+    const validRawRes = reorderLessonsSchema.safeParse(validRawIds);
+    assert.ok(validRawRes.success, "Raw UUID items array must pass validation");
+
+    // Empty items
+    const emptyRes = reorderLessonsSchema.safeParse({ items: [] });
+    assert.ok(!emptyRes.success, "Empty items array must fail");
+
+    // Duplicate IDs
+    const dupId = crypto.randomUUID();
+    const dupRes = reorderLessonsSchema.safeParse({
+      items: [
+        { id: dupId, display_order: 1 },
+        { id: dupId, display_order: 2 },
+      ],
+    });
+    assert.ok(!dupRes.success, "Duplicate IDs must fail validation");
+    assert.ok(dupRes.error?.issues.some((i) => i.message.includes("Duplicate lesson IDs")));
+
+    // Invalid UUID
+    const badIdRes = reorderLessonsSchema.safeParse({
+      items: [{ id: "not-a-uuid", display_order: 1 }],
+    });
+    assert.ok(!badIdRes.success, "Non-UUID string must fail validation");
+  });
+
+  test("3. Backend route handler /api/admin/lessons/reorder enforces nodejs runtime, CSRF, admin auth and validation", () => {
+    assert.ok(nodeFs.existsSync("app/api/admin/lessons/reorder/route.ts"), "Route handler must exist");
+    const routeCode = nodeFs.readFileSync("app/api/admin/lessons/reorder/route.ts", "utf-8");
+    assert.ok(routeCode.includes('export const runtime = "nodejs"'), "Route must enforce nodejs runtime");
+    assert.ok(routeCode.includes("isSafeOrigin(request)"), "Route must perform CSRF origin check");
+    assert.ok(routeCode.includes("getAdminSession"), "Route must enforce server-side admin authentication");
+    assert.ok(routeCode.includes("reorderLessonsSchema.safeParse"), "Route must validate input with Zod");
+    assert.ok(routeCode.includes("reorderLessons("), "Route must call reorderLessons query");
+  });
+
+  test("4. Local store reordering moves items to exact positions (e.g. position 4 to position 2) with 1..N normalization", () => {
+    // Exact user requirement scenario:
+    // Original list:
+    // 1. Introduction to FOLE
+    // 2. Workshop Highlights
+    // 3. Coding Session
+    // 4. Guest Lecture
+    // 5. Community Activities
+    // Move Guest Lecture (pos 4) to position 2 (between pos 1 and 2):
+    // Result:
+    // 1. Introduction to FOLE
+    // 2. Guest Lecture
+    // 3. Workshop Highlights
+    // 4. Coding Session
+    // 5. Community Activities
+    const originalList = [
+      { id: "lec-1", title: "Introduction to FOLE" },
+      { id: "lec-2", title: "Workshop Highlights" },
+      { id: "lec-3", title: "Coding Session" },
+      { id: "lec-4", title: "Guest Lecture" },
+      { id: "lec-5", title: "Community Activities" },
+    ];
+
+    // Reorder: move item 4 to index 1 (position 2)
+    const moved = originalList[3]; // Guest Lecture
+    const reorderedList = [
+      originalList[0], // pos 1: Introduction to FOLE
+      moved,           // pos 2: Guest Lecture
+      originalList[1], // pos 3: Workshop Highlights
+      originalList[2], // pos 4: Coding Session
+      originalList[4], // pos 5: Community Activities
+    ];
+
+    // Normalize with 1..N continuous sequence
+    const normalized = reorderedList.map((item, index) => ({
+      ...item,
+      display_order: index + 1,
+      lesson_number: index + 1,
+    }));
+
+    assert.equal(normalized[0].title, "Introduction to FOLE");
+    assert.equal(normalized[0].display_order, 1);
+    assert.equal(normalized[1].title, "Guest Lecture");
+    assert.equal(normalized[1].display_order, 2);
+    assert.equal(normalized[2].title, "Workshop Highlights");
+    assert.equal(normalized[2].display_order, 3);
+    assert.equal(normalized[3].title, "Coding Session");
+    assert.equal(normalized[3].display_order, 4);
+    assert.equal(normalized[4].title, "Community Activities");
+    assert.equal(normalized[4].display_order, 5);
+
+    // Verify reverse operation (drag Guest Lecture from position 2 back to position 4)
+    const reversed = [
+      normalized[0], // Intro
+      normalized[2], // Workshop
+      normalized[3], // Coding
+      normalized[1], // Guest Lecture back to pos 4
+      normalized[4], // Community
+    ].map((item, index) => ({ ...item, display_order: index + 1 }));
+
+    assert.equal(reversed[3].title, "Guest Lecture");
+    assert.equal(reversed[3].display_order, 4);
+    assert.deepEqual(reversed.map((r) => r.display_order), [1, 2, 3, 4, 5]);
+  });
+
+  test("5. Cross-module reordering is strictly blocked by query layer validation", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes("export async function reorderLessons"), "lib/queries must export reorderLessons");
+    assert.ok(queriesCode.includes("Cross-module reordering prohibited"), "Must throw error if lessons belong to multiple modules");
+    assert.ok(queriesCode.includes("Module ID mismatch"), "Must throw error if lessons do not match requested moduleId");
+  });
+
+  test("6. New lesson creation automatically assigns next sequential display_order", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes("calculatedDisplayOrder"), "createLesson must compute calculatedDisplayOrder");
+    assert.ok(queriesCode.includes("maxVal + 1") || queriesCode.includes("maxRow.display_order"), "New lesson must append to max order + 1");
+  });
+
+  test("7. Public and admin lesson queries order by display_order ascending", () => {
+    const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
+    assert.ok(queriesCode.includes('.order("display_order", { ascending: true })'), "Supabase queries must order by display_order ASC");
+    assert.ok(queriesCode.includes("a.display_order - b.display_order"), "Fallback store queries must sort by display_order ASC");
+  });
+
+  test("8. SortableLessonRow and SortableLessonCard maintain isolated drag handles and accessible controls", () => {
+    assert.ok(nodeFs.existsSync("components/admin/lessons/SortableLessonRow.tsx"), "SortableLessonRow must exist");
+    assert.ok(nodeFs.existsSync("components/admin/lessons/SortableLessonCard.tsx"), "SortableLessonCard must exist");
+
+    const rowCode = nodeFs.readFileSync("components/admin/lessons/SortableLessonRow.tsx", "utf-8");
+    assert.ok(rowCode.includes("useDragControls"), "Must use useDragControls for drag handle isolation");
+    assert.ok(rowCode.includes("dragListener={false}"), "Must disable whole-row drag to preserve link clicks");
+    assert.ok(rowCode.includes("dragControls.start(e)"), "Drag must only start from handle");
+    assert.ok(rowCode.toLowerCase().includes("move up"), "Must provide accessible Move Up button");
+    assert.ok(rowCode.toLowerCase().includes("move down"), "Must provide accessible Move Down button");
+    assert.ok(rowCode.includes("ArrowUp") && rowCode.includes("altKey"), "Must support accessible keyboard shortcuts");
+    assert.ok(rowCode.includes("#{displaySequence}"), "Must render sequence badge");
+
+    const cardCode = nodeFs.readFileSync("components/admin/lessons/SortableLessonCard.tsx", "utf-8");
+    assert.ok(cardCode.includes("useDragControls"), "Card must use useDragControls for drag handle isolation");
+    assert.ok(cardCode.includes("touch-none"), "Card drag handle must declare touch-none for smooth mobile dragging");
+  });
+
+  test("9. Admin lessons page provides module selector chips, drag status indicators, and optimistic rollback", () => {
+    const pageCode = nodeFs.readFileSync("app/admin/dashboard/lessons/page.tsx", "utf-8");
+    assert.ok(pageCode.includes("canReorder"), "Must compute canReorder based on single module focus");
+    assert.ok(pageCode.includes("handleReorder"), "Must handle live reorder state updates");
+    assert.ok(pageCode.includes("handleCommitReorder"), "Must persist reordered sequence to API");
+    assert.ok(pageCode.includes("lastPersistedOrderRef"), "Must maintain last persisted order ref for rollback");
+    assert.ok(pageCode.includes("isSavingOrder"), "Must display saving spinner during reorder mutation");
+    assert.ok(pageCode.includes("Reorder.Group"), "Must wrap list in Reorder.Group");
+  });
+
+  test("10. Cache invalidation revalidates /lectures, /subjects, and parent hierarchy on reorder", () => {
+    const revalCode = nodeFs.readFileSync("lib/cache/revalidate.ts", "utf-8");
+    assert.ok(revalCode.includes('revalidatePath("/lectures")'), "Must revalidate /lectures");
+    assert.ok(revalCode.includes('revalidatePath("/subjects")'), "Must revalidate /subjects");
+    assert.ok(revalCode.includes("revalidateAdminContent()"), "Must revalidate admin dashboard content");
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

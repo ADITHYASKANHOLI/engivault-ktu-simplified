@@ -367,7 +367,23 @@ export function validateActivityPublicationReadiness(activity: {
 export * from "./student";
 export * from "./contact";
 
+export const reorderLessonItemSchema = z.object({
+  id: uuidSchema,
+  display_order: z.number().int().min(1).optional(),
+});
 
-
-
+export const reorderLessonsSchema = z.object({
+  moduleId: uuidSchema.optional().nullable(),
+  items: z
+    .array(z.union([uuidSchema, reorderLessonItemSchema]))
+    .min(1, "At least one lesson is required to reorder.")
+    .max(500, "Cannot reorder more than 500 lessons at once.")
+    .refine(
+      (items) => {
+        const ids = items.map((item) => (typeof item === "string" ? item : item.id));
+        return new Set(ids).size === ids.length;
+      },
+      { message: "Duplicate lesson IDs are prohibited in reorder sequence." }
+    ),
+});
 
