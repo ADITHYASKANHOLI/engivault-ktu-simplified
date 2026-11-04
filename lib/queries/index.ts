@@ -1943,20 +1943,39 @@ export async function reorderLessons(
         throw new Error("Module ID mismatch: Lessons do not belong to the requested module.");
       }
 
-      // 2. Try atomic PostgreSQL RPC function first
+      // Verify that every lesson in the target module is present in the reorder list
+      const { count: totalInMod, error: countErr } = await supabase
+        .from("lessons")
+        .select("id", { count: "exact", head: true })
+        .eq("module_id", targetModuleId);
+
+      if (!countErr && typeof totalInMod === "number" && totalInMod !== orderedIds.length) {
+        throw new Error(
+          `Incomplete reorder sequence: Module contains ${totalInMod} lectures, but ${orderedIds.length} were submitted.`
+        );
+      }
+
+      // 2. Try dedicated PostgreSQL RPC function first
       let rpcSucceeded = false;
       try {
-        const { error: rpcErr } = await supabase.rpc("rpc_reorder_lessons", {
-          p_orders: orderedIds.map((id, index) => ({ id, display_order: index + 1 })),
+        const { error: rpcErr } = await supabase.rpc("rpc_reorder_module_lessons", {
+          p_module_id: targetModuleId,
+          p_ordered_ids: orderedIds,
         });
         if (!rpcErr) {
           rpcSucceeded = true;
+        } else {
+          // Fallback to rpc_reorder_lessons overload
+          const { error: rpc2Err } = await supabase.rpc("rpc_reorder_lessons", {
+            p_orders: orderedIds.map((id, index) => ({ id, display_order: index + 1 })),
+          });
+          if (!rpc2Err) rpcSucceeded = true;
         }
       } catch {
         rpcSucceeded = false;
       }
 
-      // 3. Fallback: Direct atomic batch updates if RPC not installed
+      // 3. Fallback: Direct atomic batch updates if RPC not yet loaded in Postgres
       if (!rpcSucceeded) {
         const updates = orderedIds.map((id, index) => {
           const seq = index + 1;
@@ -1964,7 +1983,6 @@ export async function reorderLessons(
             .from("lessons")
             .update({
               display_order: seq,
-              lesson_number: seq,
               updated_at: new Date().toISOString(),
             })
             .eq("id", id);
@@ -1985,7 +2003,6 @@ export async function reorderLessons(
           if (match) {
             const seq = index + 1;
             match.display_order = seq;
-            match.lesson_number = seq;
             match.order_index = seq;
             match.updated_at = new Date().toISOString();
           }
@@ -2040,12 +2057,19 @@ export async function reorderLessons(
     throw new Error("Module ID mismatch: Lessons do not belong to the requested module.");
   }
 
+  // Require the array to contain every existing lesson in the target module exactly once
+  const allInModule = fallbackLessons.filter((l) => l.module_id === targetModuleId);
+  if (allInModule.length !== orderedIds.length) {
+    throw new Error(
+      `Incomplete reorder sequence: Module contains ${allInModule.length} lectures, but ${orderedIds.length} were submitted.`
+    );
+  }
+
   orderedIds.forEach((id, index) => {
     const match = fallbackLessons.find((l) => l.id === id);
     if (match) {
       const seq = index + 1;
       match.display_order = seq;
-      match.lesson_number = seq;
       match.order_index = seq;
       match.updated_at = new Date().toISOString();
     }

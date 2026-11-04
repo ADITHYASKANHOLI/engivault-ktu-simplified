@@ -534,11 +534,22 @@ function AdminLessonsContent() {
   // Determine if drag-and-drop reordering is active:
   // Reordering requires:
   // 1. Lessons belong to a single module (prevent cross-module corruption).
-  // 2. More than 1 lesson to reorder.
-  // 3. No active text search query (operates on the canonical module sequence).
+  // 2. Viewing the complete set of lectures in that module (no partial search filter).
+  // 3. More than 1 lesson to reorder.
   const distinctModuleIds = Array.from(new Set(filteredLessons.map((l) => l.module_id)));
-  const canReorder = distinctModuleIds.length === 1 && filteredLessons.length > 1 && !searchQuery.trim();
-  const activeModule = canReorder ? modules.find((m) => m.id === distinctModuleIds[0]) : null;
+  const singleModuleId = distinctModuleIds.length === 1 ? distinctModuleIds[0] : null;
+  const totalInSelectedModule = singleModuleId
+    ? lessons.filter((l) => l.module_id === singleModuleId).length
+    : 0;
+  const isCompleteModuleView =
+    Boolean(singleModuleId) &&
+    totalInSelectedModule > 1 &&
+    filteredLessons.length === totalInSelectedModule &&
+    !searchQuery.trim();
+
+  const canReorder = isCompleteModuleView;
+  const activeModule = singleModuleId ? modules.find((m) => m.id === singleModuleId) : null;
+  const isPartialFilterActive = Boolean(singleModuleId) && !isCompleteModuleView && totalInSelectedModule > 1;
 
   // Modules that contain lessons in the current view
   const availableModulesWithLessons = modules.filter((m) =>
@@ -579,12 +590,13 @@ function AdminLessonsContent() {
 
     try {
       const targetModuleId = listToCommit[0]?.module_id;
-      const res = await fetch("/api/admin/lessons/reorder", {
-        method: "POST",
+      const res = await fetch("/api/admin/lessons", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          moduleId: targetModuleId,
-          items: newIds,
+          action: "reorder",
+          module_id: targetModuleId,
+          ordered_ids: newIds,
         }),
       });
 
@@ -606,7 +618,6 @@ function AdminLessonsContent() {
               return {
                 ...l,
                 display_order: seq,
-                lesson_number: seq,
                 order_index: seq,
               };
             }
@@ -848,9 +859,7 @@ function AdminLessonsContent() {
                 Manual Video Reordering Active
               </div>
               <p className="text-slate-600 text-[11px] mt-0.5">
-                Drag the grip handle or use arrow controls to reposition videos in{" "}
-                <span className="font-bold text-blue-700">{activeModule?.title || "this module"}</span>.
-                The sequence saves automatically to the database.
+                Drag and drop lectures to rearrange their order. Changes are saved automatically.
               </p>
             </div>
           </div>
@@ -867,10 +876,34 @@ function AdminLessonsContent() {
               </span>
             ) : (
               <span className="text-[11px] text-slate-500 font-mono">
-                {orderedLessons.length} videos sortable
+                {orderedLessons.length} videos sortable in {activeModule?.title || "module"}
               </span>
             )}
           </div>
+        </div>
+      ) : isPartialFilterActive ? (
+        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5 text-amber-950 font-medium">
+            <div className="p-2 rounded-xl bg-amber-600 text-white shadow-xs shrink-0">
+              <Filter className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-bold text-amber-900">
+                Manual Reordering Paused (Partial Filter Active)
+              </div>
+              <p className="text-amber-800 text-[11px] mt-0.5">
+                Displaying {filteredLessons.length} of {totalInSelectedModule} lectures in{" "}
+                <span className="font-bold">{activeModule?.title || "this module"}</span>. Clear the search box to view and reorder all lectures in this module.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 transition-colors shrink-0 cursor-pointer"
+          >
+            Clear Search
+          </button>
         </div>
       ) : selectedModuleId === "all" && availableModulesWithLessons.length > 0 ? (
         <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2.5 text-xs shadow-xs">

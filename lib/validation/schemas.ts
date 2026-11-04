@@ -372,6 +372,18 @@ export const reorderLessonItemSchema = z.object({
   display_order: z.number().int().min(1).optional(),
 });
 
+export const reorderActionSchema = z.object({
+  action: z.literal("reorder"),
+  module_id: uuidSchema,
+  ordered_ids: z
+    .array(uuidSchema)
+    .min(1, "At least one lesson ID is required.")
+    .max(500, "Cannot reorder more than 500 lessons at once.")
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "Duplicate lesson IDs are prohibited in reorder sequence.",
+    }),
+});
+
 export const reorderLessonsSchema = z.object({
   moduleId: uuidSchema.optional().nullable(),
   items: z

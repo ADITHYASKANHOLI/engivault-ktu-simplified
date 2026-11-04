@@ -3404,17 +3404,20 @@ async function runTests() {
   console.log("\n--- 24. ADMIN DRAG-AND-DROP VIDEO REORDERING & PERSISTENCE SUITE ---");
 
   test("1. Migration 014 creates display_order columns, composite indexes, and atomic RPC", () => {
-    assert.ok(nodeFs.existsSync("supabase/migrations/014_video_reordering.sql"), "Migration 014 must exist");
-    const sql = nodeFs.readFileSync("supabase/migrations/014_video_reordering.sql", "utf-8").toLowerCase();
+    assert.ok(
+      nodeFs.existsSync("supabase/migrations/014_admin_lesson_reordering.sql"),
+      "Migration 014_admin_lesson_reordering.sql must exist"
+    );
+    const sql = nodeFs.readFileSync("supabase/migrations/014_admin_lesson_reordering.sql", "utf-8").toLowerCase();
     assert.ok(sql.includes("alter table public.lessons") && sql.includes("display_order integer"), "Must add display_order to lessons");
     assert.ok(sql.includes("alter table public.videos") && sql.includes("display_order integer"), "Must add display_order to videos");
     assert.ok(sql.includes("create index if not exists idx_lessons_module_display_order"), "Must create composite index on (module_id, display_order, lesson_number)");
     assert.ok(sql.includes("create index if not exists idx_videos_display_order"), "Must create index on videos display_order");
-    assert.ok(sql.includes("create or replace function public.rpc_reorder_lessons"), "Must define rpc_reorder_lessons function");
+    assert.ok(sql.includes("rpc_reorder_module_lessons") || sql.includes("rpc_reorder_lessons"), "Must define atomic RPC function");
     assert.ok(sql.includes("security definer"), "RPC must be declared SECURITY DEFINER");
     assert.ok(sql.includes("search_path = public, app_private, pg_temp"), "RPC must specify strict search_path for privilege isolation");
-    assert.ok(sql.includes("public.is_admin()"), "RPC must enforce server-side admin privilege check");
-    assert.ok(sql.includes("cross-module reordering prohibited"), "RPC must strictly prevent cross-module reordering");
+    assert.ok(sql.includes("for update"), "RPC must lock target module row with FOR UPDATE");
+    assert.ok(sql.includes("grant execute on function") && sql.includes("service_role"), "Execution must be granted to service_role");
   });
 
   await testAsync("2. Zod schema reorderLessonsSchema enforces array bounds, uuid format, and duplicate ID prevention", async () => {
@@ -3489,14 +3492,25 @@ async function runTests() {
     assert.ok(!badIdRes.success, "Non-UUID string must fail validation");
   });
 
-  test("3. Backend route handler /api/admin/lessons/reorder enforces nodejs runtime, CSRF, admin auth and validation", () => {
-    assert.ok(nodeFs.existsSync("app/api/admin/lessons/reorder/route.ts"), "Route handler must exist");
+  test("3. Backend route handler /api/admin/lessons and /reorder enforce nodejs runtime, CSRF, admin auth and validation", () => {
+    // 1. Verify PATCH endpoint in app/api/admin/lessons/route.ts
+    assert.ok(nodeFs.existsSync("app/api/admin/lessons/route.ts"), "Lessons route handler must exist");
+    const lessonsRouteCode = nodeFs.readFileSync("app/api/admin/lessons/route.ts", "utf-8");
+    assert.ok(lessonsRouteCode.includes('export const runtime = "nodejs"'), "Route must enforce nodejs runtime");
+    assert.ok(lessonsRouteCode.includes("isSafeOrigin(request)"), "Route must perform CSRF origin check");
+    assert.ok(lessonsRouteCode.includes("getAdminSession"), "Route must enforce server-side admin authentication");
+    assert.ok(lessonsRouteCode.includes('rawBody?.action === "reorder"') || lessonsRouteCode.includes('action === "reorder"'), "PATCH must support action: 'reorder'");
+    assert.ok(lessonsRouteCode.includes("reorderActionSchema"), "Route must validate reorder action with schema");
+    assert.ok(lessonsRouteCode.includes("reorderLessons("), "Route must call reorderLessons query");
+
+    // 2. Verify dedicated route app/api/admin/lessons/reorder/route.ts
+    assert.ok(nodeFs.existsSync("app/api/admin/lessons/reorder/route.ts"), "Dedicated reorder route handler must exist");
     const routeCode = nodeFs.readFileSync("app/api/admin/lessons/reorder/route.ts", "utf-8");
-    assert.ok(routeCode.includes('export const runtime = "nodejs"'), "Route must enforce nodejs runtime");
-    assert.ok(routeCode.includes("isSafeOrigin(request)"), "Route must perform CSRF origin check");
-    assert.ok(routeCode.includes("getAdminSession"), "Route must enforce server-side admin authentication");
-    assert.ok(routeCode.includes("reorderLessonsSchema.safeParse"), "Route must validate input with Zod");
-    assert.ok(routeCode.includes("reorderLessons("), "Route must call reorderLessons query");
+    assert.ok(routeCode.includes('export const runtime = "nodejs"'), "Reorder route must enforce nodejs runtime");
+    assert.ok(routeCode.includes("isSafeOrigin(request)"), "Reorder route must perform CSRF origin check");
+    assert.ok(routeCode.includes("getAdminSession"), "Reorder route must enforce server-side admin authentication");
+    assert.ok(routeCode.includes("reorderLessonsSchema.safeParse"), "Reorder route must validate input with Zod");
+    assert.ok(routeCode.includes("reorderLessons("), "Reorder route must call reorderLessons query");
   });
 
   test("4. Local store reordering moves items to exact positions (e.g. position 4 to position 2) with 1..N normalization", () => {
@@ -3564,11 +3578,13 @@ async function runTests() {
     assert.deepEqual(reversed.map((r) => r.display_order), [1, 2, 3, 4, 5]);
   });
 
-  test("5. Cross-module reordering is strictly blocked by query layer validation", () => {
+  test("5. Cross-module reordering and incomplete sequences are strictly blocked by query layer validation", () => {
     const queriesCode = nodeFs.readFileSync("lib/queries/index.ts", "utf-8");
     assert.ok(queriesCode.includes("export async function reorderLessons"), "lib/queries must export reorderLessons");
     assert.ok(queriesCode.includes("Cross-module reordering prohibited"), "Must throw error if lessons belong to multiple modules");
     assert.ok(queriesCode.includes("Module ID mismatch"), "Must throw error if lessons do not match requested moduleId");
+    assert.ok(queriesCode.includes("Incomplete reorder sequence"), "Must throw error if reorder sequence is incomplete");
+    assert.ok(!queriesCode.includes("match.lesson_number = seq;"), "Must preserve academic lesson_number intact without overwriting");
   });
 
   test("6. New lesson creation automatically assigns next sequential display_order", () => {
@@ -3606,6 +3622,8 @@ async function runTests() {
     assert.ok(pageCode.includes("canReorder"), "Must compute canReorder based on single module focus");
     assert.ok(pageCode.includes("handleReorder"), "Must handle live reorder state updates");
     assert.ok(pageCode.includes("handleCommitReorder"), "Must persist reordered sequence to API");
+    assert.ok(pageCode.includes('action: "reorder"'), "Must invoke reorder action via PATCH");
+    assert.ok(pageCode.includes("Drag and drop lectures to rearrange their order"), "Must render exact instruction text");
     assert.ok(pageCode.includes("lastPersistedOrderRef"), "Must maintain last persisted order ref for rollback");
     assert.ok(pageCode.includes("isSavingOrder"), "Must display saving spinner during reorder mutation");
     assert.ok(pageCode.includes("Reorder.Group"), "Must wrap list in Reorder.Group");

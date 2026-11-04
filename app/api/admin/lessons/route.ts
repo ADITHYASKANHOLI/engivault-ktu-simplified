@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/session";
 import { isSafeOrigin } from "@/lib/security/origin";
-import { lessonSchema, lessonUpdateSchema } from "@/lib/validation/schemas";
-import { getAllLessons, getLessonById, createLesson, updateLesson, deleteLesson, getModuleById } from "@/lib/queries";
+import { lessonSchema, lessonUpdateSchema, reorderActionSchema } from "@/lib/validation/schemas";
+import { getAllLessons, getLessonById, createLesson, updateLesson, deleteLesson, getModuleById, reorderLessons } from "@/lib/queries";
 import { revalidateContentHierarchy } from "@/lib/cache/revalidate";
 import { parseYouTubeUrl, getYouTubeThumbnailUrl } from "@/lib/utils/youtube";
 
@@ -120,6 +120,33 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const rawBody = await request.json();
+
+    // Dedicated action: reorder
+    if (rawBody?.action === "reorder") {
+      const parsedReorder = reorderActionSchema.safeParse(rawBody);
+      if (!parsedReorder.success) {
+        return NextResponse.json(
+          {
+            error: "Validation failed: Invalid reorder request payload.",
+            details: parsedReorder.error.format(),
+          },
+          { status: 400 }
+        );
+      }
+
+      const { module_id, ordered_ids } = parsedReorder.data;
+      const reorderResult = await reorderLessons(ordered_ids, {
+        moduleId: module_id,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully reordered ${reorderResult.count} video lectures.`,
+        count: reorderResult.count,
+        items: reorderResult.items,
+      });
+    }
+
     const { id, ...rawUpdates } = rawBody;
 
     if (!id || typeof id !== "string") {
