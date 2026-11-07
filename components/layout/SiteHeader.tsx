@@ -19,6 +19,7 @@ import { AuthMenu, AuthState } from "@/components/auth/AuthMenu";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { QuickSearchDialog } from "@/components/search/QuickSearchDialog";
 import { MagneticButton, AnimatedTooltip } from "@/components/ui/animate";
+import PillNav from "@/components/PillNav";
 
 export interface SiteHeaderProps {
   initialAuth?: AuthState | null;
@@ -119,7 +120,39 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
     { label: "Community", href: "/about", id: "nav-community" },
   ];
 
+  // Dynamic route awareness: Match most specific routes first
+  const getActiveHref = (path: string): string => {
+    if (!path || path === "/") return "/";
+    if (path === "/fole-space/events" || path.startsWith("/fole-space/events/")) {
+      return "/fole-space/events";
+    }
+    if (path === "/fole-space" || path.startsWith("/fole-space/")) {
+      return "/fole-space";
+    }
+    if (path === "/fole-works" || path.startsWith("/fole-works/")) {
+      return "/fole-works";
+    }
+    if (
+      path === "/lectures" ||
+      path.startsWith("/lectures/") ||
+      path === "/subjects" ||
+      path.startsWith("/subjects/")
+    ) {
+      return "/lectures";
+    }
+    if (path === "/materials" || path.startsWith("/materials/")) {
+      return "/materials";
+    }
+    if (path === "/about" || path.startsWith("/about/")) {
+      return "/about";
+    }
+    return "";
+  };
+
+  const activeHref = getActiveHref(pathname);
+
   const isLinkActive = (href: string) => {
+    if (activeHref) return activeHref === href;
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   };
@@ -132,8 +165,8 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   return (
     <header className="fixed top-3 sm:top-5 md:top-6 inset-x-0 z-50 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-300">
       <div className="w-full h-14 sm:h-16 px-4 sm:px-6 lg:px-7 rounded-full bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 sm:gap-4 pointer-events-auto">
-        {/* Brand Logo on the Left */}
-        <div className="flex items-center shrink-0">
+        {/* Mobile Brand Logo on the Left (< xl screens) */}
+        <div className="flex xl:hidden items-center shrink-0">
           <Link
             href="/"
             className="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-full transition-transform hover:scale-[1.02]"
@@ -143,33 +176,27 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
           </Link>
         </div>
 
-        {/* Desktop Navigation - Exact Reference Items */}
-        <nav
-          className="hidden xl:flex items-center gap-6 2xl:gap-8 h-full min-w-0"
-          aria-label="Primary Academic Navigation"
-        >
-          {navLinks.map((item) => {
-            const active = isLinkActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "relative text-xs lg:text-[13px] 2xl:text-sm tracking-tight transition-colors py-2 flex flex-col items-center whitespace-nowrap",
-                  active
-                    ? "text-[#050908] font-bold"
-                    : "text-slate-600 hover:text-black font-medium"
-                )}
-              >
-                <span>{item.label}</span>
-                {active && (
-                  <span className="absolute -bottom-1.5 w-6 h-0.5 bg-[#00A86B] rounded-full" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Desktop Navigation powered by React Bits PillNav (>= xl screens) */}
+        <div className="hidden xl:flex items-center min-w-0">
+          <PillNav
+            logo="/branding/fole-logo.png"
+            logoAlt="FOLE — Free Open Learning & Education"
+            logoHref="/"
+            linkComponent={Link}
+            items={navLinks}
+            activeHref={activeHref}
+            itemStyle="pill"
+            hoverEffect="fill"
+            indicator="dot"
+            theme="light"
+            highlightColor="#00A86B"
+            highlightTextColor="#FFFFFF"
+            textColor="#050908"
+            surface="none"
+            collapse="never"
+            ariaLabel="Primary Academic Navigation"
+          />
+        </div>
 
         {/* Header Right Utilities */}
         <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
