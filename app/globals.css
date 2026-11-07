@@ -149,3 +149,34 @@
     display: none !important;
   }
 }
+
+/* FOLE SPACE Continuous Sticky Topography Background */
+.fole-space-page {
+  position: relative;
+  isolation: isolate;
+  background: #07111f;
+}
+
+.fole-space-topography-layer {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  width: 100%;
+  margin-bottom: -100vh;
+  margin-bottom: -100svh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.fole-space-topography-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fole-space-content {
+  position: relative;
+  z-index: 1;
+}
