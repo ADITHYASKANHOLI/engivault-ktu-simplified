@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Material, Subject, Department, Semester, Module } from "@/types";
 import { CatalogMaterialCard } from "@/components/materials/CatalogMaterialCard";
+import { AnimatedCountingNumber } from "@/components/ui/animate";
 
 interface MaterialsFilterViewProps {
   initialMaterials: Material[];
@@ -415,7 +416,7 @@ export function MaterialsFilterView({
           <div className="font-medium text-slate-600 dark:text-slate-300">
             Showing{" "}
             <strong className="text-slate-900 dark:text-white font-bold">
-              {filteredMaterials.length}
+              <AnimatedCountingNumber value={filteredMaterials.length} />
             </strong>{" "}
             {filteredMaterials.length === 1 ? "study material" : "study materials"}
           </div>

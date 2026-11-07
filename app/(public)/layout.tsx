@@ -1,6 +1,7 @@
 import React from "react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { GlobalScrollProgress } from "@/components/ui/animate";
 import { getAdminSession } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -39,6 +40,7 @@ export default async function PublicLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
+      <GlobalScrollProgress />
       <SiteHeader initialAuth={initialAuth} isOffline={!isConfigured} />
       <div className="flex-1 flex flex-col">{children}</div>
       <SiteFooter />

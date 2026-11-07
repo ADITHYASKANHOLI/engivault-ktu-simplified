@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { formatDateTimeIST } from "@/lib/space/time";
 import { Download, CheckCircle2, AlertCircle, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ShineWrapper, MagneticButton } from "@/components/ui/animate";
 
 interface TicketCardProps {
   eventTitle: string;
@@ -60,7 +61,9 @@ export function TicketCard({
   const isCheckedIn = status === "checked_in";
 
   return (
-    <div
+    <ShineWrapper
+      color="rgba(255, 255, 255, 0.45)"
+      opacity={0.3}
       className={cn(
         "relative rounded-2xl border bg-white shadow-sm overflow-hidden flex flex-col md:flex-row transition-all",
         isCancelled
@@ -174,16 +177,18 @@ export function TicketCard({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleDownloadPng}
-          disabled={isCancelled}
-          className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 rounded-lg border border-slate-200 transition-colors shadow-xs disabled:opacity-50 disabled:pointer-events-none"
-        >
-          <Download className="w-3.5 h-3.5 text-slate-500" />
-          <span>Save PNG</span>
-        </button>
+        <MagneticButton strength={0.2} range={50}>
+          <button
+            type="button"
+            onClick={handleDownloadPng}
+            disabled={isCancelled}
+            className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 rounded-lg border border-slate-200 transition-colors shadow-xs disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Save PNG</span>
+          </button>
+        </MagneticButton>
       </div>
-    </div>
+    </ShineWrapper>
   );
 }

@@ -16,6 +16,8 @@ import {
 import { WorksActivity } from "@/types";
 import { cn } from "@/lib/utils";
 import { WorksShareButton } from "./WorksShareButton";
+import { Tilt, TiltContent } from "@animate-ui/react/primitives/effects/tilt";
+import { ShineWrapper, MagneticButton } from "@/components/ui/animate";
 
 interface WorksActivityCardProps {
   activity: WorksActivity;
@@ -116,12 +118,24 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
   const isFree = isNaN(feeAmountNum) || feeAmountNum <= 0;
 
   return (
-    <article className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
+    <Tilt
+      maxTilt={3.5}
+      perspective={1000}
+      transition={{ stiffness: 260, damping: 20, mass: 0.5 }}
+      className="h-full flex flex-col"
+    >
+      <TiltContent className="h-full flex flex-col">
+        <article className="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-xl transition-[border-color,box-shadow,background-color] duration-300 flex flex-col justify-between overflow-hidden h-full">
       {/* Top Banner Accent */}
       <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
 
       {/* Activity Flyer Poster (Opens configured platform destination) */}
-      <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center p-1">
+      <ShineWrapper
+        color="rgba(255, 255, 255, 0.45)"
+        opacity={0.3}
+        duration={900}
+        className="relative w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-slate-950 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-center p-1"
+      >
         <a
           href={destinationUrl}
           target={hasPlatformLink ? "_blank" : undefined}
@@ -182,7 +196,7 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
             {regStatus.label}
           </span>
         </div>
-      </div>
+      </ShineWrapper>
 
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         {/* Badges: Category & Delivery Mode */}
@@ -263,19 +277,21 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
           </div>
 
           {/* Primary Action Button (Opens platform link in new tab) */}
-          <a
-            href={destinationUrl}
-            target={hasPlatformLink ? "_blank" : undefined}
-            rel={hasPlatformLink ? "noopener noreferrer" : undefined}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
-          >
-            <span>{hasPlatformLink ? "Register on Platform" : "View Details"}</span>
-            {hasPlatformLink ? (
-              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-            ) : (
-              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
-            )}
-          </a>
+          <MagneticButton strength={0.2} range={60}>
+            <a
+              href={destinationUrl}
+              target={hasPlatformLink ? "_blank" : undefined}
+              rel={hasPlatformLink ? "noopener noreferrer" : undefined}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
+            >
+              <span>{hasPlatformLink ? "Register on Platform" : "View Details"}</span>
+              {hasPlatformLink ? (
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              ) : (
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+              )}
+            </a>
+          </MagneticButton>
         </div>
 
         {/* Secondary row: Share actions & Syllabus link */}
@@ -291,6 +307,8 @@ export function WorksActivityCard({ activity }: WorksActivityCardProps) {
         </div>
       </div>
     </article>
+      </TiltContent>
+    </Tilt>
   );
 }
 

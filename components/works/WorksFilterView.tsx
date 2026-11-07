@@ -5,6 +5,8 @@ import { Search, RotateCcw, Calendar, AlertTriangle, Mail } from "lucide-react";
 import { WorksActivity } from "@/types";
 import { WorksActivityCard } from "./WorksActivityCard";
 import { cn } from "@/lib/utils";
+import { ScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade";
+import { AnimatedCountingNumber } from "@/components/ui/animate";
 
 interface WorksFilterViewProps {
   initialActivities?: WorksActivity[];
@@ -100,25 +102,33 @@ export function WorksFilterView({ initialActivities = [], error = null }: WorksF
         {/* Category Pills & Format Filter */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pt-1">
           {/* Categories */}
-          <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1 sm:pb-0 w-full md:w-auto">
-            {CATEGORIES.map((cat) => {
-              const active = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-semibold font-mono transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[38px] shrink-0",
-                    active
-                      ? "bg-slate-900 text-white dark:bg-emerald-600 dark:text-white shadow-xs font-bold"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300"
-                  )}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+          <div className="w-full md:w-auto md:max-w-[70%] min-w-0">
+            <ScrollFade
+              orientation="horizontal"
+              size={36}
+              className="w-full pb-1 sm:pb-0"
+            >
+              <div className="flex items-center gap-1.5 min-w-max py-0.5 px-0.5">
+                {CATEGORIES.map((cat) => {
+                  const active = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-semibold font-mono transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[38px] shrink-0",
+                        active
+                          ? "bg-slate-900 text-white dark:bg-emerald-600 dark:text-white shadow-xs font-bold"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollFade>
           </div>
 
           {/* Delivery Mode & Reset Controls */}
@@ -156,8 +166,15 @@ export function WorksFilterView({ initialActivities = [], error = null }: WorksF
               <span className="text-amber-600 dark:text-amber-400 font-medium">Connection status: Service degraded</span>
             ) : (
               <>
-                Showing <strong className="text-slate-900 dark:text-white font-bold">{filtered.length}</strong> of{" "}
-                {safeActivities.length} published activities
+                Showing{" "}
+                <strong className="text-slate-900 dark:text-white font-bold">
+                  <AnimatedCountingNumber value={filtered.length} />
+                </strong>{" "}
+                of{" "}
+                <strong className="text-slate-900 dark:text-white font-bold">
+                  <AnimatedCountingNumber value={safeActivities.length} />
+                </strong>{" "}
+                published activities
               </>
             )}
           </span>

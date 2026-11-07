@@ -11,6 +11,7 @@ import {
 import { LandingHero } from "@/components/landing/LandingHero";
 import { SubjectGrid } from "@/components/subjects/SubjectGrid";
 import { LectureCard } from "@/components/lectures/LectureCard";
+import { AnimatedSection } from "@/components/ui/animate";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
@@ -76,7 +77,7 @@ export default async function HomePage() {
 
       {/* ---------------- 2. SUBJECT CATALOG PREVIEW ---------------- */}
       <section className="py-20 bg-white relative border-y border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AnimatedSection className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-blue-700 font-mono mb-2">
@@ -124,12 +125,12 @@ export default async function HomePage() {
           ) : (
             <SubjectGrid subjects={subjects} />
           )}
-        </div>
+        </AnimatedSection>
       </section>
 
       {/* ---------------- 3. LATEST CLASSES & LECTURES ---------------- */}
       <section id="latest-classes" className="py-20 bg-[#F7F9FC] relative bg-tech-grid">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <AnimatedSection className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-cyan-700 font-mono mb-2">
@@ -184,7 +185,7 @@ export default async function HomePage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-        </div>
+        </AnimatedSection>
       </section>
 
       {/* ---------------- 4. ACADEMIC ARCHITECTURE PILLARS ---------------- */}

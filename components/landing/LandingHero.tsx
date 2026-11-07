@@ -19,6 +19,8 @@ import {
 import { FoleLogoVector } from "@/components/branding/FoleLogoVector";
 import { HeroVideoDialog } from "@/components/landing/HeroVideoDialog";
 import { LiquidGlassButton } from "@/components/ui/liquid-glass";
+import { ShimmeringText } from "@animate-ui/react/primitives/texts/shimmering";
+import { MagneticButton } from "@/components/ui/animate";
 
 export interface LandingHeroProps {
   totalSubjects?: number;
@@ -137,7 +139,13 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
 
             {/* Tagline: IDEAS INTO IMPACT */}
             <h1 className="text-xl sm:text-3xl lg:text-4xl font-black text-[#050908] tracking-[0.16em] sm:tracking-[0.22em] uppercase leading-tight font-sans">
-              IDEAS INTO IMPACT
+              <ShimmeringText
+                text="IDEAS INTO IMPACT"
+                color="#050908"
+                shimmeringColor="#00A86B"
+                duration={2.5}
+                wave={false}
+              />
             </h1>
 
             {/* Supporting 4 Pillar Words */}
@@ -156,13 +164,15 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             {/* Action Buttons: Explore FOLE & Watch Video */}
             <div className="flex flex-wrap items-center gap-3.5 sm:gap-4 pt-1">
               {/* Primary Green CTA */}
-              <Link
-                href="/subjects"
-                className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-bold text-white bg-[#00A86B] hover:bg-[#008f5a] shadow-lg shadow-emerald-700/30 hover:shadow-emerald-700/40 hover:scale-[1.02] active:scale-[0.98] transition-all group"
-              >
-                <span>Explore FOLE</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              <MagneticButton strength={0.25} range={90}>
+                <Link
+                  href="/subjects"
+                  className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-bold text-white bg-[#00A86B] hover:bg-[#008f5a] shadow-lg shadow-emerald-700/30 hover:shadow-emerald-700/40 hover:scale-[1.02] active:scale-[0.98] transition-all group"
+                >
+                  <span>Explore FOLE</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </MagneticButton>
 
               {/* Secondary Translucent Liquid Glass Video CTA */}
               <LiquidGlassButton

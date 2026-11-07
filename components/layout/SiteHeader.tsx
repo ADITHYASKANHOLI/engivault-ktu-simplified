@@ -18,6 +18,7 @@ import { FoleLogoVector } from "@/components/branding/FoleLogoVector";
 import { AuthMenu, AuthState } from "@/components/auth/AuthMenu";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { QuickSearchDialog } from "@/components/search/QuickSearchDialog";
+import { MagneticButton, AnimatedTooltip } from "@/components/ui/animate";
 
 export interface SiteHeaderProps {
   initialAuth?: AuthState | null;
@@ -173,14 +174,18 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         {/* Header Right Utilities */}
         <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
           {/* Search Icon Button */}
-          <button
-            type="button"
-            onClick={() => setSearchDialogOpen(true)}
-            aria-label="Search FOLE Curriculum"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 hover:text-[#00A86B] hover:bg-black/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
-          >
-            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
-          </button>
+          <AnimatedTooltip content="Search KTU curriculum" side="bottom">
+            <MagneticButton strength={0.3} range={50}>
+              <button
+                type="button"
+                onClick={() => setSearchDialogOpen(true)}
+                aria-label="Search FOLE Curriculum"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 hover:text-[#00A86B] hover:bg-black/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+              >
+                <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
+              </button>
+            </MagneticButton>
+          </AnimatedTooltip>
 
           {/* Divider */}
           <div className="h-4 w-px bg-slate-300 hidden sm:block" />
@@ -206,12 +211,14 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
               </button>
 
               {/* Get Started Button */}
-              <Link
-                href="/subjects"
-                className="min-h-[36px] sm:min-h-[38px] px-4.5 sm:px-5 py-1.5 rounded-full bg-[#00A86B] hover:bg-[#008f5a] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-              >
-                Get Started
-              </Link>
+              <MagneticButton strength={0.2} range={60}>
+                <Link
+                  href="/subjects"
+                  className="min-h-[36px] sm:min-h-[38px] px-4.5 sm:px-5 py-1.5 rounded-full bg-[#00A86B] hover:bg-[#008f5a] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-500/25 hover:shadow-emerald-500/35 transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                >
+                  Get Started
+                </Link>
+              </MagneticButton>
             </div>
           )}
 

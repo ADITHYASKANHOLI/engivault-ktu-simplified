@@ -14,6 +14,7 @@ import {
   getPublishedSubjects,
 } from "@/lib/queries";
 import { LectureCard } from "@/components/lectures/LectureCard";
+import { AnimatedCountingNumber, AnimatedSection } from "@/components/ui/animate";
 import {
   matchesSubjectQuery,
   matchesAcademicTarget,
@@ -269,7 +270,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
           {hasActiveFilters && (
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
               <span className="text-xs text-slate-500 font-medium">
-                Showing <strong className="text-slate-900">{filtered.length}</strong> matching academic lectures
+                Showing <strong className="text-slate-900"><AnimatedCountingNumber value={filtered.length} /></strong> matching academic lectures
               </span>
               <Link
                 href="/lectures"
@@ -302,7 +303,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          <AnimatedSection className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {filtered.map((lecture, idx) => (
               <LectureCard
                 key={lecture.id}
@@ -316,7 +317,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
                 index={idx + 1}
               />
             ))}
-          </div>
+          </AnimatedSection>
         )}
       </div>
     </main>

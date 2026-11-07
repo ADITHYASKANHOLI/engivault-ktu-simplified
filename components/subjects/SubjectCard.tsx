@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowUpRight, BookOpen, Layers, Video, FileText } from "lucide-react";
 import { Subject } from "@/types";
+import { ShineWrapper, AnimatedCountingNumber } from "@/components/ui/animate";
 
 interface SubjectCardProps {
   subject: Subject;
@@ -21,7 +22,11 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
   const motif = getSubjectMotif(subject.title, subject.code);
 
   return (
-    <div className="group relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col justify-between">
+    <ShineWrapper
+      color="rgba(255, 255, 255, 0.35)"
+      opacity={0.25}
+      className="group relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col justify-between"
+    >
       {/* Subtle diagonal technical watermark */}
       <div className="absolute -bottom-6 -right-6 text-7xl font-mono font-black text-slate-100 dark:text-slate-800/50 pointer-events-none select-none opacity-50 group-hover:scale-110 transition-transform duration-300">
         {motif}
@@ -60,7 +65,7 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <Video className="w-3.5 h-3.5 text-blue-600" />
-            {subject.lessons_count || 0} Lectures
+            <AnimatedCountingNumber value={subject.lessons_count || 0} /> Lectures
           </span>
           <span>•</span>
           <span className="flex items-center gap-1">
@@ -77,6 +82,6 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
           <ArrowUpRight className="w-3.5 h-3.5" />
         </Link>
       </div>
-    </div>
+    </ShineWrapper>
   );
 }

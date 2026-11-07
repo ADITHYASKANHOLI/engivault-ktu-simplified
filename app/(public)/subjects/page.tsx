@@ -3,6 +3,7 @@ import { BookOpen, Search } from "lucide-react";
 import { getPublishedSubjects } from "@/lib/queries";
 import { SubjectGrid } from "@/components/subjects/SubjectGrid";
 import { matchesSubjectQuery } from "@/lib/utils/academic-search";
+import { AnimatedSection } from "@/components/ui/animate";
 
 export const metadata = {
   title: "Engineering Subjects Catalog — ENGIVAULT",
@@ -61,7 +62,9 @@ export default async function SubjectsPage({
         </div>
 
         {/* Subject Grid */}
-        <SubjectGrid subjects={subjects} />
+        <AnimatedSection>
+          <SubjectGrid subjects={subjects} />
+        </AnimatedSection>
       </div>
     </main>
   );

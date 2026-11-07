@@ -5,6 +5,7 @@ import { YoutubeIcon } from "@/components/icons/YoutubeIcon";
 import { Lesson } from "@/types";
 import { formatDuration } from "@/lib/utils";
 import { extractYouTubeVideoId, getYouTubeThumbnailUrl, getYouTubeWatchUrl } from "@/lib/utils/youtube";
+import { ShineWrapper } from "@/components/ui/animate";
 
 interface LectureCardProps {
   lecture: Lesson;
@@ -65,7 +66,11 @@ export function LectureCard({
         className="group flex flex-col rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm hover:shadow-xl hover:border-red-500/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/50"
       >
         {/* 16:9 Video Thumbnail Container with Academic Overlays */}
-        <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+        <ShineWrapper
+          color="rgba(255, 255, 255, 0.4)"
+          opacity={0.3}
+          className="relative aspect-video w-full bg-slate-950 overflow-hidden"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumbnailUrl}
@@ -97,7 +102,7 @@ export function LectureCard({
             <Clock className="w-3 h-3 text-cyan-400" />
             <span>{formatDuration(lecture.duration_seconds)}</span>
           </div>
-        </div>
+        </ShineWrapper>
 
         {/* Academic Content Block */}
         <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">

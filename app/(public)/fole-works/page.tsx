@@ -12,7 +12,9 @@ import {
 import { WorksActivity } from "@/types";
 import { getPublishedWorksActivities } from "@/lib/queries";
 import { FoleWorksLogo } from "@/components/branding/FoleWorksLogo";
+import { FoleWorksHeading } from "@/components/fole/FoleWorksHeading";
 import { WorksFilterView } from "@/components/works/WorksFilterView";
+import { AnimatedHighlight } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,13 +67,12 @@ export default async function FoleWorksPage() {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
-              FOLE <span className="text-emerald-600 dark:text-emerald-400 font-mono">WORKS</span>
-            </h1>
+            <FoleWorksHeading />
 
             {/* Description */}
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-8">
-              The practical initiative wing of <strong>Free Open Learning & Education (FOLE CEV)</strong> at{" "}
+              The <AnimatedHighlight text="practical initiative wing" /> of{" "}
+              <strong>Free Open Learning & Education (FOLE CEV)</strong> at{" "}
               <strong>College of Engineering Vadakara</strong>. We organize student-driven technical workshops,
               industry internship programmes, collaborative robotics projects, and professional skill bootcamps.
             </p>

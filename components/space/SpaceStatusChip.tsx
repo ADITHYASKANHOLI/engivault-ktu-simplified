@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import type { SpaceAvailabilityState } from "@/lib/space/types";
 import { DoorOpen, Users, Clock } from "lucide-react";
+import { AnimatedCountingNumber } from "@/components/ui/animate";
 
 interface SpaceStatusChipProps {
   state: SpaceAvailabilityState;
@@ -76,8 +77,15 @@ export function SpaceStatusChip({
           <Icon className="w-4 h-4 opacity-75" />
           <span>{current.label}</span>
         </div>
-        {current.subtext && (
-          <span className="text-xs opacity-80 font-medium">{current.subtext}</span>
+        {capacity ? (
+          <span className="text-xs opacity-80 font-medium font-mono">
+            <AnimatedCountingNumber value={occupancy || 0} /> /{" "}
+            <AnimatedCountingNumber value={capacity} /> Seats Occupied
+          </span>
+        ) : (
+          current.subtext && (
+            <span className="text-xs opacity-80 font-medium">{current.subtext}</span>
+          )
         )}
       </div>
     </div>

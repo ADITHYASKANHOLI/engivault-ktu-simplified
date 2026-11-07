@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Maximize2, X, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ShineWrapper, MagneticButton } from "@/components/ui/animate";
 
 interface FlyerDisplayProps {
   src: string;
@@ -54,7 +55,9 @@ export function FlyerDisplay({
 
   return (
     <>
-      <div
+      <ShineWrapper
+        color="rgba(255, 255, 255, 0.45)"
+        opacity={0.35}
         className={cn(
           "relative group rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-200 shadow-sm",
           className
@@ -73,16 +76,20 @@ export function FlyerDisplay({
         />
 
         {/* View Full Size Overlay Trigger */}
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold px-3 shadow-lg"
-          aria-label="View flyer full size"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
-          <span>Full Poster</span>
-        </button>
-      </div>
+        <div className="absolute bottom-3 right-3 z-20">
+          <MagneticButton strength={0.25} range={60}>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="p-2 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold px-3 shadow-lg"
+              aria-label="View flyer full size"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Full Poster</span>
+            </button>
+          </MagneticButton>
+        </div>
+      </ShineWrapper>
 
       {/* Lightbox / Full-size Modal */}
       {modalOpen && (

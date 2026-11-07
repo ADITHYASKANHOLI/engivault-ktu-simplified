@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   DoorOpen,
   Calendar,
-  Sparkles,
   ArrowRight,
   QrCode,
   ShieldCheck,
@@ -12,6 +11,8 @@ import {
 import { spaceService } from "@/lib/space/service";
 import { FoleSpaceLogo } from "@/components/branding/FoleSpaceLogo";
 import { SpaceStatusChip } from "@/components/space/SpaceStatusChip";
+import { FoleSpaceTagline } from "@/components/fole/FoleSpaceTagline";
+import { MagneticButton } from "@/components/ui/animate";
 import { formatDateTimeIST } from "@/lib/space/time";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +62,7 @@ export default async function FoleSpacePage() {
             </div>
 
             {/* Tagline */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold tracking-wider uppercase mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Learn Together. Build Together. Grow Together.</span>
-            </div>
+            <FoleSpaceTagline />
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
@@ -78,13 +76,15 @@ export default async function FoleSpacePage() {
 
             {/* Primary Action Buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/fole-space/open"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-md min-h-[48px]"
-              >
-                <DoorOpen className="w-4 h-4" />
-                <span>Open Space Check-in</span>
-              </Link>
+              <MagneticButton strength={0.25} range={70}>
+                <Link
+                  href="/fole-space/open"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-md min-h-[48px]"
+                >
+                  <DoorOpen className="w-4 h-4" />
+                  <span>Open Space Check-in</span>
+                </Link>
+              </MagneticButton>
 
               <Link
                 href="/fole-space/calendar"
