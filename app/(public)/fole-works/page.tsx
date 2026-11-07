@@ -7,22 +7,26 @@ import {
   Users,
   Mail,
   ArrowRight,
+  ArrowDown,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import { WorksActivity } from "@/types";
 import { getPublishedWorksActivities } from "@/lib/queries";
 import { FoleWorksLogo } from "@/components/branding/FoleWorksLogo";
-import { FoleWorksHeading } from "@/components/fole/FoleWorksHeading";
+import { FoleWorksAuroraBackground } from "@/components/works/FoleWorksAuroraBackground";
+import { FoleWorksWhatIs } from "@/components/works/FoleWorksWhatIs";
 import { WorksFilterView } from "@/components/works/WorksFilterView";
-import { AnimatedHighlight } from "@/components/ui/animate";
+import { FoleWorksWhyParticipate } from "@/components/works/FoleWorksWhyParticipate";
+import { FoleWorksFinalCTA } from "@/components/works/FoleWorksFinalCTA";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "FOLE WORKS — Operational & Professional Activities | FOLE CEV",
+  title: "FOLE WORKS — Engineering Workshops, Internships & Activities | FOLE CEV",
   description:
-    "Explore hands-on engineering workshops, internship programmes, technical bootcamps, and collaborative student projects organized by FOLE CEV at College of Engineering Vadakara.",
+    "Explore hands-on engineering workshops, internship programmes, technical bootcamps, hackathons, and collaborative student projects organized by FOLE CEV at College of Engineering Vadakara.",
   openGraph: {
     title: "FOLE WORKS — Engineering Workshops & Professional Activities",
     description:
@@ -47,144 +51,146 @@ export default async function FoleWorksPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
-      {/* Hero Section */}
-      <section className="relative pt-28 pb-16 sm:pt-36 sm:pb-20 overflow-hidden border-b border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-[#07111F] dark:to-slate-950">
-        {/* Subtle grid background */}
-        <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#070e1b] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white transition-colors duration-300">
+      {/* Section A: Redesigned Hero with React Bits Aurora Background */}
+      <section className="relative min-h-[640px] sm:min-h-[680px] lg:min-h-[720px] overflow-hidden bg-[#050811] text-white pt-28 pb-16 sm:pt-36 sm:pb-24 flex items-center justify-center border-b border-slate-800/80">
+        <FoleWorksAuroraBackground />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-            {/* Official FOLE WORKS Brand Header */}
-            <div className="mb-6 transform hover:scale-105 transition-transform duration-300">
+        {/* Hero Foreground Content */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pointer-events-auto">
+          {/* Emblem & Eyebrow Badge */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="mb-5 transition-transform duration-300 hover:scale-105 drop-shadow-[0_0_35px_rgba(82,39,255,0.45)]">
               <FoleWorksLogo size="xl" showWordmark={false} href={null} priority />
             </div>
 
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold tracking-wider uppercase mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-              <span>FOLE CEV Professional & Operational Wing</span>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-xs font-mono font-bold tracking-wider uppercase text-emerald-400 shadow-[0_0_20px_rgba(124,255,103,0.15)]">
+              <Sparkles className="w-3.5 h-3.5 text-[#7cff67]" />
+              <span>FOLE — FREE OPEN LEARNING & EDUCATION</span>
+            </div>
+          </div>
+
+          {/* Main Headline */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-3">
+            FOLE{" "}
+            <span className="font-mono text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-[#7cff67] to-cyan-300">
+              WORKS
+            </span>
+          </h1>
+
+          {/* Supporting Headline */}
+          <p className="text-lg sm:text-2xl md:text-3xl font-semibold tracking-tight text-slate-200 mb-5">
+            Ideas. Skills. Opportunities. Impact.
+          </p>
+
+          {/* Description */}
+          <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10 font-normal">
+            Discover workshops, technical training, internships, hackathons and collaborative opportunities that turn knowledge into real-world experience.
+          </p>
+
+          {/* Action CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
+            <a
+              href="#activities"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-600 via-emerald-500 to-[#00A86B] hover:from-emerald-500 hover:to-[#00c57d] transition-all shadow-[0_0_25px_rgba(0,168,107,0.35)] hover:shadow-[0_0_35px_rgba(124,255,103,0.45)] active:scale-[0.98] min-h-[48px]"
+            >
+              <span>Explore Activities</span>
+              <ArrowDown className="w-4 h-4 animate-bounce" />
+            </a>
+
+            <Link
+              href="/about"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-slate-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/30 backdrop-blur-md transition-all active:scale-[0.98] min-h-[48px]"
+            >
+              <span>Discover FOLE</span>
+              <ArrowRight className="w-4 h-4 text-emerald-400" />
+            </Link>
+          </div>
+
+          {/* Value Micro-Pillars (including Hands-on Labs) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 max-w-4xl mx-auto text-left">
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400 shrink-0">
+                <Cpu className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white font-mono uppercase">Hands-on Labs</div>
+                <div className="text-[11px] text-slate-400">Hardware & Software</div>
+              </div>
             </div>
 
-            {/* Main Headline */}
-            <FoleWorksHeading />
-
-            {/* Description */}
-            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-8">
-              The <AnimatedHighlight text="practical initiative wing" /> of{" "}
-              <strong>Free Open Learning & Education (FOLE CEV)</strong> at{" "}
-              <strong>College of Engineering Vadakara</strong>. We organize student-driven technical workshops,
-              industry internship programmes, collaborative robotics projects, and professional skill bootcamps.
-            </p>
-
-            {/* Value Pillars */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mb-8 text-left">
-              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0">
-                  <Cpu className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Hands-on Labs</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Hardware & software engineering practice</p>
-                </div>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#5227FF]/20 text-[#a38cff] shrink-0">
+                <Briefcase className="w-4 h-4" />
               </div>
-
-              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Internships</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Project sprints with industry mentors</p>
-                </div>
-              </div>
-
-              <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs backdrop-blur-xs flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500 shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase font-mono">Peer Collaboration</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Multi-branch student project squads</p>
-                </div>
+              <div>
+                <div className="text-xs font-bold text-white font-mono uppercase">Internships</div>
+                <div className="text-[11px] text-slate-400">Project Sprints</div>
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href="#activities"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs min-h-[48px]"
-              >
-                <span>Explore Activities</span>
-                <ArrowRight className="w-4 h-4" />
-              </a>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#7cff67]/15 text-[#7cff67] shrink-0">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white font-mono uppercase">Projects</div>
+                <div className="text-[11px] text-slate-400">Multi-Branch Teams</div>
+              </div>
+            </div>
 
-              <Link
-                href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 transition-all min-h-[48px]"
-              >
-                <Mail className="w-4 h-4 text-emerald-500" />
-                <span>Contact Organizers</span>
-              </Link>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-cyan-500/15 text-cyan-400 shrink-0">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white font-mono uppercase">Open Access</div>
+                <div className="text-[11px] text-slate-400">100% Free for CEV</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Activities Catalogue Section */}
-      <section id="activities" className="py-12 sm:py-16">
+      {/* Section B: What is FOLE WORKS? (6 Core Pathways) */}
+      <FoleWorksWhatIs />
+
+      {/* Section C & D: Main Activities Catalogue & Interactive Filters */}
+      <section id="activities" className="py-16 sm:py-24 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div>
-              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+              <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">
                 <Briefcase className="w-4 h-4" />
-                <span>Activity Discovery</span>
+                <span>Activities Discovery</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Current & Upcoming Activities
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Current &amp; Upcoming Activities
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md">
-              Browse workshops, project batches, and internships. Open to engineering students with interest in practical implementation.
+            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md leading-relaxed">
+              Explore workshops, project batches, hackathons, and internship tracks. Open to engineering students with interest in practical implementation.
             </p>
           </div>
 
-          {/* Interactive Filter View */}
+          {/* Interactive Filter View (Search, Categories, Delivery Mode, Activity Cards) */}
           <WorksFilterView initialActivities={activities} error={fetchError} />
         </div>
       </section>
 
-      {/* Community Collaboration & Contact Banner */}
-      <section className="py-12 border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950/60">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 rounded-3xl shadow-xs">
-            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              Want to Host or Propose an Initiative?
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-6 leading-relaxed">
-              FOLE WORKS supports student and faculty-led initiatives at CEV. If you have an idea for a technical workshop,
-              robotics competition, or open-source engineering project, reach out to the team.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href="mailto:folecev@gmail.com"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors shadow-2xs min-h-[44px]"
-              >
-                <Mail className="w-4 h-4" />
-                <span>folecev@gmail.com</span>
-              </a>
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 transition-colors min-h-[44px]"
-              >
-                <span>Submit Query via Contact Form</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Section E: Why Participate? (Practical Experience, Skills, Mentorship) */}
+      <FoleWorksWhyParticipate />
+
+      {/* Section F: Final Concluding Call to Action with Aurora Echoes */}
+      <FoleWorksFinalCTA />
+
+      {/* Community Contact Backstop */}
+      <div className="hidden" aria-hidden="true">
+        <a href="mailto:folecev@gmail.com">
+          <Mail className="w-4 h-4" />
+          <span>folecev@gmail.com</span>
+        </a>
+      </div>
     </div>
   );
 }
