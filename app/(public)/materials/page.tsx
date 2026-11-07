@@ -14,6 +14,7 @@ import {
   getAllModules,
 } from "@/lib/queries";
 import { MaterialsFilterView } from "@/components/materials/MaterialsFilterView";
+import { MaterialsAsciiBackground } from "@/components/materials/MaterialsAsciiBackground";
 
 export const metadata = {
   title: "Study Materials & Notes Catalogue — FOLE Web",
@@ -51,38 +52,40 @@ export default async function MaterialsPage() {
   }
 
   return (
-    <main className="flex-1 pt-24 sm:pt-28 pb-20 bg-[#F7F9FC] dark:bg-slate-950 min-h-screen bg-tech-grid">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb Navigation */}
-        <nav
-          aria-label="Breadcrumb"
-          className="mb-5 flex items-center gap-2 text-xs text-slate-500 font-medium"
-        >
-          <Link href="/" className="hover:text-emerald-600 transition-colors">
-            Home
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-900 dark:text-white font-semibold">
-            Study Materials
-          </span>
-        </nav>
+    <div className="relative isolate min-h-screen bg-[#07111F] text-slate-100">
+      <MaterialsAsciiBackground />
+      <main className="page-content-relative flex-1 pt-24 sm:pt-28 pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Breadcrumb Navigation */}
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-5 flex items-center gap-2 text-xs text-slate-400 font-medium"
+          >
+            <Link href="/" className="hover:text-emerald-400 transition-colors">
+              Home
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-white font-semibold">
+              Study Materials
+            </span>
+          </nav>
 
-        {/* Hero Section */}
-        <div className="rounded-3xl bg-gradient-to-br from-[#07111F] via-[#0B1A2E] to-[#0A2540] text-white p-6 sm:p-10 shadow-xl mb-8 border border-emerald-950/40 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-xs font-mono font-bold">
-              <FileText className="w-3.5 h-3.5" />
-              <span>KTU ACADEMIC STUDY VAULT</span>
+          {/* Hero Section */}
+          <div className="rounded-3xl bg-slate-900/60 backdrop-blur-md text-white p-6 sm:p-10 shadow-xl mb-8 border border-emerald-500/30 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-xs font-mono font-bold">
+                <FileText className="w-3.5 h-3.5" />
+                <span>KTU ACADEMIC STUDY VAULT</span>
+              </div>
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
+                Study Materials &amp; Notes
+              </h1>
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+                Download lecture notes, question banks, previous year exam papers, and syllabus presentations organized by department, subject, and module.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
-              Study Materials & Notes
-            </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
-              Download lecture notes, question banks, previous year exam papers, and syllabus presentations organized by department, subject, and module.
-            </p>
           </div>
-        </div>
 
         {/* Error Fallback or Filterable Catalog */}
         {fetchError ? (
@@ -125,5 +128,6 @@ export default async function MaterialsPage() {
         )}
       </div>
     </main>
+  </div>
   );
 }

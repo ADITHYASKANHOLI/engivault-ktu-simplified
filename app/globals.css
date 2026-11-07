@@ -180,3 +180,29 @@
   position: relative;
   z-index: 1;
 }
+
+/* Page-Scoped Continuous Sticky Background Architecture */
+.page-sticky-bg-layer {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  width: 100%;
+  margin-bottom: -100vh;
+  margin-bottom: -100svh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.page-sticky-bg-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-content-relative {
+  position: relative;
+  z-index: 1;
+}
