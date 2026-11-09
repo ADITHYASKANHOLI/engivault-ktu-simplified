@@ -32,6 +32,7 @@ export interface PillNavProps {
   intro?: boolean;
   collapse?: "auto" | "always" | "never";
   onMenuToggle?: (open: boolean) => void;
+  renderPanelFooter?: (closeMenu: () => void) => React.ReactNode;
   ariaLabel?: string;
   className?: string;
   style?: React.CSSProperties;
