@@ -97,6 +97,7 @@ const BURGER = 'pill-nav__burger';
 const LINE_TOP = 'pill-nav__line pill-nav__line--top';
 const LINE_BOTTOM = 'pill-nav__line pill-nav__line--bottom';
 const PANEL = 'pill-nav__panel';
+const PANEL_FOOTER = 'pill-nav__panel-footer';
 const MENU = 'pill-nav__menu';
 const ROW = 'pill-nav__row';
 const MEASURE = 'pill-nav__measure';
@@ -159,6 +160,7 @@ const PillNav = ({
   intro = true,
   collapse = 'auto',
   onMenuToggle,
+  renderPanelFooter,
   ariaLabel = 'Main',
   className = '',
   style
@@ -694,6 +696,11 @@ const PillNav = ({
     if (!controlled) setSelected(index);
   };
 
+  const closeMenu = () => {
+    setOpen(false);
+    onMenuToggle?.(false);
+  };
+
   const toggle = () => {
     const next = !open;
     if (next) setPanelShown(true);
@@ -831,8 +838,7 @@ const PillNav = ({
                     tabIndex: open ? undefined : -1,
                     onClick: event => {
                       choose(item, index, event);
-                      setOpen(false);
-                      onMenuToggle?.(false);
+                      closeMenu();
                     }
                   },
                   face(item)
@@ -840,6 +846,9 @@ const PillNav = ({
               </li>
             ))}
           </ul>
+          {renderPanelFooter && (
+            <div className={PANEL_FOOTER}>{renderPanelFooter(closeMenu)}</div>
+          )}
           <span className={RIM} />
         </div>
       )}
