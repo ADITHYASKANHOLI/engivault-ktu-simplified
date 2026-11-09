@@ -26,12 +26,12 @@ export default async function NewSpaceEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 sm:pb-20 transition-colors">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 space-y-6">
         <div>
           <Link
             href="/fole-space/organizer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors mb-4"
+            className="inline-flex items-center gap-1.5 py-2 sm:py-0 min-h-[44px] sm:min-h-0 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors mb-3 sm:mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Organizer Hub</span>

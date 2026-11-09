@@ -163,13 +163,13 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   };
 
   return (
-    <header className="fixed top-3 sm:top-5 md:top-6 inset-x-0 z-50 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-300">
-      <div className="w-full h-14 sm:h-16 px-4 sm:px-6 lg:px-7 rounded-full bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 sm:gap-4 pointer-events-auto">
+    <header className="fixed top-3 sm:top-5 md:top-6 inset-x-0 z-50 px-4 min-[375px]:px-5 sm:px-6 lg:px-8 max-w-7xl mx-auto pointer-events-none transition-all duration-300">
+      <div className="w-full h-14 sm:h-16 px-3.5 min-[375px]:px-4 sm:px-6 lg:px-7 rounded-full bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex items-center justify-between gap-2 sm:gap-4 pointer-events-auto">
         {/* Mobile Brand Logo on the Left (< xl screens) */}
         <div className="flex xl:hidden items-center shrink-0">
           <Link
             href="/"
-            className="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-full transition-transform hover:scale-[1.02]"
+            className="min-h-[40px] flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-full transition-transform hover:scale-[1.02]"
             aria-label="FOLE Homepage"
           >
             <FoleLogoVector className="h-7 sm:h-8 w-auto" textColor="#050908" greenColor="#00A86B" />
@@ -199,7 +199,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
         </div>
 
         {/* Header Right Utilities */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+        <div className="flex items-center gap-1.5 min-[375px]:gap-2 sm:gap-3.5 shrink-0">
           {/* Search Icon Button */}
           <AnimatedTooltip content="Search KTU curriculum" side="bottom">
             <MagneticButton strength={0.3} range={50}>
@@ -207,7 +207,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
                 type="button"
                 onClick={() => setSearchDialogOpen(true)}
                 aria-label="Search FOLE Curriculum"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 hover:text-[#00A86B] hover:bg-black/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+                className="w-11 h-11 sm:w-10 sm:h-10 rounded-full text-slate-700 hover:text-[#00A86B] hover:bg-black/5 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
               >
                 <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2]" />
               </button>
@@ -219,13 +219,22 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
 
           {/* Authentication Actions */}
           {auth.role ? (
-            <div className="flex items-center gap-2">
-              <AuthMenu
-                initialAuth={auth}
-                onOpenLogin={handleOpenLogin}
-                variant="desktop"
-              />
-            </div>
+            <>
+              <div className="flex sm:hidden items-center">
+                <AuthMenu
+                  initialAuth={auth}
+                  onOpenLogin={handleOpenLogin}
+                  variant="mobile-icon"
+                />
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <AuthMenu
+                  initialAuth={auth}
+                  onOpenLogin={handleOpenLogin}
+                  variant="desktop"
+                />
+              </div>
+            </>
           ) : (
             <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
               {/* Login Button */}
@@ -254,7 +263,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
             ref={mobileMenuButtonRef}
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="w-10 h-10 flex xl:hidden items-center justify-center rounded-full text-slate-800 hover:bg-black/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+            className="w-11 h-11 sm:w-10 sm:h-10 flex xl:hidden items-center justify-center rounded-full text-slate-800 hover:bg-black/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation-drawer"
@@ -270,7 +279,7 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
 
       {/* Accessible Mobile Navigation Drawer */}
       {mobileMenuOpen && (
-        <div id="mobile-navigation-drawer" className="fixed inset-0 top-[70px] sm:top-20 z-50 xl:hidden flex flex-col pointer-events-auto">
+        <div id="mobile-navigation-drawer" className="fixed inset-0 top-[68px] sm:top-20 z-50 xl:hidden flex flex-col pointer-events-auto">
           {/* Backdrop */}
           <div
             onClick={() => setMobileMenuOpen(false)}
@@ -279,24 +288,24 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
           />
 
           {/* Drawer Sheet */}
-          <div className="relative mx-4 sm:mx-6 rounded-2xl sm:rounded-3xl bg-white/95 dark:bg-[#07140e]/95 backdrop-blur-2xl border border-slate-200/80 dark:border-white/15 shadow-2xl p-4 sm:p-6 space-y-4 z-10 max-h-[calc(100dvh-100px)] overflow-y-auto">
+          <div className="relative mx-4 min-[375px]:mx-5 sm:mx-6 rounded-2xl sm:rounded-3xl bg-white/95 dark:bg-[#07140e]/95 backdrop-blur-2xl border border-slate-200/80 dark:border-white/15 shadow-2xl p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 z-10 max-h-[calc(100dvh-88px)] overflow-y-auto">
             {/* Quick search input button */}
-            <div className="pb-2 border-b border-slate-100 dark:border-emerald-950">
+            <div className="pb-3 border-b border-slate-100 dark:border-emerald-950">
               <button
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setSearchDialogOpen(true);
                 }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/40 border border-slate-200 dark:border-emerald-900 text-xs text-slate-500 dark:text-slate-400"
+                className="w-full min-h-[44px] flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-50 dark:bg-emerald-950/40 border border-slate-200 dark:border-emerald-900 text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-left"
               >
-                <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Search KTU subjects, modules or topics...</span>
+                <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Search KTU subjects, modules or topics...</span>
               </button>
             </div>
 
             {/* Primary Navigation Links */}
-            <nav aria-label="Mobile Navigation" className="space-y-1">
+            <nav aria-label="Mobile Navigation" className="space-y-1.5">
               {navLinks.map((item) => {
                 const active = isLinkActive(item.href);
                 return (
@@ -325,43 +334,43 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
             </nav>
 
             {/* Quick Feature Destinations */}
-            <div className="pt-2 border-t border-slate-100 dark:border-emerald-950 grid grid-cols-2 gap-2">
+            <div className="pt-3 border-t border-slate-100 dark:border-emerald-950 grid grid-cols-2 gap-2.5">
               <Link
                 href="/subjects"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                className="flex items-center gap-2 p-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
               >
-                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Curriculum</span>
               </Link>
               <Link
                 href="/materials"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                className="flex items-center gap-2 p-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
               >
-                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Materials</span>
               </Link>
               <Link
                 href="/fole-space"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                className="flex items-center gap-2 p-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
               >
-                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>FOLE SPACE</span>
               </Link>
               <Link
                 href="/fole-works"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                className="flex items-center gap-2 p-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-emerald-950/30 border border-slate-200/60 dark:border-emerald-900/40 text-xs text-slate-700 dark:text-slate-200 font-medium"
               >
-                <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                <Briefcase className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>FOLE WORKS</span>
               </Link>
             </div>
 
             {/* Bottom Unified Auth Action */}
-            <div className="pt-2 border-t border-slate-100 dark:border-emerald-950">
+            <div className="pt-3 border-t border-slate-100 dark:border-emerald-950">
               {auth.role ? (
                 <AuthMenu
                   initialAuth={auth}
@@ -370,21 +379,21 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
                   onCloseDrawer={() => setMobileMenuOpen(false)}
                 />
               ) : (
-                <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-col gap-3 pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       handleOpenLogin("student");
                     }}
-                    className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                    className="w-full min-h-[44px] py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-white/5 transition-colors flex items-center justify-center"
                   >
                     Student / Admin Login
                   </button>
                   <Link
                     href="/subjects"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full py-2.5 rounded-xl bg-[#00C853] hover:bg-[#00B048] text-white text-sm font-bold text-center shadow-sm shadow-emerald-500/25 transition-colors"
+                    className="w-full min-h-[44px] py-3 rounded-xl bg-[#00C853] hover:bg-[#00B048] text-white text-sm font-bold text-center shadow-sm shadow-emerald-500/25 transition-colors flex items-center justify-center"
                   >
                     Get Started Free
                   </Link>

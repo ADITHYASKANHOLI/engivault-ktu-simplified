@@ -234,7 +234,7 @@ export function WorksShareButton({
           type="button"
           onClick={handleNativeShare}
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold font-mono text-slate-200 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/60 hover:border-emerald-500/50 hover:text-emerald-400 backdrop-blur-md shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[30px]",
+            "inline-flex items-center gap-1.5 px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-xl text-[11px] font-bold font-mono text-slate-200 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/60 hover:border-emerald-500/50 hover:text-emerald-400 backdrop-blur-md shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[40px] sm:min-h-[30px]",
             copied && "text-emerald-400 border-emerald-500/60",
             className
           )}
@@ -261,7 +261,7 @@ export function WorksShareButton({
           <button
             type="button"
             onClick={handleNativeShare}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[32px]"
+            className="inline-flex items-center gap-1.5 px-3 sm:px-2.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[40px] sm:min-h-[32px]"
             title="Share activity"
             aria-label="Share activity"
           >
@@ -272,7 +272,7 @@ export function WorksShareButton({
             type="button"
             onClick={handleCopyLink}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[32px]",
+              "inline-flex items-center gap-1.5 px-3 sm:px-2.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[40px] sm:min-h-[32px]",
               copied
                 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -297,11 +297,11 @@ export function WorksShareButton({
 
       {/* Variant: Detail page header */}
       {variant === "detail-header" && (
-        <div className={cn("inline-flex items-center gap-2", className)}>
+        <div className={cn("inline-flex items-center gap-2 flex-wrap", className)}>
           <button
             type="button"
             onClick={handleNativeShare}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[36px]"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px] sm:min-h-[36px]"
             title="Share activity"
             aria-label="Share activity"
           >
@@ -312,7 +312,7 @@ export function WorksShareButton({
             type="button"
             onClick={handleCopyLink}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[36px]",
+              "inline-flex items-center gap-1.5 px-3.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px] sm:min-h-[36px]",
               copied
                 ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
                 : "text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700"
@@ -341,11 +341,11 @@ export function WorksShareButton({
           <span className="text-[10px] uppercase tracking-wider font-mono text-slate-400 block font-semibold">
             Share Activity
           </span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-2">
             <button
               type="button"
               onClick={handleNativeShare}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[42px]"
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px] sm:min-h-[42px]"
               title="Share activity"
               aria-label="Share activity"
             >
@@ -356,7 +356,7 @@ export function WorksShareButton({
               type="button"
               onClick={handleCopyLink}
               className={cn(
-                "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[42px]",
+                "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px] sm:min-h-[42px]",
                 copied
                   ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
                   : "text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700"
@@ -385,7 +385,7 @@ export function WorksShareButton({
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border border-emerald-500/50 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 dark:bg-slate-950/95 text-white border border-emerald-500/50 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
           <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
             <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
@@ -407,19 +407,19 @@ export function WorksShareButton({
           }}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl space-y-4"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="copy-link-title"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h4 id="copy-link-title" className="text-sm font-bold text-slate-900 dark:text-white">
                 Copy Activity Link
               </h4>
               <button
                 type="button"
                 onClick={() => setShowFallbackModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 w-11 h-11 sm:w-8 sm:h-8 -mr-2 flex items-center justify-center rounded-lg"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />
@@ -433,14 +433,14 @@ export function WorksShareButton({
               readOnly
               value={shareUrl}
               onFocus={(e) => e.target.select()}
-              className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2.5 text-base sm:text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[44px]"
               autoFocus
             />
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowFallbackModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors min-h-[44px]"
               >
                 Done
               </button>

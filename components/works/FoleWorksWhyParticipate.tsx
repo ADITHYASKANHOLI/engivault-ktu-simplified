@@ -48,11 +48,11 @@ const BENEFITS: BenefitItem[] = [
 
 export function FoleWorksWhyParticipate() {
   return (
-    <section className="py-16 sm:py-24 bg-slate-50 dark:bg-[#060c18] border-b border-slate-200 dark:border-slate-800/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+    <section className="py-12 sm:py-24 bg-slate-50 dark:bg-[#060c18] border-b border-slate-200 dark:border-slate-800/80 transition-colors">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-12 items-start">
           {/* Left Column: Context & Summary */}
-          <div className="lg:col-span-5 sticky top-28">
+          <div className="lg:col-span-5 lg:sticky lg:top-28">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-mono font-bold tracking-wider uppercase mb-3">
               <span>Why Participate?</span>
             </div>

@@ -91,7 +91,7 @@ export function StudentAccountView({
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
       {/* Mobile-only Interactive 3D Lanyard Profile Card */}
       <LanyardProfileCard
         username={username}
@@ -100,23 +100,23 @@ export function StudentAccountView({
       />
 
       {/* Profile Overview Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-xl">
-              <User className="w-7 h-7" />
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-xl">
+              <User className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white break-all">
                   @{username}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   Student Member
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                <Calendar className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
                 <span>Joined {formattedDate}</span>
               </div>
             </div>
@@ -125,7 +125,7 @@ export function StudentAccountView({
           <button
             type="button"
             onClick={handleLogout}
-            className="self-start sm:self-center px-4 py-2 rounded-xl text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200/70 dark:border-red-900/50 transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 px-4 py-2.5 sm:py-2 rounded-xl text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200/70 dark:border-red-900/50 transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 shrink-0"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Log out</span>
@@ -137,10 +137,10 @@ export function StudentAccountView({
           <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="text-xs text-amber-900 dark:text-amber-200 space-y-1">
             <p className="font-semibold">No Email Recovery Policy</p>
-            <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/80">
+            <p className="text-xs sm:text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/80">
               FOLE Web protects student privacy by operating strictly with usernames instead of personal emails.
               If you ever forget your password, contact an administrator or reach out at{" "}
-              <a href="mailto:folecev@gmail.com" className="font-semibold underline">
+              <a href="mailto:folecev@gmail.com" className="font-semibold underline break-all">
                 folecev@gmail.com
               </a>{" "}
               for a manual reset.
@@ -150,13 +150,13 @@ export function StudentAccountView({
       </div>
 
       {/* Password Management Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-8 shadow-xs space-y-5 sm:space-y-6">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Change Account Password</span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Update your login credentials. You must provide your current password for security verification.
           </p>
         </div>
@@ -185,7 +185,7 @@ export function StudentAccountView({
           <div>
             <label
               htmlFor="current-password"
-              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
             >
               Current Password
             </label>
@@ -198,15 +198,15 @@ export function StudentAccountView({
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
-                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                className="w-full min-h-[44px] px-3.5 py-2.5 pr-12 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 aria-label={showCurrentPassword ? "Hide password" : "Show password"}
               >
-                {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {showCurrentPassword ? <EyeOff className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> : <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
               </button>
             </div>
           </div>
@@ -214,7 +214,7 @@ export function StudentAccountView({
           <div>
             <label
               htmlFor="new-password"
-              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
             >
               New Password
             </label>
@@ -227,18 +227,18 @@ export function StudentAccountView({
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password (8-72 characters)"
-                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                className="w-full min-h-[44px] px-3.5 py-2.5 pr-12 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 aria-label={showNewPassword ? "Hide password" : "Show password"}
               >
-                {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {showNewPassword ? <EyeOff className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> : <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5" />}
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-[11px] sm:text-[10px] text-slate-400 mt-1.5">
               Minimum 8 characters. Cannot match your username or be a common password.
             </p>
           </div>
@@ -246,7 +246,7 @@ export function StudentAccountView({
           <button
             type="submit"
             disabled={loading}
-            className="py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="w-full sm:w-auto min-h-[46px] sm:min-h-0 py-3 sm:py-2.5 px-5 rounded-xl font-semibold text-sm sm:text-xs text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
             {loading ? (
               <>

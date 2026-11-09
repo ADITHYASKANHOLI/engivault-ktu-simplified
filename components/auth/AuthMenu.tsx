@@ -173,17 +173,17 @@ export function AuthMenu({
     }
 
     return (
-      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
         <Link
           href="/account"
           onClick={onCloseDrawer}
-          className="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-bold text-slate-900 dark:text-white bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 min-h-[44px]"
+          className="flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl text-sm font-bold text-slate-900 dark:text-white bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 min-h-[44px]"
         >
-          <div className="flex items-center gap-2.5">
-            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>My Account ({auth.username})</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="truncate">My Account ({auth.username})</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-emerald-600" />
+          <ChevronRight className="w-4 h-4 text-emerald-600 shrink-0" />
         </Link>
         <button
           type="button"
@@ -193,8 +193,8 @@ export function AuthMenu({
           }}
           className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors min-h-[44px]"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Log out (@{auth.username})</span>
+          <LogOut className="w-4 h-4 shrink-0" />
+          <span className="truncate">Log out (@{auth.username})</span>
         </button>
       </div>
     );

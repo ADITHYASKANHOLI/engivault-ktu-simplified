@@ -39,28 +39,28 @@ export default async function ModuleDetailPage({ params }: ModuleDetailPageProps
   ]);
 
   return (
-    <main className="flex-1 pt-28 pb-24 bg-[#F7F9FC]">
+    <main className="flex-1 pt-24 sm:pt-28 pb-16 sm:pb-24 bg-[#F7F9FC]">
       {/* Breadcrumbs */}
-      <div className="bg-white border-b border-slate-200/80 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-slate-500 font-medium overflow-x-auto">
-          <Link href="/subjects" className="hover:text-blue-700">Subjects</Link>
+      <div className="bg-white border-b border-slate-200/80 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-slate-500 font-medium overflow-x-auto whitespace-nowrap">
+          <Link href="/subjects" className="min-h-[36px] sm:min-h-0 inline-flex items-center hover:text-blue-700 shrink-0">Subjects</Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <Link href={`/subjects/${subject.slug}`} className="hover:text-blue-700 truncate">{subject.title}</Link>
+          <Link href={`/subjects/${subject.slug}`} className="min-h-[36px] sm:min-h-0 inline-flex items-center hover:text-blue-700 truncate">{subject.title}</Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <span className="text-slate-900 font-semibold truncate">{mod.title}</span>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      <div className="max-w-5xl mx-auto px-5 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
         <div>
           <Link
             href={`/subjects/${subject.slug}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 mb-4"
+            className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 mb-3 sm:mb-4"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to {subject.title}</span>
           </Link>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">{mod.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">{mod.title}</h1>
           {mod.short_description && (
             <p className="text-sm text-slate-600 mt-2 leading-relaxed">{mod.short_description}</p>
           )}
@@ -101,7 +101,7 @@ export default async function ModuleDetailPage({ params }: ModuleDetailPageProps
               </h2>
               <Link
                 href={`/materials?subject=${subject.slug}&module=${mod.slug}`}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                className="min-h-[40px] sm:min-h-0 text-xs font-bold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1"
               >
                 <span>View all in materials vault</span>
                 <ChevronRight className="w-3.5 h-3.5" />

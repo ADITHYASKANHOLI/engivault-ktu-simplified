@@ -23,10 +23,10 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
           </h3>
         </div>
 
-        <div className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+        <div className="space-y-4 max-h-[420px] lg:max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
           {modules.map((mod, mIdx) => (
-            <div key={mod.id} className="space-y-1.5">
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 px-2 py-1 bg-slate-50 dark:bg-slate-800/60 rounded-lg flex items-center justify-between">
+            <div key={mod.id} className="space-y-2">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg flex items-center justify-between">
                 <span className="truncate">
                   {mod.title}
                 </span>
@@ -35,7 +35,7 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
                 </span>
               </div>
 
-              <div className="space-y-1 pl-1">
+              <div className="space-y-1.5 pl-1">
                 {(mod.lessons || []).map((les) => {
                   const isActive = les.id === currentLessonId;
                   const lesWatchUrl =
@@ -45,7 +45,7 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
                   return (
                     <div
                       key={les.id}
-                      className={`group flex items-center justify-between p-1.5 rounded-lg text-xs transition-all ${
+                      className={`group min-h-[44px] flex items-center justify-between px-2.5 py-2 sm:p-1.5 rounded-xl sm:rounded-lg text-xs transition-all ${
                         isActive
                           ? "bg-blue-600 text-white font-medium shadow-xs"
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
@@ -53,7 +53,7 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
                     >
                       <Link
                         href={`/subjects/${subjectSlug}/${mod.slug}/${les.slug}`}
-                        className="flex items-start gap-2.5 min-w-0 flex-1"
+                        className="flex items-start gap-2.5 min-w-0 flex-1 py-0.5"
                         aria-label={`View lecture notes for ${les.title}`}
                       >
                         <PlayCircle
@@ -80,7 +80,7 @@ export function LessonSidebar({ subjectSlug, modules, currentLessonId }: LessonS
                           rel="noopener noreferrer"
                           title="Watch lecture on YouTube (opens in new tab)"
                           aria-label={`Watch ${les.title} on YouTube (opens in new tab)`}
-                          className={`p-1 rounded transition-colors shrink-0 ${
+                          className={`w-10 h-10 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg sm:rounded transition-colors shrink-0 ${
                             isActive
                               ? "text-blue-100 hover:text-white hover:bg-blue-700"
                               : "text-slate-400 hover:text-red-600 hover:bg-red-50"

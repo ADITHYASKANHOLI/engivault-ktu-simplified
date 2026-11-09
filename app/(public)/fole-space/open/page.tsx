@@ -24,7 +24,7 @@ export default async function OpenSpacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 sm:pb-20 transition-colors">
       <OpenSpaceClientHub
         initialStatus={status}
         initialSession={activeSession}

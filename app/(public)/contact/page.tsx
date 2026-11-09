@@ -148,8 +148,8 @@ export default function ContactPage() {
   };
 
   return (
-    <main className="flex-1 pt-32 pb-24 bg-[#F7F9FC]">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <main className="flex-1 pt-24 sm:pt-32 pb-16 sm:pb-24 bg-[#F7F9FC]">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
         {/* Header Section */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-semibold">
@@ -157,8 +157,8 @@ export default function ContactPage() {
             <MessageSquare className="w-3.5 h-3.5" />
             <span>OFFICIAL FOLE SUPPORT</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            Contact & Support
+          <h1 className="text-3xl min-[375px]:text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+            Contact &amp; Support
           </h1>
           <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed">
             Have questions regarding KTU course lectures, syllabus revisions, or general academic inquiries? Send a message directly to the official FOLE CEV team.
@@ -166,19 +166,19 @@ export default function ContactPage() {
         </div>
 
         {/* Quick Contact & Mission Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
           <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
               <Mail className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs font-mono font-semibold text-slate-500 uppercase">Official Email</div>
               <a
                 href="mailto:folecev@gmail.com"
-                className="text-xs sm:text-sm font-bold text-slate-900 hover:text-emerald-600 truncate block transition-colors"
+                className="text-sm sm:text-sm font-bold text-slate-900 hover:text-emerald-600 inline-flex items-center max-w-full min-h-[44px] sm:min-h-0 transition-colors"
                 title="Send direct email to folecev@gmail.com"
               >
-                folecev@gmail.com
+                <span className="truncate">folecev@gmail.com</span>
               </a>
             </div>
           </div>
@@ -189,7 +189,7 @@ export default function ContactPage() {
             </div>
             <div>
               <div className="text-xs font-mono font-semibold text-slate-500 uppercase">Response Time</div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900">Within 24–48 hours</div>
+              <div className="text-sm sm:text-sm font-bold text-slate-900">Within 24–48 hours</div>
             </div>
           </div>
 
@@ -199,15 +199,15 @@ export default function ContactPage() {
             </div>
             <div>
               <div className="text-xs font-mono font-semibold text-slate-500 uppercase">Platform</div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900">FOLE CEV Academic Vault</div>
+              <div className="text-sm sm:text-sm font-bold text-slate-900">FOLE CEV Academic Vault</div>
             </div>
           </div>
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 shadow-sm">
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 min-[375px]:p-6 sm:p-12 shadow-sm">
           {isSuccess ? (
-            <div className="text-center py-10 space-y-6">
+            <div className="text-center py-8 sm:py-10 space-y-6">
               <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
                 <CheckCircle className="w-8 h-8" />
               </div>
@@ -228,14 +228,14 @@ export default function ContactPage() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors min-h-[46px]"
                 >
                   Send another message
                 </button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} noValidate className="space-y-6">
+            <form onSubmit={handleSubmit} noValidate className="space-y-5 sm:space-y-6">
               {/* Server-level error banner */}
               {serverError && (
                 <div
@@ -266,7 +266,7 @@ export default function ContactPage() {
               </div>
 
               {/* Name & Email Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <div>
                   <label
                     htmlFor="name"
@@ -287,7 +287,7 @@ export default function ContactPage() {
                         setFieldErrors({ ...fieldErrors, name: "" });
                       }
                     }}
-                    className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none transition-all ${
+                    className={`w-full px-4 py-3 rounded-xl border text-base sm:text-sm min-h-[46px] focus:outline-none transition-all ${
                       fieldErrors.name
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20"
                         : "border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
@@ -320,7 +320,7 @@ export default function ContactPage() {
                         setFieldErrors({ ...fieldErrors, email: "" });
                       }
                     }}
-                    className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none transition-all ${
+                    className={`w-full px-4 py-3 rounded-xl border text-base sm:text-sm min-h-[46px] focus:outline-none transition-all ${
                       fieldErrors.email
                         ? "border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20"
                         : "border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
@@ -355,12 +355,12 @@ export default function ContactPage() {
                       setFieldErrors({ ...fieldErrors, subject: "" });
                     }
                   }}
-                  className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none transition-all ${
+                  className={`w-full px-4 py-3 rounded-xl border text-base sm:text-sm min-h-[46px] focus:outline-none transition-all ${
                     fieldErrors.subject
                       ? "border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20"
                       : "border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
                   } ${isSubmitting ? "opacity-60 cursor-not-allowed" : ""}`}
-                  placeholder="e.g. Question regarding MAT101 Limits lecture notes"
+                  placeholder="e.g. Question regarding MAT101 lecture notes"
                   autoComplete="off"
                 />
                 {fieldErrors.subject && (
@@ -394,7 +394,7 @@ export default function ContactPage() {
                       setFieldErrors({ ...fieldErrors, message: "" });
                     }
                   }}
-                  className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none transition-all resize-y min-h-[140px] ${
+                  className={`w-full px-4 py-3 rounded-xl border text-base sm:text-sm focus:outline-none transition-all resize-y min-h-[140px] ${
                     fieldErrors.message
                       ? "border-rose-400 focus:ring-2 focus:ring-rose-500 bg-rose-50/20"
                       : "border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
@@ -416,7 +416,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 px-6 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all shadow-sm flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed group cursor-pointer"
+                className="w-full py-4 px-6 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all shadow-sm flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed group cursor-pointer min-h-[50px]"
               >
                 {isSubmitting ? (
                   <>

@@ -149,7 +149,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Search FOLE Curriculum"
-      className="fixed inset-0 z-[9999] pointer-events-auto flex items-start justify-center pt-16 sm:pt-20 px-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[9999] pointer-events-auto flex items-start justify-center pt-4 sm:pt-20 px-4 pb-4 animate-in fade-in duration-150"
     >
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto cursor-pointer"
@@ -160,21 +160,21 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
       <div
         ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-white dark:bg-[#07140e] rounded-2xl border border-slate-200 dark:border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
+        className="relative z-10 w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] bg-white dark:bg-[#07140e] rounded-2xl border border-slate-200 dark:border-emerald-900/50 shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-slate-100 dark:border-emerald-950">
-          <Search className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mr-3" />
+        <div className="flex items-center px-4 py-2 sm:py-2.5 gap-1.5 border-b border-slate-100 dark:border-emerald-950 shrink-0">
+          <Search className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mr-1.5" />
           <input
             ref={inputRef}
             type="text"
             aria-label="Search FOLE curriculum"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search KTU subjects, modules, codes (e.g. MAT 101, Maths, Graphics)..."
-            className="w-full bg-transparent text-sm sm:text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+            placeholder="Search KTU subjects, modules, codes..."
+            className="w-full min-w-0 min-h-[44px] py-2 bg-transparent text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
           />
-          {loading && <Loader2 className="w-4 h-4 text-emerald-500 animate-spin mr-2 shrink-0" />}
+          {loading && <Loader2 className="w-4 h-4 text-emerald-500 animate-spin mr-1 shrink-0" />}
           {query.trim() && (
             <button
               type="button"
@@ -182,16 +182,16 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
                 setQuery("");
                 inputRef.current?.focus();
               }}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mr-1 cursor-pointer"
+              className="px-2.5 h-10 sm:h-8 shrink-0 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-emerald-950/70 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-emerald-900 transition-colors cursor-pointer"
               aria-label="Clear search input"
             >
-              <X className="w-4 h-4" />
+              Clear
             </button>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+            className="w-11 h-11 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             aria-label="Close search"
           >
             <X className="w-5 h-5" />
@@ -199,25 +199,25 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
         </div>
 
         {/* Results Area */}
-        <div className="max-h-[60vh] overflow-y-auto p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-3">
           {error ? (
             <div className="p-6 text-center text-xs text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4" />
               <span>{error}</span>
             </div>
           ) : query.trim() === "" ? (
-            <div className="p-6 text-center space-y-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+            <div className="p-5 sm:p-6 text-center space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono leading-relaxed">
                 Type keywords or KTU course codes to search across lectures, modules, and subjects.
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                 <span className="text-[11px] text-slate-400 dark:text-slate-500 mr-1">Popular:</span>
                 {SUGGESTIONS.map((tag) => (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => setQuery(tag)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-emerald-950/60 text-slate-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 border border-slate-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
+                    className="min-h-[40px] sm:min-h-0 text-xs px-3 py-1.5 sm:px-2.5 sm:py-1 inline-flex items-center rounded-full bg-slate-100 dark:bg-emerald-950/60 text-slate-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 border border-slate-200 dark:border-emerald-900/50 transition-colors cursor-pointer"
                   >
                     {tag}
                   </button>
@@ -242,7 +242,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
                       key={`subject-${item.id}`}
                       href={item.url || "/subjects"}
                       onClick={onClose}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
+                      className="flex items-center gap-3 p-3.5 sm:p-3 min-h-[52px] rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
                     >
                       <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 shrink-0">
                         <BookOpen className="w-4 h-4" />
@@ -279,7 +279,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
                       key={`module-${item.id}`}
                       href={item.url || "/subjects"}
                       onClick={onClose}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
+                      className="flex items-center gap-3 p-3.5 sm:p-3 min-h-[52px] rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
                     >
                       <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 shrink-0">
                         <Layers className="w-4 h-4" />
@@ -320,7 +320,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
                         key={`lesson-${item.id}`}
                         href={item.url || "/subjects"}
                         onClick={onClose}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
+                        className="flex items-center gap-3 p-3.5 sm:p-3 min-h-[52px] rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
                       >
                         <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 shrink-0">
                           <PlayCircle className="w-4 h-4" />
@@ -366,7 +366,7 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
                       key={`material-${item.id}`}
                       href={item.url || "/materials"}
                       onClick={onClose}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
+                      className="flex items-center gap-3 p-3.5 sm:p-3 min-h-[52px] rounded-xl hover:bg-slate-50 dark:hover:bg-emerald-950/40 transition-colors group cursor-pointer"
                     >
                       <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 shrink-0">
                         <FileText className="w-4 h-4" />
@@ -393,12 +393,12 @@ export function QuickSearchDialog({ isOpen, onClose }: QuickSearchDialogProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2.5 bg-slate-50 dark:bg-[#050e09] border-t border-slate-100 dark:border-emerald-950/60 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-          <span>Press ESC to exit</span>
+        <div className="px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-[#050e09] border-t border-slate-100 dark:border-emerald-950/60 flex items-center justify-between gap-3 text-[11px] text-slate-400 font-mono shrink-0">
+          <span className="hidden min-[375px]:inline">Press ESC to exit</span>
           <Link
             href="/subjects"
             onClick={onClose}
-            className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+            className="min-h-[40px] sm:min-h-0 inline-flex items-center text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer ml-auto"
           >
             Browse all subjects →
           </Link>

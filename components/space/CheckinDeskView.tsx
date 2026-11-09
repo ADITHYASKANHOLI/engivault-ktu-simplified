@@ -267,11 +267,11 @@ export function CheckinDeskView({
     counts.registered > 0 ? Math.round((counts.checkedIn / counts.registered) * 100) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
       {/* Top Banner: Status & Live Controls */}
-      <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
+      <div className="p-5 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6">
+        <div className="min-w-0">
+          <div className="flex items-center flex-wrap gap-2 mb-2">
             <span
               className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                 event.status === "live"
@@ -390,8 +390,8 @@ export function CheckinDeskView({
       )}
 
       {/* Camera QR Scanner Section */}
-      <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Camera className="w-5 h-5 text-emerald-600" />
             <span>Camera QR Ticket Scanner</span>
@@ -400,7 +400,7 @@ export function CheckinDeskView({
           <button
             type="button"
             onClick={cameraActive ? stopCamera : startCamera}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs min-h-[44px] sm:min-h-0 ${
               cameraActive
                 ? "bg-slate-200 hover:bg-slate-300 text-slate-800"
                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -435,7 +435,7 @@ export function CheckinDeskView({
       </div>
 
       {/* Participant List & Search Bar */}
-      <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+      <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 sm:space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-emerald-600" />
@@ -450,13 +450,13 @@ export function CheckinDeskView({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, @username..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
 
         {/* Attendee Roster Table */}
-        <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {filteredAttendees.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
               No matching registered participants found.
@@ -471,10 +471,10 @@ export function CheckinDeskView({
               return (
                 <div
                   key={att.registration_id}
-                  className="py-3.5 flex items-center justify-between gap-4 text-xs"
+                  className="py-4 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 text-xs"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       <span className="font-bold text-slate-900 dark:text-white truncate">
                         {att.display_name}
                       </span>
@@ -484,7 +484,7 @@ export function CheckinDeskView({
                     </div>
 
                     <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                      <code className="text-slate-400">{att.ticket_code}</code>
+                      <code className="text-slate-400 break-all">{att.ticket_code}</code>
                       {isCheckedIn && (
                         <span className="inline-flex items-center gap-1 font-bold text-emerald-600">
                           <span>Checked in at {formatDateTimeIST(att.checked_in_at!)}</span>
@@ -503,7 +503,7 @@ export function CheckinDeskView({
                         type="button"
                         onClick={() => handleRevokeCheckin(att)}
                         disabled={isPendingAction}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-colors disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-colors disabled:opacity-50"
                         title="Undo check-in"
                       >
                         <Undo2 className="w-3.5 h-3.5" />
@@ -514,7 +514,7 @@ export function CheckinDeskView({
                         type="button"
                         onClick={() => handleManualCheckin(att)}
                         disabled={isPendingAction}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all disabled:opacity-50 min-h-[38px]"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all disabled:opacity-50 min-h-[44px] sm:min-h-[38px]"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Mark Present</span>

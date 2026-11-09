@@ -49,22 +49,22 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
   const totalLessons = modulesWithLessons.reduce((acc, m) => acc + m.lessons.length, 0);
 
   return (
-    <main className="flex-1 pt-28 pb-24 bg-[#F7F9FC]">
+    <main className="flex-1 pt-24 sm:pt-28 pb-16 sm:pb-24 bg-[#F7F9FC]">
       {/* Top Breadcrumbs */}
-      <div className="bg-white border-b border-slate-200/80 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <Link href="/subjects" className="hover:text-blue-700 flex items-center gap-1">
+      <div className="bg-white border-b border-slate-200/80 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <Link href="/subjects" className="min-h-[40px] sm:min-h-0 hover:text-blue-700 inline-flex items-center gap-1 shrink-0">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Subjects</span>
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <span className="text-slate-900 font-semibold truncate">{subject.title}</span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-8 sm:py-10">
         {/* Subject Header Banner */}
-        <div className="rounded-3xl bg-gradient-to-br from-[#0B1F3A] to-[#163B8C] text-white p-8 md:p-12 shadow-xl relative overflow-hidden mb-12">
+        <div className="rounded-3xl bg-gradient-to-br from-[#0B1F3A] to-[#163B8C] text-white p-6 min-[375px]:p-7 md:p-12 shadow-xl relative overflow-hidden mb-10 sm:mb-12">
           {/* Faint technical grid background */}
           <div className="absolute inset-0 bg-tech-grid-dark opacity-35 pointer-events-none" />
 
@@ -89,7 +89,7 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
+            <h1 className="text-2xl min-[375px]:text-3xl sm:text-5xl font-black tracking-tight leading-tight">
               {subject.title}
             </h1>
 
@@ -100,7 +100,7 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <Link
                 href={`/materials?subject=${subject.slug}`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors shadow-sm"
+                className="min-h-[44px] inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors shadow-sm"
               >
                 <FileText className="w-3.5 h-3.5 text-slate-950" />
                 <span>Browse Subject Notes & PYQs</span>
@@ -110,10 +110,10 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
         </div>
 
         {/* Modules & Lessons Hierarchy */}
-        <div className="space-y-10">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-700" />
+        <div className="space-y-8 sm:space-y-10">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-700 shrink-0" />
               <span>Syllabus Modules & Classes</span>
             </h2>
             <span className="text-xs text-slate-500 font-mono">
@@ -129,7 +129,7 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             modulesWithLessons.map((mod, index) => (
               <div
                 key={mod.id}
-                className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-6"
+                className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-5 sm:space-y-6"
               >
                 {/* Module Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
@@ -191,7 +191,7 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
               </div>
               <Link
                 href={`/materials?subject=${subject.slug}`}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 shrink-0"
+                className="min-h-[40px] sm:min-h-0 text-xs font-bold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 shrink-0"
               >
                 <span>View all in materials catalog</span>
                 <ChevronRight className="w-3.5 h-3.5" />

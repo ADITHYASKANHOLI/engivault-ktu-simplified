@@ -54,24 +54,24 @@ export default async function MaterialsPage() {
   return (
     <div className="relative isolate min-h-screen bg-[#07111F] text-slate-100">
       <MaterialsAsciiBackground />
-      <main className="page-content-relative flex-1 pt-24 sm:pt-28 pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="page-content-relative flex-1 pt-24 sm:pt-28 pb-16 sm:pb-20">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
           {/* Breadcrumb Navigation */}
           <nav
             aria-label="Breadcrumb"
-            className="mb-5 flex items-center gap-2 text-xs text-slate-400 font-medium"
+            className="mb-5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-400 font-medium"
           >
-            <Link href="/" className="hover:text-emerald-400 transition-colors">
+            <Link href="/" className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center hover:text-emerald-400 transition-colors">
               Home
             </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span className="text-white font-semibold">
               Study Materials
             </span>
           </nav>
 
           {/* Hero Section */}
-          <div className="rounded-3xl bg-slate-900/60 backdrop-blur-md text-white p-6 sm:p-10 shadow-xl mb-8 border border-emerald-500/30 relative overflow-hidden">
+          <div className="rounded-3xl bg-slate-900/60 backdrop-blur-md text-white p-5 min-[375px]:p-6 sm:p-10 shadow-xl mb-8 border border-emerald-500/30 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 max-w-3xl space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-400 text-xs font-mono font-bold">

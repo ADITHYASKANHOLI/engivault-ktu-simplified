@@ -116,22 +116,22 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
       </div>
 
       {/* ---------------- 2. MAIN HERO CONTENT AREA ---------------- */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-4 sm:pt-8 lg:pt-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 w-full pt-4 sm:pt-8 lg:pt-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Authentic Brand Typography & CTAs */}
           <div className="lg:col-span-8 max-w-2xl space-y-4 sm:space-y-5">
             {/* Small uppercase label + green horizontal accent line */}
             <div className="flex items-center gap-3">
-              <span className="text-[11px] sm:text-xs font-black tracking-[0.24em] text-[#050908] uppercase font-mono">
+              <span className="text-[11px] sm:text-xs font-black tracking-[0.22em] sm:tracking-[0.24em] text-[#050908] uppercase font-mono">
                 FREE OPEN LEARNING & EDUCATION
               </span>
-              <span className="h-0.5 w-12 sm:w-16 bg-[#00A86B] rounded-full inline-block" />
+              <span className="h-0.5 w-10 sm:w-16 bg-[#00A86B] rounded-full inline-block shrink-0" />
             </div>
 
             {/* Oversized Authentic FOLE Brand Logo */}
             <div className="py-0.5">
               <FoleLogoVector
-                className="w-[min(290px,calc(100vw-2rem))] sm:w-[390px] md:w-[460px] lg:w-[490px] h-auto text-[#050908]"
+                className="w-[min(280px,calc(100vw-2.5rem))] sm:w-[390px] md:w-[460px] lg:w-[490px] h-auto text-[#050908]"
                 textColor="#050908"
                 greenColor="#00A86B"
               />
@@ -162,15 +162,15 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             </div>
 
             {/* Action Buttons: Explore FOLE & Watch Video */}
-            <div className="flex flex-wrap items-center gap-3.5 sm:gap-4 pt-1">
+            <div className="flex flex-col min-[420px]:flex-row items-stretch min-[420px]:items-center gap-3 sm:gap-4 pt-1.5">
               {/* Primary Green CTA */}
               <MagneticButton strength={0.25} range={90}>
                 <Link
                   href="/subjects"
-                  className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-bold text-white bg-[#00A86B] hover:bg-[#008f5a] shadow-lg shadow-emerald-700/30 hover:shadow-emerald-700/40 hover:scale-[1.02] active:scale-[0.98] transition-all group"
+                  className="inline-flex items-center justify-center gap-2.5 whitespace-nowrap w-full min-[420px]:w-auto min-h-[48px] px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-sm font-bold text-white bg-[#00A86B] hover:bg-[#008f5a] shadow-lg shadow-emerald-700/30 hover:shadow-emerald-700/40 hover:scale-[1.02] active:scale-[0.98] transition-all group"
                 >
                   <span>Explore FOLE</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </MagneticButton>
 
@@ -184,14 +184,14 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
                 aberration={3}
                 frost={0.5}
                 tint={0.2}
-                className="bg-black/45 hover:bg-black/60 border border-white/20 rounded-full backdrop-blur-md shadow-lg shadow-black/25 transition-all"
+                className="w-full min-[420px]:w-auto min-h-[48px] bg-black/45 hover:bg-black/60 border border-white/20 rounded-full backdrop-blur-md shadow-lg shadow-black/25 transition-all"
                 aria-label="Watch FOLE Intro Video"
-                contentClassName="gap-2.5 px-5 sm:px-7 py-3 sm:py-3.5 text-white"
+                contentClassName="gap-2.5 whitespace-nowrap px-6 sm:px-7 py-3 sm:py-3.5 text-white"
               >
-                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/20 flex items-center justify-center">
-                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-white text-white ml-0.5" />
+                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <Play className="w-3 h-3 fill-white text-white ml-0.5" />
                 </div>
-                <span className="text-xs sm:text-sm font-semibold text-white tracking-wide">Watch Video</span>
+                <span className="text-sm font-semibold text-white tracking-wide">Watch Video</span>
               </LiquidGlassButton>
             </div>
           </div>
@@ -231,14 +231,14 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
       </div>
 
       {/* ---------------- 3. BOTTOM FEATURE STRIP & CAROUSEL / SCROLL CONTROLS ---------------- */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-8 sm:mt-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 w-full mt-8 sm:mt-12">
         {/* Dark Glass Floating Container */}
-        <div className="rounded-2xl sm:rounded-3xl lg:rounded-full bg-[#050908]/85 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 sm:p-5 lg:py-5 lg:px-8 text-white">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-0 lg:divide-x lg:divide-white/10">
+        <div className="rounded-2xl sm:rounded-3xl lg:rounded-full bg-[#050908]/85 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 lg:py-5 lg:px-8 text-white">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-0 lg:divide-x lg:divide-white/10">
             {/* Feature 1: Academic Learning */}
             <Link
               href="/subjects"
-              className="flex items-center gap-3.5 lg:px-6 first:pl-2 group hover:opacity-95 transition-opacity"
+              className="flex items-center gap-3.5 py-2 lg:py-0 min-h-[44px] lg:min-h-0 lg:px-6 lg:first:pl-2 group hover:opacity-95 transition-opacity"
             >
               <BookOpen className="w-6 h-6 text-white group-hover:text-[#00E58B] shrink-0 stroke-[1.8] transition-colors" />
               <div className="space-y-0.5 min-w-0">
@@ -254,7 +254,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             {/* Feature 2: FOLE SPACE */}
             <Link
               href="/fole-space"
-              className="flex items-center gap-3.5 lg:px-6 group hover:opacity-95 transition-opacity"
+              className="flex items-center gap-3.5 py-2 lg:py-0 min-h-[44px] lg:min-h-0 lg:px-6 group hover:opacity-95 transition-opacity"
             >
               <Users className="w-6 h-6 text-white group-hover:text-[#00E58B] shrink-0 stroke-[1.8] transition-colors" />
               <div className="space-y-0.5 min-w-0">
@@ -270,7 +270,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             {/* Feature 3: FOLE WORKS */}
             <Link
               href="/fole-works"
-              className="flex items-center gap-3.5 lg:px-6 group hover:opacity-95 transition-opacity"
+              className="flex items-center gap-3.5 py-2 lg:py-0 min-h-[44px] lg:min-h-0 lg:px-6 group hover:opacity-95 transition-opacity"
             >
               <Calendar className="w-6 h-6 text-white group-hover:text-[#00E58B] shrink-0 stroke-[1.8] transition-colors" />
               <div className="space-y-0.5 min-w-0">
@@ -286,7 +286,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
             {/* Feature 4: Student Community */}
             <Link
               href="/about"
-              className="flex items-center gap-3.5 lg:px-6 last:pr-2 group hover:opacity-95 transition-opacity"
+              className="flex items-center gap-3.5 py-2 lg:py-0 min-h-[44px] lg:min-h-0 lg:px-6 lg:last:pr-2 group hover:opacity-95 transition-opacity"
             >
               <Lightbulb className="w-6 h-6 text-white group-hover:text-[#00E58B] shrink-0 stroke-[1.8] transition-colors" />
               <div className="space-y-0.5 min-w-0">
@@ -302,7 +302,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
         </div>
 
         {/* ---------------- 4. BOTTOM CONTROLS: PAGINATION CAROUSEL & SCROLL INDICATOR ---------------- */}
-        <div className="mt-4 sm:mt-5 flex items-center justify-between text-xs font-mono text-slate-400 px-2 select-none">
+        <div className="mt-4 sm:mt-5 flex items-center justify-between text-xs font-mono text-slate-400 px-1 sm:px-2 select-none">
           {/* Left: 01 ——— 03 Slider Navigation */}
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2 text-white font-bold">
@@ -318,22 +318,22 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
               <span className="text-slate-500 text-xs">{`0${slidesData.length}`}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 ml-1">
+            <div className="flex items-center gap-2 sm:gap-1.5 ml-1">
               <button
                 type="button"
                 onClick={handlePrevSlide}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-label="Previous slide highlight"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={handleNextSlide}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-label="Next slide highlight"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               </button>
             </div>
 
@@ -347,7 +347,7 @@ export function LandingHero({ totalSubjects: _totalSubjects = 12 }: LandingHeroP
           <button
             type="button"
             onClick={scrollToCurriculum}
-            className="flex items-center gap-2.5 text-slate-300 hover:text-white transition-colors group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-full px-2 py-1"
+            className="min-h-[44px] sm:min-h-0 flex items-center gap-2.5 text-slate-300 hover:text-white transition-colors group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-full px-3 sm:px-2 py-2 sm:py-1"
             aria-label="Scroll down to academic curriculum"
           >
             <span className="text-[10px] tracking-[0.2em] font-mono font-bold uppercase text-slate-300">SCROLL</span>

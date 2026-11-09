@@ -233,7 +233,7 @@ export function MaterialsFilterView({
   return (
     <div className="space-y-6">
       {/* Search and Mobile Filter Toggle */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 min-[375px]:p-5 shadow-xs space-y-4">
         {/* Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
           <div className="relative flex-1">
@@ -242,15 +242,15 @@ export function MaterialsFilterView({
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search by title, subject, module or filename (e.g. Module 1, Question Bank)..."
-              className="w-full pl-10 pr-9 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all min-h-[44px]"
+              placeholder="Search notes or subjects..."
+              className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 text-slate-900 dark:text-white text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all min-h-[44px]"
               aria-label="Search study materials"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => handleSearchChange("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md"
+                className="w-10 h-10 flex items-center justify-center absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md"
                 aria-label="Clear search query"
               >
                 <X className="w-4 h-4" />
@@ -288,12 +288,12 @@ export function MaterialsFilterView({
             isFilterPanelOpen ? "block" : "hidden sm:block"
           } pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3.5`}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-3">
             {/* 1. Department */}
             <div>
               <label
                 htmlFor="filter-dept"
-                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5"
               >
                 Discipline / Dept
               </label>
@@ -301,7 +301,7 @@ export function MaterialsFilterView({
                 id="filter-dept"
                 value={selectedDept}
                 onChange={(e) => handleDeptChange(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-base sm:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">All Disciplines</option>
                 {departments.map((d) => (
@@ -317,7 +317,7 @@ export function MaterialsFilterView({
             <div>
               <label
                 htmlFor="filter-sem"
-                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5"
               >
                 Semester
               </label>
@@ -325,7 +325,7 @@ export function MaterialsFilterView({
                 id="filter-sem"
                 value={selectedSem}
                 onChange={(e) => handleSemChange(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-base sm:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">All Semesters</option>
                 {semesters.map((s) => {
@@ -343,7 +343,7 @@ export function MaterialsFilterView({
             <div>
               <label
                 htmlFor="filter-subject"
-                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5"
               >
                 Subject
               </label>
@@ -351,7 +351,7 @@ export function MaterialsFilterView({
                 id="filter-subject"
                 value={selectedSubject}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-base sm:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
               >
                 <option value="">All Subjects</option>
                 {subjects.map((sub) => (
@@ -367,7 +367,7 @@ export function MaterialsFilterView({
             <div>
               <label
                 htmlFor="filter-module"
-                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5"
               >
                 Module / Unit
               </label>
@@ -375,7 +375,7 @@ export function MaterialsFilterView({
                 id="filter-module"
                 value={selectedModule}
                 onChange={(e) => handleModuleChange(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-base sm:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
               >
                 <option value="">All Modules</option>
                 {availableModules.map((m) => (
@@ -391,7 +391,7 @@ export function MaterialsFilterView({
             <div>
               <label
                 htmlFor="filter-type"
-                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1"
+                className="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5"
               >
                 Resource Type
               </label>
@@ -399,7 +399,7 @@ export function MaterialsFilterView({
                 id="filter-type"
                 value={selectedType}
                 onChange={(e) => handleTypeChange(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-base sm:text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">All Resource Types</option>
                 <option value="notes">Notes / PDF</option>
@@ -425,7 +425,7 @@ export function MaterialsFilterView({
             <button
               type="button"
               onClick={resetAllFilters}
-              className="inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors p-1"
+              className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors px-2 py-1"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset filters</span>

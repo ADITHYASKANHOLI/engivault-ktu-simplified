@@ -29,13 +29,13 @@ export default function LiquidGlassPage() {
   const [tint, setTint] = useState(0.12);
 
   return (
-    <main className="min-h-screen bg-[#07140E] text-slate-100 pt-24 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+    <main className="min-h-screen bg-[#07140E] text-slate-100 pt-24 pb-16 sm:pb-20">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 space-y-10 sm:space-y-12">
         {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between border-b border-emerald-950/80 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-950/80 pb-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="inline-flex items-center gap-2 min-h-[40px] text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Return to FOLE Home</span>
@@ -75,7 +75,7 @@ export default function LiquidGlassPage() {
           />
 
           {/* Interactive Controls Bar */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#092214]/70 border border-emerald-900/60 backdrop-blur-md shadow-xl space-y-6">
+          <div className="p-5 min-[375px]:p-6 sm:p-8 rounded-3xl bg-[#092214]/70 border border-emerald-900/60 backdrop-blur-md shadow-xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-emerald-950/80 pb-4">
               <div className="flex items-center gap-2.5 text-sm font-bold text-white font-mono uppercase tracking-wider">
                 <Sliders className="w-4 h-4 text-[#2EE585]" />
@@ -87,7 +87,7 @@ export default function LiquidGlassPage() {
                 <button
                   type="button"
                   onClick={() => setShape("circle")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                  className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
                     shape === "circle"
                       ? "bg-[#00C853] text-white shadow-sm"
                       : "text-slate-400 hover:text-white"
@@ -98,7 +98,7 @@ export default function LiquidGlassPage() {
                 <button
                   type="button"
                   onClick={() => setShape("pill")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                  className={`min-h-[40px] px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
                     shape === "pill"
                       ? "bg-[#00C853] text-white shadow-sm"
                       : "text-slate-400 hover:text-white"

@@ -387,9 +387,9 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* Left Column: Form Inputs */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
               Event Title *
@@ -400,11 +400,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="e.g. Embedded Rust Workshop & Sensors"
-              className={`w-full px-4 py-2.5 rounded-xl border ${
+              className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                 fieldErrors.title
                   ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                   : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-sm focus:outline-hidden focus:ring-2`}
             />
             {fieldErrors.title && (
               <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -427,11 +427,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 clearFieldError("slug");
               }}
               placeholder="embedded-rust-workshop"
-              className={`w-full px-4 py-2.5 rounded-xl border ${
+              className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                 fieldErrors.slug
                   ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                   : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-mono focus:outline-hidden focus:ring-2`}
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-sm font-mono focus:outline-hidden focus:ring-2`}
             />
             {fieldErrors.slug && (
               <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -452,11 +452,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                   setCategory(e.target.value);
                   clearFieldError("category");
                 }}
-                className={`w-full px-4 py-2.5 rounded-xl border ${
+                className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                   fieldErrors.category
                     ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-sm focus:outline-hidden focus:ring-2`}
               >
                 <option value="Workshop">Workshop</option>
                 <option value="Study Jam">Study Jam</option>
@@ -486,11 +486,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                   setCapacity(Number(e.target.value));
                   clearFieldError("capacity");
                 }}
-                className={`w-full px-4 py-2.5 rounded-xl border ${
+                className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                   fieldErrors.capacity
                     ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2`}
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-sm focus:outline-hidden focus:ring-2`}
               />
               {fieldErrors.capacity && (
                 <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -514,11 +514,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                   setStartsAt(e.target.value);
                   clearFieldError("starts_at");
                 }}
-                className={`w-full px-4 py-2.5 rounded-xl border ${
+                className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                   fieldErrors.starts_at
                     ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2`}
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-xs focus:outline-hidden focus:ring-2`}
               />
               {fieldErrors.starts_at && (
                 <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -540,11 +540,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                   setEndsAt(e.target.value);
                   clearFieldError("ends_at");
                 }}
-                className={`w-full px-4 py-2.5 rounded-xl border ${
+                className={`w-full px-4 py-2.5 min-h-[44px] rounded-xl border ${
                   fieldErrors.ends_at
                     ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                     : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden focus:ring-2`}
+                } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-xs focus:outline-hidden focus:ring-2`}
               />
               {fieldErrors.ends_at && (
                 <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -557,7 +557,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Description & Prerequisites *
+              Description &amp; Prerequisites *
             </label>
             <textarea
               required
@@ -568,11 +568,11 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 clearFieldError("description");
               }}
               placeholder="Outline what participants will learn, what they should bring (laptops, microcontrollers), and the session flow."
-              className={`w-full px-4 py-2.5 rounded-xl border ${
+              className={`w-full px-4 py-3 rounded-xl border ${
                 fieldErrors.description
                   ? "border-red-500 dark:border-red-500 focus:ring-red-500"
                   : "border-slate-200 dark:border-slate-700 focus:ring-emerald-500"
-              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm leading-relaxed focus:outline-hidden focus:ring-2`}
+              } bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base sm:text-sm leading-relaxed focus:outline-hidden focus:ring-2`}
             />
             {fieldErrors.description && (
               <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5">
@@ -582,15 +582,15 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-start sm:items-center gap-3 pt-2">
             <input
               type="checkbox"
               id="blocksSpace"
               checked={blocksOpenSpace}
               onChange={(e) => setBlocksOpenSpace(e.target.checked)}
-              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+              className="w-5 h-5 sm:w-4 sm:h-4 mt-0.5 sm:mt-0 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 shrink-0"
             />
-            <label htmlFor="blocksSpace" className="text-xs text-slate-600 dark:text-slate-300">
+            <label htmlFor="blocksSpace" className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed py-1">
               <strong>Reserve physical space exclusively:</strong> Temporarily halts open walk-in check-in during this session.
             </label>
           </div>
@@ -598,7 +598,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
 
         {/* Right Column: Direct Flyer Upload & Live Preview */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
               Event Poster (Original Ratio)
             </h3>
@@ -624,14 +624,14 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
                 </div>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 sm:p-8 text-center bg-slate-50/50 dark:bg-slate-800/30">
                 <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2 stroke-1" />
                 <span className="text-xs text-slate-400 block mb-3">No poster uploaded yet</span>
               </div>
             )}
 
             <div>
-              <label className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors shadow-xs">
+              <label className="inline-flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors shadow-xs min-h-[48px]">
                 <UploadCloud className="w-4 h-4 text-emerald-600" />
                 <span>{uploadingFlyer ? "Verifying & Preserving..." : "Upload Original Flyer"}</span>
                 <input
@@ -653,12 +653,12 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
           </div>
 
           {/* Submission Action Buttons */}
-          <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+          <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
             <button
               type="button"
               disabled={saving || uploadingFlyer}
               onClick={() => handleSubmit(true)}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50 min-h-[48px]"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{saving ? "Saving..." : "Save & Publish to Calendar"}</span>
@@ -668,7 +668,7 @@ export function SpaceEventForm({ initialEvent, mode }: SpaceEventFormProps) {
               type="button"
               disabled={saving || uploadingFlyer}
               onClick={() => handleSubmit(false)}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors disabled:opacity-50 min-h-[44px]"
             >
               <span>{saving ? "Saving..." : "Save as Draft"}</span>
             </button>

@@ -86,7 +86,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
       : `/api/materials/download?id=${material.id}`);
 
   return (
-    <article className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-md hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex flex-col justify-between h-full">
+    <article className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all flex flex-col justify-between h-full">
       <div className="space-y-3">
         {/* Header: Type Badge & File Size */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -167,7 +167,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
         </div>
 
         {/* Action Buttons: Compliant with WCAG 44x44px touch targets */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 shrink-0">
           <a
             href={downloadHref}
             target="_blank"
@@ -175,7 +175,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
             title="Preview study material"
           >
-            <ExternalLink className="w-4 h-4 text-slate-500" />
+            <ExternalLink className="w-4 h-4 text-slate-500 shrink-0" />
             <span>View</span>
           </a>
 
@@ -185,7 +185,7 @@ export function CatalogMaterialCard({ material }: CatalogMaterialCardProps) {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
             title="Download study material"
           >
-            <ArrowDownToLine className="w-4 h-4" />
+            <ArrowDownToLine className="w-4 h-4 shrink-0" />
             <span>Download</span>
           </a>
         </div>

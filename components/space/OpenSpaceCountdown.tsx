@@ -77,7 +77,7 @@ export function OpenSpaceCountdown({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center p-6 rounded-2xl border transition-all",
+        "flex flex-col items-center justify-center text-center p-5 sm:p-6 rounded-2xl border transition-all",
         isExpired
           ? "bg-slate-100 border-slate-300 text-slate-700"
           : isExpiringSoon
@@ -104,7 +104,7 @@ export function OpenSpaceCountdown({
       <div
         className={cn(
           "font-mono font-black tracking-tight",
-          size === "lg" ? "text-5xl sm:text-6xl" : "text-3xl sm:text-4xl"
+          size === "lg" ? "text-4xl min-[375px]:text-5xl sm:text-6xl" : "text-3xl sm:text-4xl"
         )}
         aria-hidden="true"
       >

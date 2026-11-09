@@ -595,12 +595,12 @@ export function LanyardProfileCard({
   return (
     <section
       aria-label="Mobile interactive student ID lanyard"
-      className="sm:hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-4"
+      className="sm:hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 min-[375px]:p-5 shadow-xs space-y-4"
     >
       {/* ── 3D Lanyard Interactive Stage ─────────────────────── */}
       <div className="relative rounded-xl overflow-hidden bg-[radial-gradient(circle_at_50%_38%,rgba(16,185,129,0.12),rgba(226,232,240,0.58)_75%)] dark:bg-[radial-gradient(circle_at_50%_38%,rgba(16,185,129,0.2),rgba(2,6,23,0.95)_75%)] border border-slate-200/70 dark:border-slate-800/80">
         <div
-          className="w-full h-[420px]"
+          className="w-full h-[380px] min-[375px]:h-[420px]"
           aria-label={`Interactive 3D lanyard ID card for @${username}`}
           role="region"
           aria-roledescription="interactive 3D lanyard"
@@ -686,12 +686,12 @@ export function LanyardProfileCard({
                 {(flowState.durationMs / 1000).toFixed(1)}s
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 min-[390px]:flex gap-2.5">
               <button
                 type="button"
                 onClick={handleSaveToCard}
                 disabled={isBusy}
-                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="col-span-2 min-[390px]:flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Upload className="w-3.5 h-3.5 shrink-0" />
                 <span>Save to Card</span>
@@ -702,7 +702,7 @@ export function LanyardProfileCard({
                 disabled={isBusy}
                 aria-label="Retry portrait processing"
                 title="Retry portrait processing"
-                className="px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                className="min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 <RefreshCw className="w-3.5 h-3.5 shrink-0" />
                 <span>Retry</span>
@@ -711,7 +711,7 @@ export function LanyardProfileCard({
                 type="button"
                 onClick={handleCancel}
                 disabled={isBusy}
-                className="px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -720,7 +720,7 @@ export function LanyardProfileCard({
         )}
 
         {flowState.status === "preview-fallback" && (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <div
               role="alert"
               className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200"
@@ -737,12 +737,12 @@ export function LanyardProfileCard({
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 min-[390px]:flex gap-2.5">
               <button
                 type="button"
                 onClick={handleSaveToCard}
                 disabled={isBusy}
-                className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="col-span-2 min-[390px]:flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-semibold whitespace-nowrap text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Upload className="w-3.5 h-3.5 shrink-0" />
                 <span>Save Photo</span>
@@ -751,7 +751,7 @@ export function LanyardProfileCard({
                 type="button"
                 onClick={handleRetryProcessing}
                 disabled={isBusy}
-                className="px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                className="min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
               >
                 <RefreshCw className="w-3.5 h-3.5 shrink-0" />
                 <span>Retry</span>
@@ -760,7 +760,7 @@ export function LanyardProfileCard({
                 type="button"
                 onClick={handleCancel}
                 disabled={isBusy}
-                className="px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -777,14 +777,14 @@ export function LanyardProfileCard({
 
         {flowState.status === "processing" && (
           <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-              <span>{flowState.label}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-500 shrink-0" />
+              <span className="truncate">{flowState.label}</span>
             </div>
             <button
               type="button"
               onClick={handleCancel}
-              className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              className="min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0"
             >
               Cancel
             </button>
@@ -794,14 +794,14 @@ export function LanyardProfileCard({
         {(flowState.status === "idle" ||
           flowState.status === "success" ||
           flowState.status === "error") && (
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isBusy}
-              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5 shrink-0" />
               <span>
                 {hasSavedPhoto ? "Change ID Photo" : "Upload ID Photo"}
               </span>
@@ -814,9 +814,9 @@ export function LanyardProfileCard({
                 disabled={isBusy}
                 aria-label="Reprocess portrait from saved photo"
                 title="Reprocess portrait from saved photo"
-                className="p-2.5 rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-4 h-4" />
               </button>
             )}
 
@@ -827,12 +827,12 @@ export function LanyardProfileCard({
                 disabled={isBusy}
                 aria-label="Remove profile picture"
                 title="Remove profile picture"
-                className="p-2.5 rounded-xl text-red-600 hover:text-red-700 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-red-600 hover:text-red-700 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 {isRemoving ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                 )}
               </button>
             )}

@@ -17,8 +17,8 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="flex-1 min-h-[65vh] flex items-center justify-center p-6 bg-[#F7F9FC]">
-      <div className="text-center max-w-md space-y-6">
+    <main className="flex-1 min-h-[65vh] flex items-center justify-center px-5 py-12 sm:p-6 bg-[#F7F9FC]">
+      <div className="text-center max-w-md w-full space-y-6">
         <div className="flex justify-center">
           <EngivaultLogo size="md" />
         </div>
@@ -27,7 +27,7 @@ export default function Error({
         </div>
         <div className="space-y-2">
           <h1 className="text-2xl font-black text-slate-900">Something went wrong</h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm sm:text-xs text-slate-500 leading-relaxed">
             An unexpected error occurred while loading this page. Our technical logs have recorded this incident.
           </p>
           {error.digest && (
@@ -36,17 +36,17 @@ export default function Error({
             </p>
           )}
         </div>
-        <div className="flex items-center justify-center gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
           <button
             onClick={() => reset()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 shadow-xs transition-colors"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 shadow-xs transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Try Again</span>
           </button>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-xs"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-xs"
           >
             <Home className="w-3.5 h-3.5" />
             <span>Return Home</span>

@@ -75,9 +75,9 @@ export function TicketCard({
       )}
     >
       {/* Left side: Ticket Details */}
-      <div className="flex-1 p-6 flex flex-col justify-between border-b md:border-b-0 md:border-r border-dashed border-slate-200">
+      <div className="flex-1 p-5 sm:p-6 flex flex-col justify-between border-b md:border-b-0 md:border-r border-dashed border-slate-200">
         <div>
-          <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
               FOLE SPACE PASS
             </span>
@@ -97,7 +97,7 @@ export function TicketCard({
             )}
           </div>
 
-          <h3 className="text-xl font-bold text-slate-900 leading-snug line-clamp-2">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug line-clamp-2">
             {eventTitle}
           </h3>
 
@@ -134,12 +134,12 @@ export function TicketCard({
         </div>
 
         {/* Short Text Code Fallback */}
-        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div>
+        <div className="mt-5 sm:mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
               Ticket Code
             </span>
-            <code className="text-xs font-mono font-bold text-slate-800 select-all">
+            <code className="text-xs font-mono font-bold text-slate-800 select-all break-all">
               {ticketCode}
             </code>
           </div>
@@ -147,7 +147,7 @@ export function TicketCard({
           <button
             type="button"
             onClick={handleCopyCode}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+            className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors shrink-0"
             title="Copy ticket code"
             aria-label="Copy ticket code"
           >
@@ -161,7 +161,7 @@ export function TicketCard({
       </div>
 
       {/* Right side: Scannable QR and Actions */}
-      <div className="p-6 flex flex-col items-center justify-center bg-slate-50/60 md:w-56 shrink-0">
+      <div className="p-5 sm:p-6 flex flex-col items-center justify-center bg-slate-50/60 md:w-56 shrink-0">
         <div className="relative p-3 bg-white rounded-xl shadow-xs border border-slate-200">
           {/* Render Vector SVG directly for razor-sharp scanning */}
           <div
@@ -182,7 +182,7 @@ export function TicketCard({
             type="button"
             onClick={handleDownloadPng}
             disabled={isCancelled}
-            className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 rounded-lg border border-slate-200 transition-colors shadow-xs disabled:opacity-50 disabled:pointer-events-none"
+            className="mt-3.5 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:px-3 sm:py-1.5 min-h-[44px] sm:min-h-0 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 active:bg-slate-200 rounded-lg border border-slate-200 transition-colors shadow-xs disabled:opacity-50 disabled:pointer-events-none"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Save PNG</span>

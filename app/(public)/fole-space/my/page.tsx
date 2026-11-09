@@ -27,8 +27,8 @@ export default async function MySpacePage() {
 
   if (!student) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-28 pb-16 flex items-center justify-center px-4">
-        <div className="max-w-md w-full p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 flex items-center justify-center px-5 sm:px-6">
+        <div className="max-w-md w-full p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
           <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
             <QrCode className="w-7 h-7" />
           </div>
@@ -40,7 +40,7 @@ export default async function MySpacePage() {
           </p>
           <Link
             href="/fole-space/open"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all min-h-[48px]"
           >
             <LogIn className="w-4 h-4" />
             <span>Sign in to Continue</span>
@@ -68,25 +68,25 @@ export default async function MySpacePage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 sm:pb-20 transition-colors">
+      <div className="max-w-5xl mx-auto px-5 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
         {/* Header */}
-        <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+        <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-600 uppercase tracking-wider mb-1">
               <span>Student Pass Hub</span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-              My Tickets & Study Sessions
+              My Tickets &amp; Study Sessions
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 truncate">
               Logged in as {student.display_name} (@{student.username})
             </p>
           </div>
 
           <Link
             href="/fole-space/open"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold transition-colors min-h-[44px] shrink-0"
           >
             <DoorOpen className="w-4 h-4" />
             <span>Open Space Hub</span>
@@ -95,8 +95,8 @@ export default async function MySpacePage() {
 
         {/* Section 1: Active Open Space Session (if any) */}
         {spaceData.activeSession && (
-          <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-emerald-300 dark:border-emerald-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="p-5 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-emerald-300 dark:border-emerald-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <DoorOpen className="w-5 h-5 text-emerald-600" />
                 <span>Active Open Space Session</span>
@@ -104,7 +104,7 @@ export default async function MySpacePage() {
 
               <Link
                 href="/fole-space/open"
-                className="text-xs font-bold text-emerald-600 hover:underline"
+                className="text-xs font-bold text-emerald-600 hover:underline py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 inline-flex items-center"
               >
                 Manage in Open Hub →
               </Link>
@@ -119,7 +119,7 @@ export default async function MySpacePage() {
 
         {/* Section 2: Upcoming Event Tickets */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <QrCode className="w-5 h-5 text-emerald-600" />
               <span>Upcoming Event Tickets ({ticketsWithQr.length})</span>
@@ -127,18 +127,18 @@ export default async function MySpacePage() {
 
             <Link
               href="/fole-space/events"
-              className="text-xs font-bold text-emerald-600 hover:underline"
+              className="text-xs font-bold text-emerald-600 hover:underline py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 inline-flex items-center"
             >
               Browse more events →
             </Link>
           </div>
 
           {ticketsWithQr.length === 0 ? (
-            <div className="p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-slate-500 text-xs">
+            <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-slate-500 text-xs">
               You do not have any upcoming event registrations.
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5 sm:space-y-6">
               {ticketsWithQr.map((t: any) => (
                 <TicketCard
                   key={t.id}
@@ -163,13 +163,13 @@ export default async function MySpacePage() {
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <History className="w-5 h-5 text-slate-400" />
-            <span>Past Attendance & Sessions</span>
+            <span>Past Attendance &amp; Sessions</span>
           </h2>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800 text-xs">
             {spaceData.recentSessions.map((s) => (
-              <div key={s.id} className="p-4 flex items-center justify-between">
-                <div>
+              <div key={s.id} className="p-4 sm:p-5 flex flex-col min-[375px]:flex-row min-[375px]:items-center justify-between gap-2">
+                <div className="min-w-0">
                   <span className="font-semibold text-slate-800 dark:text-slate-200 block">
                     Open Space Session ({s.status})
                   </span>
@@ -177,23 +177,23 @@ export default async function MySpacePage() {
                     {formatDateTimeIST(s.started_at)} – {s.ended_at ? formatDateTimeIST(s.ended_at) : "Concluded"}
                   </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[10px] uppercase">
+                <span className="self-start min-[375px]:self-auto shrink-0 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[10px] uppercase">
                   {s.source}
                 </span>
               </div>
             ))}
 
             {spaceData.attendedEvents.map((ae: any) => (
-              <div key={ae.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+              <div key={ae.id} className="p-4 sm:p-5 flex flex-col min-[375px]:flex-row min-[375px]:items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
                     {ae.event?.title || "Event"}
                   </span>
                   <span className="text-slate-500">
                     Checked in: {ae.checked_in_at ? formatDateTimeIST(ae.checked_in_at) : "Confirmed"} ({((ae.checkin_method || ae.method || "attended") as string).toUpperCase()})
                   </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono text-[10px] uppercase font-bold">
+                <span className="self-start min-[375px]:self-auto shrink-0 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono text-[10px] uppercase font-bold">
                   Attended
                 </span>
               </div>

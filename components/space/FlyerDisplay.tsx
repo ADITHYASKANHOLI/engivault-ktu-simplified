@@ -81,7 +81,7 @@ export function FlyerDisplay({
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="p-2 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold px-3 shadow-lg"
+              className="py-2 px-3 rounded-xl bg-black/65 hover:bg-black/80 backdrop-blur-md text-white opacity-95 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-emerald-400 flex items-center gap-1.5 text-xs font-semibold shadow-lg min-h-[36px]"
               aria-label="View flyer full size"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -100,7 +100,7 @@ export function FlyerDisplay({
           <button
             type="button"
             onClick={() => setModalOpen(false)}
-            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors focus:outline-hidden focus:ring-2 focus:ring-white"
+            className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors focus:outline-hidden focus:ring-2 focus:ring-white"
             aria-label="Close full size view"
           >
             <X className="w-6 h-6" />

@@ -15,24 +15,24 @@ export default async function AboutPage() {
   return (
     <div className="relative isolate min-h-screen bg-[#07111F] text-slate-100">
       <CommunityThreadsBackground />
-      <main className="page-content-relative flex-1 pt-28 sm:pt-32 pb-24">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <main className="page-content-relative flex-1 pt-24 sm:pt-32 pb-16 sm:pb-24">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 space-y-10 sm:space-y-12">
           {/* Header */}
           <div className="text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold">
               <span>OUR MISSION</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+            <h1 className="text-3xl min-[375px]:text-4xl sm:text-5xl font-black text-white tracking-tight">
               KTU Learning. <span className="text-emerald-400">Simplified.</span>
             </h1>
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
               {settings.about_text || "ENGIVAULT was built by engineering educators to bridge the gap between heavy university syllabi and student exam success."}
             </p>
           </div>
 
           {/* Narrative Card */}
-          <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-700/60 p-8 sm:p-12 shadow-xl space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
-            <h2 className="text-2xl font-bold text-white">Why ENGIVAULT was built</h2>
+          <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-700/60 p-5 min-[375px]:p-6 sm:p-12 shadow-xl space-y-5 sm:space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Why ENGIVAULT was built</h2>
             <p>
               The APJ Abdul Kalam Technological University (KTU) curriculum is rigorous and conceptually demanding. First-year and branch-specific core subjects such as Engineering Mathematics, Engineering Graphics, and Electrical Engineering often present students with tight semester schedules, rapid lecture pacing, and challenging question patterns.
             </p>
@@ -40,8 +40,8 @@ export default async function AboutPage() {
               ENGIVAULT organizes the entire KTU syllabus into systematic, module-by-module learning paths. Every single topic is taught from foundational principles right up to university exam questions, accompanied by clean handwritten formula sheets and verified question banks.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 sm:pt-4">
+              <div className="p-4 sm:p-5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-white text-sm">2019 &amp; 2024 Scheme Focused</div>
@@ -50,7 +50,7 @@ export default async function AboutPage() {
                     href="https://ktu.edu.in/home"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 mt-2"
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 mt-2 py-1.5 sm:py-0 min-h-[40px] sm:min-h-0"
                   >
                     <span>Explore the KTU Scheme</span>
                     <ArrowRight className="w-3 h-3" />
@@ -58,7 +58,7 @@ export default async function AboutPage() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start gap-3">
+              <div className="p-4 sm:p-5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-white text-sm">Exam Numerical Problem Walks</div>
@@ -69,19 +69,19 @@ export default async function AboutPage() {
           </div>
 
           {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 pt-2 sm:pt-4">
             <a
               href="https://ktu.edu.in/home"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-md"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-md min-h-[48px]"
             >
               <span>Explore the KTU Scheme</span>
               <ArrowRight className="w-4 h-4" />
             </a>
             <Link
               href="/subjects"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 transition-colors shadow-xs"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm font-bold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 transition-colors shadow-xs min-h-[48px]"
             >
               <span>Explore KTU Curriculum</span>
               <BookOpen className="w-4 h-4" />

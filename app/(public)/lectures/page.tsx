@@ -105,44 +105,44 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
   return (
     <div className="relative isolate min-h-screen bg-[#07111F] text-slate-100">
       <LearnGridScanBackground />
-      <main className="page-content-relative flex-1 pt-24 sm:pt-28 pb-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="page-content-relative flex-1 pt-24 sm:pt-28 pb-16 sm:pb-24">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
           {/* Academic Breadcrumbs */}
-          <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-xs text-slate-400 font-medium">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">
+          <nav aria-label="Breadcrumb" className="mb-5 sm:mb-6 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-400 font-medium">
+            <Link href="/" className="min-h-[40px] sm:min-h-0 inline-flex items-center hover:text-cyan-400 transition-colors">
               EngiVault
             </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span className="text-white font-semibold">Academic Lectures</span>
             {selectedDept && (
               <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <span className="text-cyan-400 font-semibold">{selectedDept.name}</span>
               </>
             )}
             {selectedSem && (
               <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <span className="text-cyan-400 font-semibold">Semester {selectedSem.number || selectedSem.semester_number}</span>
               </>
             )}
             {selectedSubject && (
               <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <span className="text-white font-semibold truncate max-w-[200px]">{selectedSubject.title}</span>
               </>
             )}
           </nav>
 
           {/* Page Banner */}
-          <div className="rounded-3xl bg-slate-900/60 backdrop-blur-md text-white p-8 sm:p-10 shadow-xl mb-10 border border-cyan-500/30 relative overflow-hidden">
+          <div className="rounded-3xl bg-slate-900/60 backdrop-blur-md text-white p-6 min-[375px]:p-7 sm:p-10 shadow-xl mb-8 sm:mb-10 border border-cyan-500/30 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 max-w-3xl space-y-4">
+            <div className="relative z-10 max-w-3xl space-y-3.5 sm:space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-cyan-300 text-xs font-mono font-bold">
                 <GraduationCap className="w-3.5 h-3.5" />
                 <span>KTU ACADEMIC LECTURE VAULT</span>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
+              <h1 className="text-2xl min-[375px]:text-3xl sm:text-5xl font-black tracking-tight leading-tight">
                 Engineering Academic Lectures
               </h1>
               <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
@@ -152,25 +152,27 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
           </div>
 
           {/* Search & Cascading Filter Controls */}
-          <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-700/60 p-5 sm:p-6 shadow-sm mb-10 space-y-5 text-slate-100">
+          <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-700/60 p-4 min-[375px]:p-5 sm:p-6 shadow-sm mb-8 sm:mb-10 space-y-5 text-slate-100">
             {/* Global Search Bar */}
-            <form method="GET" className="relative flex items-center">
-              <Search className="w-4 h-4 text-slate-400 absolute left-4 pointer-events-none" />
-              <input
-                type="text"
-                name="q"
-                defaultValue={q || ""}
-                aria-label="Search academic lectures"
-                placeholder="Search lectures by topic (e.g. Laplace Transform, Isometric Projection, KVL, Normal Form)..."
-                className="w-full pl-11 pr-24 py-3 rounded-xl border border-slate-700 bg-slate-800/80 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-slate-800 transition-all shadow-xs"
-              />
+            <form method="GET" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1 min-w-0 flex items-center">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                <input
+                  type="text"
+                  name="q"
+                  defaultValue={q || ""}
+                  aria-label="Search academic lectures"
+                  placeholder="Search lectures, codes, or topics..."
+                  className="w-full min-h-[48px] sm:min-h-[46px] pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-800/80 text-white placeholder-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-slate-800 transition-all shadow-xs"
+                />
+              </div>
               {/* Preserve selected filter params in form */}
               {dept && <input type="hidden" name="dept" value={dept} />}
               {sem && <input type="hidden" name="sem" value={sem} />}
               {subject && <input type="hidden" name="subject" value={subject} />}
               <button
                 type="submit"
-                className="absolute right-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors"
+                className="min-h-[48px] sm:min-h-[46px] px-5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm sm:text-xs font-bold transition-colors shrink-0 cursor-pointer"
               >
                 Search
               </button>
@@ -178,18 +180,18 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
 
             {/* Department Filter Pills */}
             <div>
-              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
+              <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
                 <span>Department / Discipline</span>
                 {dept && (
-                  <Link href={`/lectures?${new URLSearchParams({ ...(sem && { sem }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-cyan-400 hover:underline flex items-center gap-1 normal-case font-sans">
+                  <Link href={`/lectures?${new URLSearchParams({ ...(sem && { sem }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1 text-cyan-400 hover:underline normal-case font-sans shrink-0">
                     <X className="w-3 h-3" /> Clear discipline
                   </Link>
                 )}
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <Link
                   href={`/lectures?${new URLSearchParams({ ...(sem && { sem }), ...(subject && { subject }), ...(q && { q }) }).toString()}`}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                  className={`min-h-[42px] sm:min-h-[34px] inline-flex items-center px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold max-w-full transition-colors ${
                     !dept
                       ? "bg-cyan-600 text-white shadow-xs"
                       : "bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-slate-700/60"
@@ -209,13 +211,13 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
                     <Link
                       key={d.id}
                       href={`/lectures?${params.toString()}`}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                      className={`min-h-[42px] sm:min-h-[34px] inline-flex items-center px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold max-w-full transition-colors ${
                         isActive
                           ? "bg-cyan-600 text-white shadow-xs"
                           : "bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-slate-700/60"
                       }`}
                     >
-                      {d.code} • {d.name}
+                      <span className="truncate">{d.code} • {d.name}</span>
                     </Link>
                   );
                 })}
@@ -224,18 +226,18 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
 
             {/* Semester Filter Pills */}
             <div>
-              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
+              <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-2.5">
                 <span>Semester</span>
                 {sem && (
-                  <Link href={`/lectures?${new URLSearchParams({ ...(dept && { dept }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="text-cyan-400 hover:underline flex items-center gap-1 normal-case font-sans">
+                  <Link href={`/lectures?${new URLSearchParams({ ...(dept && { dept }), ...(subject && { subject }), ...(q && { q }) }).toString()}`} className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1 text-cyan-400 hover:underline normal-case font-sans shrink-0">
                     <X className="w-3 h-3" /> Clear semester
                   </Link>
                 )}
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <Link
                   href={`/lectures?${new URLSearchParams({ ...(dept && { dept }), ...(subject && { subject }), ...(q && { q }) }).toString()}`}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                  className={`min-h-[42px] sm:min-h-[34px] inline-flex items-center px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     !sem
                       ? "bg-cyan-600 text-white shadow-xs"
                       : "bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-slate-700/60"
@@ -256,7 +258,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
                     <Link
                       key={s.id}
                       href={`/lectures?${params.toString()}`}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                      className={`min-h-[42px] sm:min-h-[34px] inline-flex items-center px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         isActive
                           ? "bg-cyan-600 text-white shadow-xs"
                           : "bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-slate-700/60"
@@ -271,13 +273,13 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
 
             {/* Active Filter Clear Bar */}
             {hasActiveFilters && (
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
                 <span className="text-xs text-slate-400 font-medium">
                   Showing <strong className="text-white"><AnimatedCountingNumber value={filtered.length} /></strong> matching academic lectures
                 </span>
                 <Link
                   href="/lectures"
-                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                  className="min-h-[40px] sm:min-h-0 text-xs font-bold text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>Reset all filters</span>
@@ -299,7 +301,7 @@ export default async function LecturesPage({ searchParams }: LecturesPageProps) 
               <div className="pt-2">
                 <Link
                   href="/lectures"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors min-h-[44px]"
                 >
                   <span>Browse All Lectures</span>
                 </Link>

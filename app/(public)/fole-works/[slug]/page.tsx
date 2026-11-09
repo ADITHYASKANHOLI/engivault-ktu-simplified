@@ -130,8 +130,8 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
   if (fetchError) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">
-        <div className="max-w-xl mx-auto px-4 text-center">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/40 p-8 shadow-xs space-y-4">
+        <div className="max-w-xl mx-auto px-5 sm:px-6 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/40 p-6 sm:p-8 shadow-xs space-y-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               Activity Temporarily Unavailable
             </h2>
@@ -141,7 +141,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
             <div className="pt-2">
               <Link
                 href="/fole-works"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-colors min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Return to FOLE WORKS</span>
@@ -212,27 +212,27 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] text-slate-900 dark:text-slate-100 selection:bg-emerald-500 selection:text-white pt-24 pb-16 sm:pt-32 sm:pb-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
-        <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-6 flex-wrap">
-          <Link href="/" className="hover:text-emerald-500 transition-colors">
+        <nav aria-label="Breadcrumbs" className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 flex-wrap">
+          <Link href="/" className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center hover:text-emerald-500 transition-colors">
             Home
           </Link>
           <span>/</span>
-          <Link href="/fole-works" className="hover:text-emerald-500 transition-colors">
+          <Link href="/fole-works" className="min-h-[40px] sm:min-h-0 inline-flex items-center hover:text-emerald-500 transition-colors">
             FOLE WORKS
           </Link>
           <span>/</span>
-          <span className="text-slate-900 dark:text-white font-medium truncate max-w-xs sm:max-w-md">
+          <span className="text-slate-900 dark:text-white font-medium truncate max-w-[200px] sm:max-w-md">
             {activity.title}
           </span>
         </nav>
 
         {/* Back Link */}
-        <div className="mb-6">
+        <div className="mb-5 sm:mb-6">
           <Link
             href="/fole-works"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
+            className="inline-flex items-center gap-1.5 py-2 sm:py-0 min-h-[44px] sm:min-h-0 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Activities Catalogue</span>
@@ -240,13 +240,13 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
         </div>
 
         {/* Main Grid: Left Content (2 cols) & Right Action Card (1 col) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           {/* Main Content Area */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* Header / Hero Card */}
-            <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4 overflow-hidden">
+            <header className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-xs space-y-4 overflow-hidden">
               {activity.cover_image && (
-                <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-200/80 dark:border-slate-800 -mt-2 mb-6 flex items-center justify-center p-2 sm:p-4 shadow-sm">
+                <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-200/80 dark:border-slate-800 -mt-1 sm:-mt-2 mb-5 sm:mb-6 flex items-center justify-center p-2 sm:p-4 shadow-sm">
                   <img
                     src={activity.cover_image}
                     alt={`${activity.title} original activity flyer`}
@@ -289,7 +289,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
             </header>
 
             {/* Detailed Description */}
-            <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4">
+            <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-xs space-y-4">
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-500" />
                 <span>About this Activity</span>
@@ -301,10 +301,10 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
 
             {/* Learning Outcomes */}
             {activity.learning_outcomes && activity.learning_outcomes.length > 0 && (
-              <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4">
+              <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-xs space-y-4">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <span>Key Learning Outcomes & Skills</span>
+                  <span>Key Learning Outcomes &amp; Skills</span>
                 </h2>
                 <ul className="grid grid-cols-1 gap-3 pt-2">
                   {activity.learning_outcomes.map((item, idx) => (
@@ -322,10 +322,10 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
 
             {/* Supporting Resources & Documents */}
             {activity.supporting_resources && activity.supporting_resources.length > 0 && (
-              <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-4">
+              <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-8 shadow-xs space-y-4">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                   <Globe className="w-5 h-5 text-emerald-500" />
-                  <span>Supporting Resources & Guidelines</span>
+                  <span>Supporting Resources &amp; Guidelines</span>
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   {activity.supporting_resources.map((res, i) => (
@@ -334,7 +334,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
                       href={res.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/70 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/70 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[48px]"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -352,7 +352,7 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
 
           {/* Right Column: Sticky Action & Schedule Card */}
           <aside className="space-y-6 lg:sticky lg:top-28">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-md space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-md space-y-6">
               {/* Fee and Register CTA */}
               <WorksRegistrationCTA
                 feeAmount={activity.fee_amount || 0}
@@ -431,9 +431,9 @@ export default async function WorksActivityDetailPage({ params }: PageProps) {
                   {activity.contact_email && (
                     <a
                       href={`mailto:${activity.contact_email}`}
-                      className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition-colors"
+                      className="inline-flex items-center gap-2 py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 max-w-full text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition-colors"
                     >
-                      <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                      <Mail className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                       <span className="truncate">{activity.contact_email}</span>
                     </a>
                   )}

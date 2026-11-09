@@ -81,14 +81,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const flyerProxyUrl = event.flyer_path ? `/api/space/events/${event.slug}/flyer` : "";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 transition-colors">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07111F] pt-24 pb-16 sm:pb-20 transition-colors">
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
         {/* Breadcrumb / Navigation Bar with Routes Back to Calendar & Open Space Hub */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3 text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-bold">
             <Link
               href="/fole-space/events"
-              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+              className="inline-flex items-center gap-1.5 py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>All Events</span>
@@ -96,7 +96,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <Link
               href="/fole-space/calendar"
-              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+              className="inline-flex items-center gap-1.5 py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Event Calendar</span>
@@ -104,7 +104,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <Link
               href="/fole-space/open"
-              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+              className="inline-flex items-center gap-1.5 py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
             >
               <DoorOpen className="w-3.5 h-3.5" />
               <span>Open Space Hub</span>
@@ -118,7 +118,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Left Column: Natural-Ratio Flyer and Session Specs */}
           <div className="lg:col-span-7 space-y-6">
             {flyerProxyUrl ? (
@@ -132,7 +132,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             ) : null}
 
             {/* Session Specs Card */}
-            <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 Session Logistics & Requirements
               </h2>
@@ -211,7 +211,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
           {/* Right Column: Title, Description, and Interactive Ticket/Pass Panel */}
           <div className="lg:col-span-5 space-y-6">
-            <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="p-5 sm:p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                   {event.category}

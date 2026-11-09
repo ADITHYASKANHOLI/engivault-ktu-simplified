@@ -34,7 +34,7 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`Watch lecture ${lesson.title} on YouTube (opens in new tab)`}
-        className={`group flex items-center justify-between p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+        className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
           isActive
             ? "bg-red-50/80 dark:bg-red-950/40 border-red-500/50 shadow-sm"
             : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-red-500/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 shadow-xs"
@@ -67,8 +67,8 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
             </div>
           )}
 
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 sm:truncate leading-snug group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
               {lesson.title}
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5">
@@ -96,7 +96,7 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pl-3 shrink-0">
+        <div className="flex items-center gap-2 pl-0 sm:pl-3 self-end sm:self-center shrink-0">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 group-hover:underline">
             <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
             <span>Watch on YouTube</span>
@@ -112,14 +112,14 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
     <Link
       href={internalNotesHref}
       aria-label={`View notes for: ${lesson.title}`}
-      className="group flex items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 transition-all shadow-xs"
+      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 transition-all shadow-xs"
     >
       <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
         <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-400">
           <VideoOff className="w-5 h-5" />
         </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-700 truncate">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-slate-700 line-clamp-2 sm:truncate leading-snug">
             {lesson.title}
           </div>
           <div className="text-xs text-slate-400 mt-0.5">
@@ -127,7 +127,7 @@ export function LessonRow({ lesson, subjectSlug, moduleSlug, isActive = false }:
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 pl-3 text-xs font-semibold text-blue-600 group-hover:underline shrink-0">
+      <div className="flex items-center gap-1.5 pl-0 sm:pl-3 self-end sm:self-center text-xs font-semibold text-blue-600 group-hover:underline shrink-0">
         <FileText className="w-3.5 h-3.5" />
         <span>View Notes</span>
       </div>

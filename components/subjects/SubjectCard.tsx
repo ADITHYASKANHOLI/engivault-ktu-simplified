@@ -25,7 +25,7 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
     <ShineWrapper
       color="rgba(255, 255, 255, 0.35)"
       opacity={0.25}
-      className="group relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col justify-between"
+      className="group relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col justify-between"
     >
       {/* Subtle diagonal technical watermark */}
       <div className="absolute -bottom-6 -right-6 text-7xl font-mono font-black text-slate-100 dark:text-slate-800/50 pointer-events-none select-none opacity-50 group-hover:scale-110 transition-transform duration-300">
@@ -61,7 +61,7 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
       </div>
 
       {/* Footer metadata & link */}
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between relative z-10">
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 relative z-10">
         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <Video className="w-3.5 h-3.5 text-blue-600" />
@@ -76,7 +76,7 @@ export function SubjectCard({ subject, index = 1 }: SubjectCardProps) {
 
         <Link
           href={`/subjects/${subject.slug}`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 dark:text-cyan-400 group-hover:translate-x-0.5 transition-transform"
+          className="min-h-[40px] sm:min-h-0 px-2 -mr-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 dark:text-cyan-400 group-hover:translate-x-0.5 transition-transform"
         >
           <span>Explore</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

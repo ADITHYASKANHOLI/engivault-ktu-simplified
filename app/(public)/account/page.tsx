@@ -102,7 +102,7 @@ export default async function AccountPage() {
   }
 
   return (
-    <div className="flex-1 bg-slate-50/50 dark:bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 mt-16 sm:mt-20">
+    <div className="flex-1 bg-slate-50/50 dark:bg-slate-950 pt-24 sm:pt-28 pb-12 sm:pb-16 px-5 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <StudentAccountView
           username={username}

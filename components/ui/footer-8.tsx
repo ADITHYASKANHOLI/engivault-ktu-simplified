@@ -98,11 +98,11 @@ export function Footer8({
 }: Footer8Props) {
   return (
     <footer
-      className={`relative w-full overflow-hidden border-t border-slate-200/80 bg-[#F8F7F0] dark:bg-[#07111F] text-slate-700 dark:text-slate-300 px-4 sm:px-6 lg:px-8 pt-14 pb-8 transition-colors ${className}`}
+      className={`relative w-full overflow-hidden border-t border-slate-200/80 bg-[#F8F7F0] dark:bg-[#07111F] text-slate-700 dark:text-slate-300 px-5 sm:px-6 lg:px-8 pt-12 sm:pt-14 pb-[max(2rem,env(safe-area-inset-bottom))] transition-colors ${className}`}
     >
       <div className="relative max-w-[1400px] mx-auto w-full">
         {/* Upper 4-Column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_1.1fr_1fr_1fr] gap-10 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.3fr_1.1fr_1fr_1fr] gap-9 sm:gap-10 lg:gap-12">
           {/* Brand & Community Column */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -133,7 +133,7 @@ export function Footer8({
             </div>
 
             {/* Social & Contact Actions */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               {socials.map((item) => (
                 <a
                   key={item.key}
@@ -141,7 +141,7 @@ export function Footer8({
                   target={item.href.startsWith("http") ? "_blank" : undefined}
                   rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
                   aria-label={item.label}
-                  className="w-9 h-9 rounded-md border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  className="w-11 h-11 sm:w-9 sm:h-9 rounded-lg sm:rounded-md border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   {item.icon}
                 </a>
@@ -149,9 +149,9 @@ export function Footer8({
               {contactEmail && (
                 <a
                   href={`mailto:${contactEmail}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-emerald-600/30 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  className="inline-flex items-center gap-2 px-3.5 sm:px-3 min-h-[44px] sm:min-h-0 py-2 sm:py-1.5 rounded-lg sm:rounded-md border border-emerald-600/30 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  <Mail className="w-3.5 h-3.5" />
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
                   <span>{contactEmail}</span>
                 </a>
               )}
@@ -171,12 +171,12 @@ export function Footer8({
               <h4 className="text-xs font-mono font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-400">
                 {col.title}
               </h4>
-              <ul className="flex flex-col gap-2.5 text-xs font-mono">
+              <ul className="flex flex-col gap-1 sm:gap-2.5 text-sm sm:text-xs font-mono">
                 {col.links.map((link, linkIdx) => (
                   <li key={`${link.label}-${linkIdx}`} className="flex items-center gap-2 min-w-0">
                     <Link
                       href={link.href}
-                      className={`transition-colors flex items-center gap-1.5 min-w-0 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded-sm ${
+                      className={`py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 transition-colors flex items-center gap-1.5 min-w-0 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400 rounded-sm ${
                         link.highlight
                           ? "text-emerald-700 dark:text-emerald-400 font-semibold hover:text-emerald-800 dark:hover:text-emerald-300"
                           : "text-slate-600 dark:text-slate-400 hover:text-emerald-800 dark:hover:text-white"
@@ -199,7 +199,7 @@ export function Footer8({
 
         {/* Signature Watermark Text from React Bits Pro Footer 8 */}
         <div
-          className="relative mt-16 sm:mt-20 w-full select-none pointer-events-none"
+          className="relative mt-12 sm:mt-20 w-full select-none pointer-events-none"
           aria-hidden="true"
           style={{
             fontSize: "min(14.2vw, 210px)",
@@ -222,13 +222,13 @@ export function Footer8({
 
         {/* Lower Legal & Licensing Bar */}
         <div className="pt-6 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-slate-500 dark:text-slate-400 text-center sm:text-left">
-          <p>{copyrightText}</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px]">
+          <p className="leading-relaxed">{copyrightText}</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs sm:text-[11px]">
             {secondaryLinks.map((sec) => (
               <Link
                 key={sec.label}
                 href={sec.href}
-                className="hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                className="py-1.5 sm:py-0 min-h-[40px] sm:min-h-0 inline-flex items-center hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
               >
                 {sec.label}
               </Link>

@@ -105,7 +105,7 @@ export function LectureCard({
         </ShineWrapper>
 
         {/* Academic Content Block */}
-        <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+        <div className="p-4 min-[375px]:p-5 flex-1 flex flex-col justify-between space-y-3">
           <div>
             {/* Subject & Topic Context */}
             <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-cyan-400 font-semibold mb-1.5">
@@ -135,7 +135,7 @@ export function LectureCard({
           </div>
 
           {/* Instructor / Faculty strip & Direct Watch Action */}
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
             <div className="flex items-center gap-1.5 truncate">
               <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate font-medium text-slate-700 dark:text-slate-300">
@@ -188,7 +188,7 @@ export function LectureCard({
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+      <div className="p-4 min-[375px]:p-5 flex-1 flex flex-col justify-between space-y-3">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold mb-1.5">
             <span className="flex items-center gap-1 truncate">
@@ -208,7 +208,7 @@ export function LectureCard({
           )}
         </div>
 
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-1.5 truncate">
             <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="truncate font-medium text-slate-700 dark:text-slate-300">
@@ -219,7 +219,7 @@ export function LectureCard({
           {notesHref ? (
             <Link
               href={notesHref}
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold text-xs"
+              className="min-h-[40px] sm:min-h-0 inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold text-xs shrink-0"
             >
               <span>View Notes</span>
               <BookOpen className="w-3 h-3" />
