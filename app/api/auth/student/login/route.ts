@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { studentLoginSchema } from "@/lib/validation/schemas";
 import { usernameToInternalEmail } from "@/lib/auth/student";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { recordStudentLoginSession } from "@/lib/auth/student-session";
 import {
   checkDbRateLimit,
   getClientIp,
@@ -83,6 +84,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid username or password." },
         { status: 401 }
+      );
+    }
+
+    try {
+      await recordStudentLoginSession(authData.user.id, "password");
+    } catch (trackingError) {
+      console.error("[STUDENT LOGIN] Session tracking failed:", trackingError);
+      // Fail closed: do not leave an authenticated session that was not recorded.
+      try {
+        await ssrClient.auth.signOut();
+      } catch (signOutError) {
+        console.error("[STUDENT LOGIN] Failed to clear untracked auth session:", signOutError);
+      }
+      return NextResponse.json(
+        { error: "Login is temporarily unavailable because the student session could not be recorded. Please try again shortly." },
+        { status: 503 }
       );
     }
 
