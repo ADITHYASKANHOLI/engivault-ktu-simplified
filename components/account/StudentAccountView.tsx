@@ -15,13 +15,19 @@ import {
   Calendar,
   Lock,
 } from "lucide-react";
+import { LanyardProfileCard } from "@/components/account/LanyardProfileCard";
 
 export interface StudentAccountViewProps {
   username: string;
   createdAt: string;
+  initialAvatarUrl?: string | null;
 }
 
-export function StudentAccountView({ username, createdAt }: StudentAccountViewProps) {
+export function StudentAccountView({
+  username,
+  createdAt,
+  initialAvatarUrl,
+}: StudentAccountViewProps) {
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -83,6 +89,12 @@ export function StudentAccountView({ username, createdAt }: StudentAccountViewPr
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {/* Mobile-only Interactive 3D Lanyard Profile Card */}
+      <LanyardProfileCard
+        username={username}
+        initialAvatarUrl={initialAvatarUrl}
+      />
+
       {/* Profile Overview Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">

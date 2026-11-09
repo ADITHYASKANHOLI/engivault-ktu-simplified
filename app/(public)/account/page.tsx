@@ -31,12 +31,25 @@ export default async function AccountPage() {
     user.email?.split("@")[0] ||
     "student";
 
+  let initialAvatarUrl: string | null = null;
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    initialAvatarUrl = profile?.avatar_url ?? null;
+  } catch {
+    initialAvatarUrl = null;
+  }
+
   return (
     <div className="flex-1 bg-slate-50/50 dark:bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 mt-16 sm:mt-20">
       <div className="max-w-4xl mx-auto">
         <StudentAccountView
           username={username}
           createdAt={user.created_at}
+          initialAvatarUrl={initialAvatarUrl}
         />
       </div>
     </div>
