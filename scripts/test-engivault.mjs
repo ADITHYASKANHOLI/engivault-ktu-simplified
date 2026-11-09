@@ -3636,6 +3636,135 @@ async function runTests() {
     assert.ok(revalCode.includes("revalidateAdminContent()"), "Must revalidate admin dashboard content");
   });
 
+  // 25. Isolated Portrait Lanyard ID Card & Processing Pipeline
+  console.log("\n--- 25. ISOLATED PORTRAIT LANYARD ID CARD & PROCESSING PIPELINE ---");
+
+  test("1. Migration 016 adds multi-asset profile columns and hardened SECURITY DEFINER RPC", () => {
+    const migPath = "supabase/migrations/016_student_profile_portrait_processing.sql";
+    assert.ok(nodeFs.existsSync(migPath), "Migration 016 SQL file must exist");
+    const sql = nodeFs.readFileSync(migPath, "utf-8").toLowerCase();
+
+    for (const col of [
+      "avatar_original_url",
+      "avatar_processed_url",
+      "avatar_card_url",
+      "avatar_processing_status",
+      "avatar_updated_at",
+    ]) {
+      assert.ok(sql.includes(col), `Migration 016 must declare column ${col}`);
+    }
+
+    assert.ok(
+      sql.includes("check (avatar_processing_status in ('none', 'processed', 'fallback', 'legacy'))"),
+      "Must constrain avatar_processing_status to valid enum states"
+    );
+    assert.ok(
+      sql.includes("create or replace function public.update_own_avatar_assets"),
+      "Must define public.update_own_avatar_assets RPC"
+    );
+    assert.ok(sql.includes("security definer"), "RPC must run with SECURITY DEFINER");
+    assert.ok(
+      sql.includes("set search_path = public, pg_temp"),
+      "RPC must pin search_path to public, pg_temp"
+    );
+    assert.ok(sql.includes("auth.uid()"), "RPC must scope mutations strictly to auth.uid()");
+    assert.ok(
+      sql.includes("'/engivault-avatars/' || v_uid::text || '/'"),
+      "RPC must enforce per-user storage prefix ownership on URLs"
+    );
+    assert.ok(sql.includes("notify pgrst, 'reload schema'"), "Must reload PostgREST schema cache");
+  });
+
+  test("2. Self-hosted MediaPipe WASM/model assets exist locally and portrait modules call no external APIs", () => {
+    const requiredAssets = [
+      "public/mediapipe/wasm/vision_wasm_internal.js",
+      "public/mediapipe/wasm/vision_wasm_internal.wasm",
+      "public/mediapipe/models/selfie_multiclass_256x256.tflite",
+    ];
+    for (const assetPath of requiredAssets) {
+      assert.ok(nodeFs.existsSync(assetPath), `Local MediaPipe asset must exist: ${assetPath}`);
+      assert.ok(nodeFs.statSync(assetPath).size > 1000, `Local MediaPipe asset must be non-empty: ${assetPath}`);
+    }
+
+    const portraitFiles = [
+      "lib/portrait/avatar-types.ts",
+      "lib/portrait/segmentPerson.ts",
+      "lib/portrait/stylizePortrait.ts",
+      "lib/portrait/composeIdCard.ts",
+      "lib/portrait/processProfilePortrait.ts",
+    ];
+    const combinedCode = portraitFiles.map((f) => nodeFs.readFileSync(f, "utf-8")).join("\n");
+    const segCode = nodeFs.readFileSync("lib/portrait/segmentPerson.ts", "utf-8");
+
+    assert.ok(segCode.includes('"/mediapipe/wasm"'), "Segmentation must load WASM from local /mediapipe/wasm");
+    assert.ok(
+      segCode.includes('"/mediapipe/models/selfie_multiclass_256x256.tflite"'),
+      "Segmentation must load TFLite model locally"
+    );
+    assert.ok(
+      segCode.includes("fastGuidedFilterRGB") && segCode.includes("isolatePrimarySubjectMask"),
+      "Segmentation must perform primary-subject component isolation and guided edge matting"
+    );
+
+    const externalApiMatches = combinedCode.match(/https?:\/\/[^\s"'`]+/g) || [];
+    assert.equal(
+      externalApiMatches.length,
+      0,
+      `Client portrait pipeline must not contain external URLs, found: ${externalApiMatches.join(", ")}`
+    );
+  });
+
+  test("3. Student avatar API enforces nodejs runtime, CSRF, magic bytes, ?asset=original scoping, and 015 fallback", () => {
+    const routeCode = nodeFs.readFileSync("app/api/auth/student/avatar/route.ts", "utf-8");
+
+    assert.ok(routeCode.includes('export const runtime = "nodejs"'), "Avatar route must enforce nodejs runtime");
+    assert.ok(routeCode.includes("isSafeOrigin(request)"), "POST and DELETE must enforce CSRF origin checks");
+    assert.ok(routeCode.includes("checkDbRateLimit("), "POST must enforce DB-backed per-user rate limiting");
+    assert.ok(routeCode.includes("validateImageBytes("), "Uploads must verify image magic bytes");
+    assert.ok(routeCode.includes("pngOnly: true"), "Processed portrait and card front must enforce PNG magic bytes");
+    assert.ok(
+      routeCode.includes("`${user.id}/original.") &&
+        routeCode.includes("`${user.id}/portrait.png`") &&
+        routeCode.includes("`${user.id}/card-front.png`"),
+      "Storage keys must store original, portrait.png, and card-front.png separately per user"
+    );
+    assert.ok(
+      routeCode.includes('searchParams.get("asset") === "original"'),
+      "GET must support same-origin ?asset=original stream for CORS-free reprocessing"
+    );
+    assert.ok(
+      routeCode.includes("isMissing016SchemaError") && routeCode.includes("update_own_avatar_url"),
+      "API must gracefully fall back to migration 015 schema if migration 016 columns are pending"
+    );
+    assert.ok(
+      routeCode.includes('assetRole === "original"'),
+      "API must support staged original upload to stay below Vercel 4.5 MB body cap"
+    );
+  });
+
+  test("4. LanyardProfileCard enforces strict mobile-only mounting, preview-before-save, caching, and fallback UX", () => {
+    const cardCode = nodeFs.readFileSync("components/account/LanyardProfileCard.tsx", "utf-8");
+    const composerCode = nodeFs.readFileSync("lib/portrait/composeIdCard.ts", "utf-8");
+    const accountPageCode = nodeFs.readFileSync("app/(public)/account/page.tsx", "utf-8");
+
+    assert.ok(cardCode.includes('MOBILE_MEDIA_QUERY = "(max-width: 639px)"'), "Must target strict mobile viewport (<640px)");
+    assert.ok(cardCode.includes("if (!isMobile) {\n    return null;\n  }"), "Must unmount cleanly on desktop");
+    assert.ok(cardCode.includes("sm:hidden"), "Section must also apply sm:hidden CSS guard");
+    assert.ok(cardCode.includes("preview-isolated") && cardCode.includes("preview-fallback"), "Must preview both isolated and fallback cards before saving");
+    assert.ok(cardCode.includes("handleReprocessSaved") && cardCode.includes("/api/auth/student/avatar?asset=original"), "Must allow reprocessing saved original photo");
+    assert.ok(cardCode.includes("Background removal could not be completed"), "Fallback state must clearly inform user");
+    assert.ok(
+      composerCode.includes("CARD_WIDTH = 1024") &&
+        composerCode.includes("drawFoleHeaderMark") &&
+        composerCode.includes("drawUsernameHeader"),
+      "ID card composer must generate 1024x1440 cardstock with FOLE mark and dynamic @username"
+    );
+    assert.ok(
+      accountPageCode.includes("initialAvatarAssets"),
+      "SSR /account page must hydrate initial multi-asset avatar URLs to avoid revisit reprocessing"
+    );
+  });
+
   console.log("\n=================================================");
   console.log(`📊 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log("=================================================\n");

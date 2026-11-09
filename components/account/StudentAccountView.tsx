@@ -16,17 +16,20 @@ import {
   Lock,
 } from "lucide-react";
 import { LanyardProfileCard } from "@/components/account/LanyardProfileCard";
+import type { AvatarAssetsPayload } from "@/lib/portrait/avatar-types";
 
 export interface StudentAccountViewProps {
   username: string;
   createdAt: string;
   initialAvatarUrl?: string | null;
+  initialAvatarAssets?: AvatarAssetsPayload;
 }
 
 export function StudentAccountView({
   username,
   createdAt,
   initialAvatarUrl,
+  initialAvatarAssets,
 }: StudentAccountViewProps) {
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -93,6 +96,7 @@ export function StudentAccountView({
       <LanyardProfileCard
         username={username}
         initialAvatarUrl={initialAvatarUrl}
+        initialAvatarAssets={initialAvatarAssets}
       />
 
       {/* Profile Overview Card */}

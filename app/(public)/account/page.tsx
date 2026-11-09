@@ -3,6 +3,10 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { StudentAccountView } from "@/components/account/StudentAccountView";
+import type {
+  AvatarAssetsPayload,
+  AvatarProcessingStatus,
+} from "@/lib/portrait/avatar-types";
 
 export const metadata: Metadata = {
   title: "Student Account — FOLE Web",
@@ -10,6 +14,18 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+function normalizeStatus(value: unknown): AvatarProcessingStatus {
+  if (
+    value === "processed" ||
+    value === "fallback" ||
+    value === "legacy" ||
+    value === "none"
+  ) {
+    return value;
+  }
+  return "none";
+}
 
 export default async function AccountPage() {
   if (!isSupabaseConfigured()) {
@@ -31,16 +47,58 @@ export default async function AccountPage() {
     user.email?.split("@")[0] ||
     "student";
 
-  let initialAvatarUrl: string | null = null;
+  let initialAvatarAssets: AvatarAssetsPayload = {
+    avatarUrl: null,
+    originalUrl: null,
+    processedUrl: null,
+    cardUrl: null,
+    processingStatus: "none",
+  };
+
   try {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("avatar_url")
+      .select(
+        "avatar_url, avatar_original_url, avatar_processed_url, avatar_card_url, avatar_processing_status"
+      )
       .eq("id", user.id)
       .maybeSingle();
-    initialAvatarUrl = profile?.avatar_url ?? null;
+
+    if (!profileErr && profile) {
+      const avatarUrl = profile.avatar_card_url ?? profile.avatar_url ?? null;
+      initialAvatarAssets = {
+        avatarUrl,
+        originalUrl: profile.avatar_original_url ?? null,
+        processedUrl: profile.avatar_processed_url ?? null,
+        cardUrl: profile.avatar_card_url ?? avatarUrl,
+        processingStatus: normalizeStatus(
+          profile.avatar_processing_status ?? (avatarUrl ? "legacy" : "none")
+        ),
+      };
+    } else {
+      // Fallback safely when migration 016 columns are not yet present
+      const { data: legacy } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      const url = legacy?.avatar_url ?? null;
+      initialAvatarAssets = {
+        avatarUrl: url,
+        originalUrl: null,
+        processedUrl: null,
+        cardUrl: url,
+        processingStatus: url ? "legacy" : "none",
+      };
+    }
   } catch {
-    initialAvatarUrl = null;
+    initialAvatarAssets = {
+      avatarUrl: null,
+      originalUrl: null,
+      processedUrl: null,
+      cardUrl: null,
+      processingStatus: "none",
+    };
   }
 
   return (
@@ -49,7 +107,7 @@ export default async function AccountPage() {
         <StudentAccountView
           username={username}
           createdAt={user.created_at}
-          initialAvatarUrl={initialAvatarUrl}
+          initialAvatarAssets={initialAvatarAssets}
         />
       </div>
     </div>
