@@ -12,7 +12,6 @@ import {
   CalendarDays,
   Info,
   GraduationCap,
-  DraftingCompass,
 } from "lucide-react";
 import { AuthMenu, AuthState } from "@/components/auth/AuthMenu";
 import { LoginDialog } from "@/components/auth/LoginDialog";
@@ -66,7 +65,6 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
   const navLinks = [
     { label: "Home", href: "/", icon: <span aria-hidden="true">⌂</span> },
     { label: "Learn", href: "/lectures", icon: <BookOpen aria-hidden="true" /> },
-    { label: "EG Suite", href: "/engineering-graphics", icon: <DraftingCompass aria-hidden="true" />, ariaLabel: "Engineering Graphics Suite" },
     { label: "Materials", href: "/materials", icon: <FileText aria-hidden="true" /> },
     { label: "FOLE SPACE", href: "/fole-space", icon: <Users aria-hidden="true" /> },
     { label: "FOLE WORKS", href: "/fole-works", icon: <Briefcase aria-hidden="true" /> },
@@ -76,7 +74,6 @@ export function SiteHeader({ initialAuth, isOffline = false }: SiteHeaderProps) 
 
   const getActiveHref = (path: string): string => {
     if (!path || path === "/") return "/";
-    if (path === "/engineering-graphics" || path.startsWith("/engineering-graphics/")) return "/engineering-graphics";
     if (path === "/fole-space/events" || path.startsWith("/fole-space/events/")) {
       return "/fole-space/events";
     }

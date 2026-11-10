@@ -15,7 +15,7 @@ const securityHeaders = [
   },
   {
     key: "X-Frame-Options",
-    value: "SAMEORIGIN",
+    value: "DENY",
   },
   {
     key: "Referrer-Policy",
@@ -35,18 +35,18 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Note: Next.js 16 App Router requires unsafe-inline/unsafe-eval for static hydration and motion transitions
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://cdn.jsdelivr.net",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://*.supabase.co https://img.youtube.com https://i.ytimg.com https://images.unsplash.com",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.youtube.com https://cdn.jsdelivr.net",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.youtube.com",
       "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
       "media-src 'self' blob: data: https://*.supabase.co",
       "worker-src 'self' blob:", // Required for QR code camera scanner worker thread
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'self'",
+      "frame-ancestors 'none'",
     ].join("; "),
   },
 ];
