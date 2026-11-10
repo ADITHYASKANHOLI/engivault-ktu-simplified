@@ -1,5 +1,5 @@
 /**
- * Main Entry Point — Unit III & IV
+ * Main Entry Point — Engineering Graphics
  * Projection of Solids, Section & Development of Surfaces
  * Engineering Graphics Suite
  * Alberto Felix & Aaron Mcgeo | CSE-A(I)
@@ -149,7 +149,7 @@ function init() {
 
     resize2dCanvases();
     setStatus('Ready — Generate a solid to begin');
-    console.log('✅ Unit III & IV: Projection of Solids, Section & Development loaded.');
+    console.log('✅ Projection, section and development workspace ready.');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -207,7 +207,7 @@ function populatePresets() {
         btn.addEventListener('click', () => {
             applyPreset(preset, state);
             generateSolid();
-            // FIX 5.2: Unit IV presets include a cut — apply it automatically
+            // Section presets include a cut — apply it automatically
             if (preset.cutAngle != null && preset.cutPos != null) {
                 applyCut();
             }

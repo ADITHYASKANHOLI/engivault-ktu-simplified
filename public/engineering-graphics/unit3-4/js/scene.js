@@ -216,8 +216,8 @@ function OrbitControls(object, domElement) {
 
 export function initScene(container) {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe8ecf0);
-    scene.fog = new THREE.FogExp2(0xe8ecf0, 0.0018);
+    scene.background = new THREE.Color(0x070e0a);
+    scene.fog = new THREE.FogExp2(0x070e0a, 0.0018);
 
     const w = container.clientWidth || 800;
     const h = container.clientHeight || 600;
@@ -267,7 +267,7 @@ export function initScene(container) {
     masterGroup.add(solidGroup);
 
     // Default grid
-    _gridHelper = new THREE.GridHelper(160, 32, 0x94a3b8, 0xc8d4e0);
+    _gridHelper = new THREE.GridHelper(160, 32, 0x285b3b, 0x173222);
     _gridHelper.position.y = 0.5;
     _gridHelper.material.transparent = true;
     _gridHelper.material.opacity = 0.45;

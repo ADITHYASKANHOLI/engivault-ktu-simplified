@@ -15,8 +15,8 @@ let scene, camera, renderer, labelRenderer, controls;
 export function initScene(canvas) {
     // Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe8ecf0);
-    scene.fog = new THREE.FogExp2(0xe8ecf0, 0.018);
+    scene.background = new THREE.Color(0x070e0a);
+    scene.fog = new THREE.FogExp2(0x070e0a, 0.018);
 
     // Camera — standard perspective for isometric-like view
     camera = new THREE.PerspectiveCamera(45, 1, 0.1, 300);
@@ -87,14 +87,14 @@ export function setupLighting() {
 
 export function setupReferencePlanes() {
     // HP (Horizontal Plane) grid — main floor
-    const hpGrid = new THREE.GridHelper(24, 24, 0x94a3b8, 0xc8d4e0);
+    const hpGrid = new THREE.GridHelper(24, 24, 0x285b3b, 0x173222);
     hpGrid.position.set(0, -0.01, 0);
     hpGrid.material.transparent = true;
     hpGrid.material.opacity = 0.5;
     scene.add(hpGrid);
 
     // Minor grid (finer subdivisions)
-    const hpGridFine = new THREE.GridHelper(24, 96, 0xdde3ea, 0xdde3ea);
+    const hpGridFine = new THREE.GridHelper(24, 96, 0x173323, 0x173323);
     hpGridFine.position.set(0, -0.005, 0);
     hpGridFine.material.transparent = true;
     hpGridFine.material.opacity = 0.25;
@@ -103,7 +103,7 @@ export function setupReferencePlanes() {
     // VP (Vertical Plane) — light translucent plane
     const vpGeo = new THREE.PlaneGeometry(24, 16);
     const vpMat = new THREE.MeshBasicMaterial({
-        color: 0xbfcfdf,
+        color: 0x145b3a,
         transparent: true,
         opacity: 0.07,
         side: THREE.DoubleSide,
