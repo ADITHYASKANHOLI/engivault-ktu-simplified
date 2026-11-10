@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>FOLE Engineering Graphics Studio — Unit V | Engineering Graphics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Engineering Graphics Studio — Isometric &amp; Orthographic Views</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -24,10 +24,10 @@
         <header class="header">
             <div class="header-left">
                 <a href="/engineering-graphics" class="back-btn" title="Back to Suite Launcher">← Suite</a>
-                <div class="logo-mark">V</div>
+                <div class="logo-mark">EG</div>
                 <div class="title-block">
                     <h1>Engineering Graphics Simulator</h1>
-                    <span class="subtitle">Unit V — Isometric Projections &amp; Orthographic Views</span>
+                    <span class="subtitle">Isometric Projections · Orthographic Views</span>
                 </div>
             </div>
             <div class="header-center">
@@ -44,6 +44,7 @@
                 </div>
             </div>
             <div class="header-right">
+                <button class="mobile-controls-toggle" id="mobileControlsToggle" type="button" aria-controls="sidebar" aria-expanded="false">Controls</button>
                 <button class="export-btn" id="exportBtn" title="Export as PNG">↓ Export PNG</button>
                 <div class="credits-block">
                     <span class="credits-names">Alberto Felix &amp; Aaron Mcgeo</span>
@@ -206,12 +207,30 @@
         </div>
 
         <footer class="footer">
-            <span>Unit V: Isometric Projections &amp; Freehand Sketching — Engineering Graphics</span>
+            <span>Isometric Projections &amp; Freehand Sketching — Engineering Graphics</span>
             <span>CO5: Develop spatial imagination for engineering communication</span>
             <span>Made with ❤ by Alberto Felix &amp; Aaron Mcgeo | CSE-A(I)</span>
         </footer>
     </div>
 
+    <script>
+    (() => {
+        const shell = document.querySelector('.app-container');
+        const toggle = document.getElementById('mobileControlsToggle');
+        if (!shell || !toggle) return;
+        const setOpen = (open) => {
+            shell.classList.toggle('mobile-controls-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.textContent = open ? 'Close controls' : 'Controls';
+        };
+        toggle.addEventListener('click', () => setOpen(!shell.classList.contains('mobile-controls-open')));
+        const viewport = document.querySelector('.content-area, .viewport-area');
+        viewport?.addEventListener('pointerdown', () => {
+            if (window.matchMedia('(max-width: 900px)').matches && shell.classList.contains('mobile-controls-open')) setOpen(false);
+        }, { passive: true });
+        document.querySelectorAll('.tab-btn, .mode-btn').forEach((button) => button.addEventListener('click', () => setOpen(false)));
+    })();
+    </script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

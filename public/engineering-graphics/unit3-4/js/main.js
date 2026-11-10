@@ -203,7 +203,7 @@ function populatePresets() {
         const btn = document.createElement('button');
         btn.className = 'quick-load-btn';
         btn.style.cssText = 'text-align:left;font-size:9px;padding:6px 8px;';
-        btn.textContent = `[U${preset.unit}] ${preset.label}`;
+        btn.textContent = preset.label;
         btn.addEventListener('click', () => {
             applyPreset(preset, state);
             generateSolid();

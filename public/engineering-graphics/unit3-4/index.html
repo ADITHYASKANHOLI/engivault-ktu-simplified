@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Unit III & IV — Projection & Section of Solids | Engineering Graphics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,10 +24,10 @@
         <header class="header">
             <div class="header-left">
                 <a href="/engineering-graphics" class="back-btn" title="Back to Suite Launcher">← Suite</a>
-                <div class="logo-mark">III·IV</div>
+                <div class="logo-mark">EG</div>
                 <div class="title-block">
                     <h1>Engineering Graphics Simulator</h1>
-                    <span class="subtitle">Unit III &amp; IV — Projection of Solids, Section &amp; Development</span>
+                    <span class="subtitle">Projection of Solids · Section · True Shape · Development</span>
                 </div>
             </div>
 
@@ -50,6 +50,7 @@
             </div>
 
             <div class="header-right">
+                <button class="mobile-controls-toggle" id="mobileControlsToggle" type="button" aria-controls="sidebar" aria-expanded="false">Controls</button>
                 <button class="export-btn" id="exportBtn" title="Export view as PNG">↓ Export PNG</button>
                 <button class="about-btn" id="aboutBtn" title="About this project">👥 About</button>
                 <div class="credits-block">
@@ -409,7 +410,7 @@
                 <span id="statusText">Ready — Generate a solid to begin</span>
             </div>
             <div class="footer-right">
-                <span>Unit III &amp; IV: Projection of Solids, Section &amp; Development</span>
+                <span>Projection of Solids · Section &amp; Development</span>
                 <span class="footer-sep">|</span>
                 <span>CO3 · CO4: Projection &amp; Section Principles</span>
             </div>
@@ -467,7 +468,7 @@
                         <div class="mpg-item"><strong>Version</strong>v1.0</div>
                         <div class="mpg-item"><strong>Engine</strong>Three.js (local)</div>
                         <div class="mpg-item"><strong>Course</strong>ME22201</div>
-                        <div class="mpg-item"><strong>Units</strong>III &amp; IV</div>
+                        <div class="mpg-item"><strong>Features</strong>Projection · Section · Development</div>
                         <div class="mpg-item"><strong>Solids</strong>8 types</div>
                         <div class="mpg-item"><strong>Views</strong>3D · True Shape · Dev · Proj</div>
                     </div>
@@ -477,6 +478,24 @@
     </div>
 
     <!-- Scripts -->
+    <script>
+    (() => {
+        const shell = document.querySelector('.app-container');
+        const toggle = document.getElementById('mobileControlsToggle');
+        if (!shell || !toggle) return;
+        const setOpen = (open) => {
+            shell.classList.toggle('mobile-controls-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.textContent = open ? 'Close controls' : 'Controls';
+        };
+        toggle.addEventListener('click', () => setOpen(!shell.classList.contains('mobile-controls-open')));
+        const viewport = document.querySelector('.content-area, .viewport-area');
+        viewport?.addEventListener('pointerdown', () => {
+            if (window.matchMedia('(max-width: 900px)').matches && shell.classList.contains('mobile-controls-open')) setOpen(false);
+        }, { passive: true });
+        document.querySelectorAll('.tab-btn, .mode-btn').forEach((button) => button.addEventListener('click', () => setOpen(false)));
+    })();
+    </script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -3,15 +3,15 @@
 import React, { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Box, Check, ChevronRight, Compass, DraftingCompass, Download, Layers, Play, RotateCw, Scissors, Sparkles } from "lucide-react";
 
-type Problem = "position" | "section" | "development" | "isometric" | "orthographic";
+type Feature = "position" | "section" | "development" | "isometric" | "orthographic";
 type Solid = "prism" | "pyramid" | "cylinder" | "cone" | "cube" | "cuboid" | "frustum";
 
-const problems: Array<{id: Problem; number: string; title: string; description: string; unit: string}> = [
-  {id:"position",number:"01",title:"Projection of solids",description:"Position a solid with its axis inclined to HP, VP or both.",unit:"III–IV"},
-  {id:"section",number:"02",title:"Section of solids",description:"Set a cutting plane, inspect the section and construct its true shape.",unit:"III–IV"},
-  {id:"development",number:"03",title:"Development of surfaces",description:"Unfold lateral surfaces and study the development step by step.",unit:"III–IV"},
-  {id:"isometric",number:"04",title:"Isometric projection",description:"Explore an isometric view, dimensions and inclined cuts.",unit:"V"},
-  {id:"orthographic",number:"05",title:"Orthographic views",description:"Compare front, plan, side and isometric views together.",unit:"V"}
+const features: Array<{id: Feature; number: string; title: string; description: string}> = [
+  {id:"position",number:"01",title:"Projection & orientation",description:"Position the solid relative to HP and VP and inspect its projections."},
+  {id:"section",number:"02",title:"Section & true shape",description:"Set a cutting plane, inspect the section and construct its true shape."},
+  {id:"development",number:"03",title:"Surface development",description:"Unfold the lateral surface and study the development step by step."},
+  {id:"isometric",number:"04",title:"Isometric view",description:"Explore the solid in isometric form, with dimensions and inclined cuts."},
+  {id:"orthographic",number:"05",title:"Orthographic views",description:"Compare front, plan, side and isometric views together."}
 ];
 
 const shapes: Array<{id: Solid; title: string; subtitle: string; glyph: string}> = [
@@ -34,7 +34,7 @@ function NumberField({label,value,onChange,unit="mm",min=1,max=150}:{
 }
 
 export function EngineeringGraphicsStudio() {
-  const [problem,setProblem] = useState<Problem>("section");
+  const [problem,setProblem] = useState<Feature>("section");
   const [solid,setSolid] = useState<Solid>("prism");
   const [sides,setSides] = useState(6);
   const [base,setBase] = useState(30);
@@ -51,7 +51,7 @@ export function EngineeringGraphicsStudio() {
   const [engineTitle,setEngineTitle] = useState("Engineering Graphics Simulator");
   const [launchNote,setLaunchNote] = useState("");
 
-  const unit34 = (problem==="position" || problem==="section" || problem==="development") && solid!=="frustum";
+  const usesProjectionEngine = (problem==="position" || problem==="section" || problem==="development") && solid!=="frustum";
   const unsupportedDev = problem==="development" && solid==="frustum";
   const unsupportedPosition = problem==="position" && solid==="frustum";
   const showCut = problem==="section" || ((problem==="isometric" || problem==="orthographic") && includeCut);
@@ -59,15 +59,15 @@ export function EngineeringGraphicsStudio() {
   const solidHeight = solid==="cube" ? base : height;
   const summary = useMemo(()=>{
     const parts=[baseLabel+" "+base+" mm","Height "+solidHeight+" mm"];
-    if(solid==="cuboid" && unit34) parts.push("Depth "+depth+" mm");
+    if(solid==="cuboid" && usesProjectionEngine) parts.push("Depth "+depth+" mm");
     if(solid==="frustum") parts.push("Top diameter "+topSize+" mm");
     return parts.join(" · ");
-  },[baseLabel,base,solidHeight,solid,unit34,depth,topSize]);
+  },[baseLabel,base,solidHeight,solid,usesProjectionEngine,depth,topSize]);
 
   function startSimulation() {
     const params=new URLSearchParams();
     let path="";
-    if(unit34) {
+    if(usesProjectionEngine) {
       path="/engineering-graphics/unit3-4/index.html";
       let engineBase=base;
       if(solid==="prism" && sides!==4) engineBase=base/(2*Math.sin(Math.PI/sides));
@@ -88,7 +88,7 @@ export function EngineeringGraphicsStudio() {
       params.set("cutPos",String(Math.min(cutHeight,solidHeight-1)));
       params.set("tab",problem==="section"?"tabTrueShape":problem==="development"?"tabDev":"tabProj");
       setEngineTitle(problem==="section"?"Section & true shape":problem==="development"?"Surface development":"Projection of solids");
-      setLaunchNote("Unit III–IV · solid orientation, sectional geometry and 2D construction views");
+      setLaunchNote("Projection, section and 2D construction workspace");
     } else {
       path="/engineering-graphics/unit5/index.html";
       params.set("shape",solid==="cube"?"cuboid":solid);
@@ -98,13 +98,13 @@ export function EngineeringGraphicsStudio() {
       params.set("cutHeight",String(Math.min(cutHeight,solidHeight-1)));
       params.set("mode",problem==="orthographic"?"split":"iso");
       setEngineTitle(problem==="section"?"Frustum section preview":problem==="orthographic"?"Orthographic & isometric views":"Isometric projection");
-      setLaunchNote("Unit V · interactive isometric model, orthographic views and cut preview");
+      setLaunchNote("Interactive isometric model, orthographic views and cut preview");
     }
     setEngineUrl(path+"?"+params.toString());
   }
 
   if(engineUrl) return <main className="min-h-screen bg-[#050908] pt-[88px] text-white">
-    <div className="mx-auto flex h-[calc(100vh-88px)] max-w-[1800px] flex-col px-3 pb-3 sm:px-5">
+    <div className="mx-auto flex h-[calc(100dvh-88px)] max-w-[1800px] flex-col px-3 pb-3 sm:px-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0A120E] px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           <button type="button" onClick={()=>setEngineUrl(null)} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-white/10 px-3 text-xs font-semibold text-slate-200 hover:border-[#00C878]/50"><ArrowLeft className="h-4 w-4"/> Setup</button>
@@ -124,7 +124,7 @@ export function EngineeringGraphicsStudio() {
     </div>
     <div className="relative mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#00C878]/25 bg-[#00A86B]/10 px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.18em] text-[#42E6A1]"><span className="h-1.5 w-1.5 rounded-full bg-[#00D47B] shadow-[0_0_12px_#00D47B]"/> FOLE LEARNING TOOLS <span className="text-white/25">/</span> STUDIO 01</div>
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#00C878]/25 bg-[#00A86B]/10 px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.18em] text-[#42E6A1]"><span className="h-1.5 w-1.5 rounded-full bg-[#00D47B] shadow-[0_0_12px_#00D47B]"/> FOLE LEARNING TOOLS <span className="text-white/25">/</span> ENGINEERING GRAPHICS</div>
         <div className="text-[10px] font-mono tracking-[0.16em] text-slate-500">MECHANICAL · SPATIAL · VISUAL</div>
       </div>
 
@@ -148,16 +148,7 @@ export function EngineeringGraphicsStudio() {
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
         <div className="rounded-[26px] border border-white/10 bg-[#0A110D]/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,.28)] sm:p-7">
-          <div className="mb-6 flex items-center justify-between gap-3"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">01 / PROBLEM TYPE</div><h2 className="mt-1 text-xl font-bold">What are you solving?</h2></div><span className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 font-mono text-[10px] text-slate-500">SELECT ONE</span></div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {problems.map(item=><button type="button" key={item.id} onClick={()=>setProblem(item.id)} className={"group flex min-h-[94px] items-start gap-3 rounded-2xl border p-4 text-left transition "+(problem===item.id?"border-[#00C878]/60 bg-[#00A86B]/10":"border-white/10 bg-[#0B1510] hover:border-white/20")}>
-              <span className={"mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-mono text-[10px] font-bold "+(problem===item.id?"bg-[#00C878] text-[#03110B]":"bg-white/5 text-slate-500")}>{item.number}</span>
-              <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 text-sm font-bold">{item.title}<span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-slate-500">UNIT {item.unit}</span></span><span className="mt-1 block text-xs leading-5 text-slate-400">{item.description}</span></span>
-              {problem===item.id?<Check className="mt-1 h-4 w-4 shrink-0 text-[#00D47B]"/>:<ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-600"/>}
-            </button>)}
-          </div>
-
-          <div className="mb-6 mt-8 flex items-center justify-between border-t border-white/10 pt-6"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">02 / SOLID</div><h2 className="mt-1 text-xl font-bold">Which shape is given?</h2></div><Box className="h-5 w-5 text-slate-500"/></div>
+          <div className="mb-6 mt-8 flex items-center justify-between border-t border-white/10 pt-6"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">01 / SELECT A SOLID</div><h2 className="mt-1 text-xl font-bold">Choose the shape in your question</h2></div><Box className="h-5 w-5 text-slate-500"/></div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {shapes.map(item=><button type="button" key={item.id} onClick={()=>setSolid(item.id)} className={"rounded-2xl border p-3 text-left transition "+(solid===item.id?"border-[#00C878]/60 bg-[#00A86B]/10":"border-white/10 bg-[#0B1510] hover:border-white/20")}>
               <span className={"mb-3 flex h-10 w-10 items-center justify-center rounded-xl text-2xl "+(solid===item.id?"bg-[#00C878]/15 text-[#55E4A9]":"bg-white/[0.04] text-slate-500")}>{item.glyph}</span><span className="block text-sm font-bold">{item.title}</span><span className="mt-1 block text-[10px] text-slate-500">{item.subtitle}</span>
@@ -165,15 +156,24 @@ export function EngineeringGraphicsStudio() {
           </div>
           {(solid==="prism" || solid==="pyramid") && <div className="mt-5"><div className="mb-2 text-xs font-semibold text-slate-300">Number of sides</div><div className="flex flex-wrap gap-2">{[3,4,5,6].map(n=><button type="button" key={n} onClick={()=>setSides(n)} className={"h-9 min-w-12 rounded-lg border px-3 font-mono text-xs "+(sides===n?"border-[#00C878] bg-[#00A86B]/15 text-[#65E9B2]":"border-white/10 bg-[#0B1510] text-slate-400")}>{n} sides</button>)}</div></div>}
 
+          <div className="mb-6 flex items-center justify-between gap-3"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">02 / DRAWING FEATURE</div><h2 className="mt-1 text-xl font-bold">What would you like to explore?</h2></div><span className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 font-mono text-[10px] text-slate-500">SELECT ONE</span></div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {features.map(item=><button type="button" key={item.id} onClick={()=>setProblem(item.id)} className={"group flex min-h-[94px] items-start gap-3 rounded-2xl border p-4 text-left transition "+(problem===item.id?"border-[#00C878]/60 bg-[#00A86B]/10":"border-white/10 bg-[#0B1510] hover:border-white/20")}>
+              <span className={"mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-mono text-[10px] font-bold "+(problem===item.id?"bg-[#00C878] text-[#03110B]":"bg-white/5 text-slate-500")}>{item.number}</span>
+              <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2 text-sm font-bold">{item.title}</span><span className="mt-1 block text-xs leading-5 text-slate-400">{item.description}</span></span>
+              {problem===item.id?<Check className="mt-1 h-4 w-4 shrink-0 text-[#00D47B]"/>:<ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-600"/>}
+            </button>)}
+          </div>
+
           <div className="mb-6 mt-8 flex items-center justify-between border-t border-white/10 pt-6"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">03 / GIVEN DATA</div><h2 className="mt-1 text-xl font-bold">Enter the question dimensions</h2></div><span className="font-mono text-[10px] text-slate-500">LINEAR VALUES IN MM</span></div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <NumberField label={baseLabel} value={base} onChange={setBase} min={5}/>
             {solid!=="cube" && <NumberField label="Height" value={height} onChange={setHeight} min={10}/>}
-            {solid==="cuboid" && unit34 && <NumberField label="Depth" value={depth} onChange={setDepth} min={5}/>}
+            {solid==="cuboid" && usesProjectionEngine && <NumberField label="Depth" value={depth} onChange={setDepth} min={5}/>}
             {solid==="frustum" && <NumberField label="Top diameter" value={topSize} onChange={setTopSize} min={2} max={149}/>}
           </div>
 
-          {unit34 && (problem==="position" || problem==="section" || problem==="development") && <>
+          {usesProjectionEngine && (problem==="position" || problem==="section" || problem==="development") && <>
             <div className="mb-5 mt-8 flex items-center justify-between border-t border-white/10 pt-6"><div><div className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#00C878]">04 / ORIENTATION</div><h2 className="mt-1 text-xl font-bold">Position relative to reference planes</h2></div><Compass className="h-5 w-5 text-slate-500"/></div>
             <div className="grid gap-4 sm:grid-cols-3">
               <NumberField label="Axis with HP" value={hp} onChange={setHp} unit="degrees" min={0} max={90}/>
@@ -188,8 +188,8 @@ export function EngineeringGraphicsStudio() {
             {showCut && <div className="grid gap-4 sm:grid-cols-2"><NumberField label="Cutting plane angle" value={cutAngle} onChange={setCutAngle} unit="degrees" min={0} max={85}/><NumberField label="Cut height from base" value={cutHeight} onChange={setCutHeight} min={1} max={Math.max(2,solidHeight-1)}/></div>}
           </>}
 
-          {solid==="frustum" && (problem==="section" || problem==="position" || problem==="development") && <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100/80">The Unit V frustum engine supports 3D modelling, angled cuts and orthographic views. Unit III–IV axis-inclination, true-shape and surface-development tools are not available for frustums.</div>}
-          {solid==="cuboid" && !unit34 && <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">The Unit V isometric engine uses a square footprint for this solid. Choose a Unit III–IV task to enter independent width and depth values.</div>}
+          {solid==="frustum" && (problem==="section" || problem==="position" || problem==="development") && <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100/80">The frustum model supports 3D modelling, angled cuts and orthographic views. Inclined-axis positioning and surface development are not available for this shape.</div>}
+          {solid==="cuboid" && !usesProjectionEngine && <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-slate-400">The isometric preview uses a square footprint for this solid. Choose a projection or section feature to enter independent width and depth values.</div>}
           {unsupportedDev && <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100/80">Surface development for frustums is not implemented in the supplied engine. Choose a prism, pyramid, cylinder or cone.</div>}
           {unsupportedPosition && <div className="mt-5 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs leading-5 text-amber-100/80">The supplied frustum engine does not support inclined-axis positioning relative to HP and VP. Choose another solid for this problem type.</div>}
 
@@ -198,7 +198,7 @@ export function EngineeringGraphicsStudio() {
 
         <aside className="space-y-4">
           <div className="rounded-[26px] border border-white/10 bg-[#0A110D] p-5 sm:p-6"><div className="mb-5 flex items-center gap-2 text-xs font-bold"><Sparkles className="h-4 w-4 text-[#00C878]"/> YOUR WORKSPACE</div><div className="space-y-4">
-            <div className="border-b border-white/10 pb-4"><div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-500">Problem</div><div className="mt-1 text-sm font-bold">{problems.find(p=>p.id===problem)?.title}</div><div className="mt-1 text-xs text-slate-500">Unit {unit34?"III–IV":"V"} simulation engine</div></div>
+            <div className="border-b border-white/10 pb-4"><div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-500">Feature</div><div className="mt-1 text-sm font-bold">{features.find(p=>p.id===problem)?.title}</div><div className="mt-1 text-xs text-slate-500">The matching drawing workspace is selected automatically</div></div>
             <div className="border-b border-white/10 pb-4"><div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-500">Solid</div><div className="mt-1 text-sm font-bold capitalize">{solid==="frustum"?"Conical frustum":solid}</div><div className="mt-1 text-xs text-slate-500">{solid==="prism" || solid==="pyramid"?sides+"-sided base":"Parametric solid"}</div></div>
             <div className="border-b border-white/10 pb-4"><div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-500">Output</div><div className="mt-2 flex flex-wrap gap-2">{(problem==="section"?["3D solid","Section","True shape"]:problem==="development"?["3D solid","Unfold animation"]:problem==="position"?["3D solid","HP / VP","Projections"]:problem==="orthographic"?["Isometric","Front","Plan","Side"]:["Isometric","Dimensions","Cut view"]).map(value=><span key={value} className="rounded-lg border border-[#00C878]/15 bg-[#00A86B]/[0.07] px-2 py-1 text-[10px] text-[#81E9B9]">{value}</span>)}</div></div>
             <div><div className="text-[10px] font-mono uppercase tracking-[0.16em] text-slate-500">Interaction</div><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><RotateCw className="h-3.5 w-3.5 text-[#00C878]"/> Rotate · zoom · inspect</div><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Layers className="h-3.5 w-3.5 text-[#00C878]"/> Switch construction views</div><div className="mt-2 flex items-center gap-2 text-xs text-slate-400"><Download className="h-3.5 w-3.5 text-[#00C878]"/> Export a PNG view</div></div>
