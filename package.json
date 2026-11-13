@@ -10,8 +10,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/test-engivault.mjs && node scripts/security-audit-test.mjs",
-    "test:security": "node scripts/security-audit-test.mjs"
+    "test": "node scripts/test-engivault.mjs && node scripts/security-audit-test.mjs && node scripts/test-draftlab.mjs",
+    "test:security": "node scripts/security-audit-test.mjs",
+    "test:draftlab": "node scripts/test-draftlab.mjs"
   },
   "dependencies": {
     "@animate-ui/react": "^2.4.2",
