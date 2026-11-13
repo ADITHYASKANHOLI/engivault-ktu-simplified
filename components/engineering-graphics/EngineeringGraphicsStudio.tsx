@@ -157,7 +157,7 @@ function ProjectionPane({
     };
   };
 
-  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (dragRef.current && dragRef.current.pointerId === event.pointerId) {
       const drag = dragRef.current;
       setViewport((previous) => ({
@@ -169,7 +169,7 @@ function ProjectionPane({
     }
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.pointerId === event.pointerId) {
       dragRef.current = null;
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
