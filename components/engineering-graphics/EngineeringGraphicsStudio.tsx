@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { createSolidGeometry, intersectGeometryWithPlane, rotateGeometry } from "@/lib/engineering-graphics/geometry";
 import { formatMm, projectPoint, projectedBounds } from "@/lib/engineering-graphics/projections";
-import { fitBounds, zoomAt, zoomLabel } from "@/lib/engineering-graphics/viewport";
+import { fitBounds, MAX_ZOOM, MIN_ZOOM, zoomAt, zoomLabel } from "@/lib/engineering-graphics/viewport";
 import type { ProjectionKind, SolidSpec, SolidType, ViewportState } from "@/lib/engineering-graphics/types";
 
 type Workspace = "single" | "multi" | "section";
@@ -199,6 +199,7 @@ function ProjectionPane({
             <ZoomOut size={13} />
           </button>
           <span className="min-w-[42px] text-center font-mono text-[9px] text-slate-500">{zoomLabel(viewport.zoom)}</span>
+          <input aria-label="Viewport zoom percentage" type="range" min={MIN_ZOOM * 100} max={MAX_ZOOM * 100} step={5} value={Math.round(viewport.zoom * 100)} onChange={(event) => { const targetZoom = Number(event.target.value) / 100; setViewport((previous) => zoomAt(previous, { x: size.width / 2, y: size.height / 2 }, targetZoom / previous.zoom, size.width, size.height)); }} className="hidden h-1 w-20 cursor-pointer accent-emerald-400 sm:block" />
           <button type="button" onClick={() => zoomBy(1.25)} className="rounded p-1 text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Zoom in">
             <ZoomIn size={13} />
           </button>
